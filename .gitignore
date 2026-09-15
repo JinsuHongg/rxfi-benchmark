@@ -203,6 +203,9 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Reproducible, potentially large local target files generated from frozen inputs.
+data/derived/
+
 # Ruff stuff:
 .ruff_cache/
 

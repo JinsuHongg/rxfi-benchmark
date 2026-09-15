@@ -1,0 +1,5 @@
+split,no_flare_windows,no_flare_percent,multi_flare_windows,multi_flare_percent,windows_with_both_max_ids,different_max_peak_and_rxfi_events,different_max_peak_and_rxfi_percent_of_all_rows,different_max_peak_and_rxfi_percent_of_comparable_windows,events_invalid_rxfi_across_windows,peak_tie_candidates,rxfi_tie_candidates
+train,17415,23.29454253611557,53301,71.29614767255217,57302,14745,19.723113964687,25.73208614009982,48,35,0
+validation,628,17.10239651416122,2854,77.72331154684096,3044,725,19.74400871459695,23.817345597897503,0,0,0
+test,8343,19.027093596059114,33489,76.3752052545156,35505,9117,20.792282430213465,25.67807351077313,0,40,0
+leaky_validation,1278,21.13095238095238,4369,72.2387566137566,4770,1256,20.767195767195766,26.331236897274632,0,0,0

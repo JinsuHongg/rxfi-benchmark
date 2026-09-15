@@ -21,24 +21,24 @@ All four files have the required `timestamp`, `max_goes_class`, and `max_intensi
 
 ## Data matching
 
-The split files are hourly samples with no NOAA flare-event ID, peak time, or NOAA background irradiance. They therefore cannot be joined by a supplied identifier. No pre-existing matching code was found in the repository.
+The split files are hourly samples with no NOAA flare-event ID, peak time, or NOAA background irradiance. Their event association is nevertheless defined by the **confirmed dataset contract**, rather than by a row-level identifier.
 
-For this strictly descriptive analysis, a deterministic **candidate association** was used for every non-`FQ` sample: select the unique NOAA event with the largest `xrsb_irrad` among events whose peak time lies in `[sample timestamp, sample timestamp + 24 hours)`. `FQ` is an observed quiet/no-class code in the split files and has no flare event candidate. Tied maxima are called ambiguous and not assigned RXFI. RXFI is then imported from the selected NOAA event using the frozen shared function:
+The confirmed contract uses the half-open future forecasting window `[sample timestamp, sample timestamp + 24 hours)`. For this strictly descriptive analysis, every non-`FQ` sample was associated with the NOAA event having the largest `xrsb_irrad` in that window. `FQ` is an observed quiet/no-class code in the split files and has no flare event association. Exact peak ties were reported as ambiguous and were not assigned RXFI in this Step-2 analysis. RXFI is then imported from the selected NOAA event using the frozen shared function:
 
 \[
 \operatorname{RXFI} = \frac{\texttt{xrsb\_irrad}-\texttt{background\_irrad}}{\texttt{background\_irrad}}.
 \]
 
-The 24-hour look-ahead is an explicit analysis assumption inferred from the data's `max_*` target fields and the available `*24w` data naming. It must be confirmed against the source data-generation contract before this association is used in a definitive downstream experiment.
+This 24-hour maximum-peak association is the confirmed dataset contract for the frozen split timestamps. The absence of a row-level NOAA event ID remains a traceability limitation, but it does not make the time-window association an assumption.
 
-| Split | Valid candidate RXFI | Percent of all samples | Quiet (`FQ`) | No NOAA event in candidate window | Ambiguous maxima | Invalid NOAA RXFI |
+| Split | Valid matched RXFI | Percent of all samples | Quiet (`FQ`) | No NOAA event in contract window | Ambiguous maxima | Invalid NOAA RXFI |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Train | 54,051 | 72.30% | 18,818 | 1,813 | 35 | 43 |
 | Validation | 2,891 | 78.73% | 677 | 104 | 0 | 0 |
 | Test | 35,156 | 80.18% | 7,721 | 931 | 40 | 0 |
 | Leaky validation | 4,567 | 75.51% | 1,347 | 134 | 0 | 0 |
 
-The candidate NOAA class differs from the supplied `max_goes_class` for 7,682 train, 487 validation, 898 test, and 664 leaky-validation matches. This is expected to be affected by the science-quality catalog's recalibration of pre-GOES-R values, but the mismatch is not resolved or corrected here. It is a material matching limitation. See [matching_summary.csv](../../outputs/rxfi_distribution/tables/matching_summary.csv).
+The contract-matched NOAA class differs from the supplied `max_goes_class` for 7,682 train, 487 validation, 898 test, and 664 leaky-validation matches. This is expected to be affected by the science-quality catalog's recalibration of pre-GOES-R values, but the mismatch is not resolved or corrected here. It is a material label-version limitation. See [matching_summary.csv](../../outputs/rxfi_distribution/tables/matching_summary.csv).
 
 ## Conventional flare-class imbalance
 
@@ -50,7 +50,7 @@ Full count and percentage tables are in [flare_class_distribution.csv](../../out
 
 ## RXFI distribution
 
-Valid candidate RXFI values are strongly right-skewed. The summary below retains the complete data; no values were clipped. The raw-distribution figure limits its displayed horizontal range to p99 only to make the bulk visible, with values above that bound retained in the final bin and in all tables.
+Valid contract-matched RXFI values are strongly right-skewed. The summary below retains the complete data; no values were clipped. The raw-distribution figure limits its displayed horizontal range to p99 only to make the bulk visible, with values above that bound retained in the final bin and in all tables.
 
 | Split | Valid n | Median | Q1-Q3 | Mean | SD | p95 | p99 | Maximum |
 | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |
@@ -65,7 +65,7 @@ Valid candidate RXFI values are strongly right-skewed. The summary below retains
 
 ## Relationship between conventional flare class and RXFI
 
-Candidate NOAA conventional class has a positive but incomplete monotonic association with `log10(1 + RXFI)` (Spearman rho = 0.5285, `n = 96,665` valid candidate events, with repeated hourly samples retained because split membership is immutable). Class median RXFI rises from 1.76 for B to 3.34 for C, 11.19 for M, and 57.74 for X. However, the distributions overlap substantially: B has a p10-p90 range of 0.53-6.64, C 0.77-12.62, M 2.25-42.39, and X 10.24-211.48.
+Contract-matched NOAA conventional class has a positive but incomplete monotonic association with `log10(1 + RXFI)` (Spearman rho = 0.5285, `n = 96,665` valid matched sample-event associations, with repeated hourly samples retained because split membership is immutable). Class median RXFI rises from 1.76 for B to 3.34 for C, 11.19 for M, and 57.74 for X. However, the distributions overlap substantially: B has a p10-p90 range of 0.53-6.64, C 0.77-12.62, M 2.25-42.39, and X 10.24-211.48.
 
 This supports only the descriptive conclusion that peak-flux class does not uniquely determine relative increase above the event-specific background. It does **not** establish that RXFI is superior for forecasting or justify an RXFI label binning decision. Class-wise raw and log-transformed summaries are in [rxfi_summary_by_class.csv](../../outputs/rxfi_distribution/tables/rxfi_summary_by_class.csv).
 
@@ -79,13 +79,13 @@ The compact split table above is the split-comparison artifact. Median RXFI is s
 
 1. The supplied temporal split memberships satisfy their frozen calendar rules, with no duplicate timestamps or missing matching fields; they were not modified.
 2. Conventional peak-flux labels are imbalanced, with C-class samples most common and X-class samples rare; the test period has a larger M/X share than training.
-3. Candidate NOAA RXFI is markedly right-skewed, making median/IQR and log-transformed descriptive views more informative than the mean alone.
+3. Contract-matched NOAA RXFI is markedly right-skewed, making median/IQR and log-transformed descriptive views more informative than the mean alone.
 4. Higher conventional flare classes tend to have higher relative increases, but broad within-class ranges overlap; absolute peak-flux class therefore does not uniquely encode background-relative increase.
-5. The current sample-to-event association is a documented 24-hour candidate rule, not a verified event identifier. Its limitations must be resolved before downstream modeling uses per-sample RXFI as ground truth.
+5. The sample-to-event association is a confirmed 24-hour dataset contract. The lack of a row-level event identifier affects traceability, but not the validity of the contract-defined association.
 
 ## Limitations and open questions
 
-- The split CSVs lack NOAA flare IDs and backgrounds. Candidate association depends on an unverified 24-hour look-ahead assumption.
+- The split CSVs lack NOAA flare IDs and backgrounds. The confirmed 24-hour association is therefore traceable by time window and aggregation rule rather than by a stored row-level event ID.
 - Science-quality NOAA reprocessing can change the conventional class relative to the supplied labels, especially in earlier GOES eras; no calibration reconciliation was attempted.
 - Repeated hourly samples can point to the same NOAA event, so these descriptive sample-weighted distributions are not independent-event estimates.
 - Extreme RXFI values are retained. Any future clipping, transforms, binning, or robust modeling choices require pre-specification and validation-only design.

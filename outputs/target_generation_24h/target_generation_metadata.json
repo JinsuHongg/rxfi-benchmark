@@ -1,0 +1,12 @@
+{
+  "noaa_csv": "/tmp/rxfi-noaa/sci_xrsf-l2-flrpt_geo_s19950103_e20260913_v1-0-1.csv",
+  "window": "[t, t + 24 hours)",
+  "peak_event_eligibility": "finite positive xrsb_irrad",
+  "rxfi_event_eligibility": "frozen calculate_rxfi(xrsb_irrad, background_irrad) is valid",
+  "tie_break": "earliest peak time, then flare_id",
+  "no_flare_convention": "all continuous targets are 0; event identifiers are empty; max_flare_class is FQ",
+  "noaa_input_quality_control": {
+    "duplicate_event_keys_skipped": 0,
+    "invalid_peak_records_skipped": 0
+  }
+}

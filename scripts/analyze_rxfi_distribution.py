@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Validate immutable Surya splits and describe NOAA-derived RXFI distributions.
 
-The split CSVs are read only.  NOAA events are matched as a documented,
-deterministic *candidate* association: for each non-quiet sample, select the
-highest NOAA XRS-B peak in [timestamp, timestamp + 24 hours).  The 24-hour
-look-ahead is an explicit analysis assumption, not an alteration of a split.
+The split CSVs are read only. NOAA events use the confirmed deterministic
+dataset contract: for each non-quiet sample, select the highest NOAA XRS-B
+peak in [timestamp, timestamp + 24 hours). This analysis reports exact peak
+ties separately rather than silently selecting one.
 """
 
 from __future__ import annotations
@@ -155,7 +155,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     columns = list(dict.fromkeys(key for row in rows for key in row))
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -362,7 +362,7 @@ def main() -> int:
     write_csv(tables_dir / "rxfi_summary_by_split.csv", rxfi_split_rows)
     write_csv(tables_dir / "rxfi_summary_by_class.csv", rxfi_class_rows)
     analysis_summary = {
-        "noaa_csv": str(args.noaa_csv), "noaa_event_count_2010_2024": len(events), "matching_assumption": "highest NOAA XRS-B peak in [sample timestamp, timestamp + 24 hours), excluding FQ; tied maxima are ambiguous",
+        "noaa_csv": str(args.noaa_csv), "noaa_event_count_2010_2024": len(events), "matching_contract": "highest NOAA XRS-B peak in [sample timestamp, sample timestamp + 24 hours), excluding FQ; exact peak ties are reported separately in this Step-2 analysis",
         "spearman_ordered_noaa_class_vs_log10_1p_rxfi": correlation, "split_rules": SPLIT_RULES,
     }
     (tables_dir / "analysis_summary.json").write_text(json.dumps(analysis_summary, indent=2) + "\n", encoding="utf-8")
