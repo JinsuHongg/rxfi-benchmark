@@ -57,6 +57,19 @@ def finite_positive(value: str | None) -> float | None:
     return parsed if math.isfinite(parsed) and parsed > 0 else None
 
 
+def calculate_rxfi(peak_value: str | None, background_value: str | None) -> float | None:
+    """Return frozen RXFI for valid catalog values, otherwise None.
+
+    RXFI is defined once here so catalog inspection and downstream analysis use
+    the same positive, finite-value eligibility rule.
+    """
+    peak = finite_positive(peak_value)
+    background = finite_positive(background_value)
+    if peak is None or background is None:
+        return None
+    return (peak - background) / background
+
+
 def quantile(sorted_values: list[float], probability: float) -> float:
     """Return a linearly interpolated quantile without third-party packages."""
     index = (len(sorted_values) - 1) * probability
@@ -109,12 +122,11 @@ def main() -> int:
             if row.get("peak_saturated", "").strip() in {"1", "true", "True"}:
                 saturated += 1
 
-            peak = finite_positive(row.get("xrsb_irrad"))
-            background = finite_positive(row.get("background_irrad"))
-            if peak is None or background is None:
+            rxfi = calculate_rxfi(row.get("xrsb_irrad"), row.get("background_irrad"))
+            if rxfi is None:
                 missing_or_invalid += 1
                 continue
-            rxfi_values.append((peak - background) / background)
+            rxfi_values.append(rxfi)
 
     rxfi_values.sort()
     print(f"\nEvents: {total}")

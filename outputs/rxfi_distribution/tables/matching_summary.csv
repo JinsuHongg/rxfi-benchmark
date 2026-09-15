@@ -1,0 +1,5 @@
+split,rows,quiet_no_flare_target,candidate_window_nonquiet,unique_candidate_matches,ambiguous_maxima,no_noaa_event_in_window,invalid_rxfi_after_match,valid_rxfi,valid_rxfi_percent_all_rows,matched_class_disagreement
+train,74760,18818,54129,54094,35,1813,43,54051,72.29935794542536,7682
+validation,3672,677,2891,2891,0,104,0,2891,78.73093681917211,487
+test,43848,7721,35196,35156,40,931,0,35156,80.17697500456121,898
+leaky_validation,6048,1347,4567,4567,0,134,0,4567,75.51256613756614,664

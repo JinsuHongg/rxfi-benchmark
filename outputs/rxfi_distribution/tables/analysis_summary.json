@@ -1,0 +1,12 @@
+{
+  "noaa_csv": "/tmp/rxfi-noaa/sci_xrsf-l2-flrpt_geo_s19950103_e20260913_v1-0-1.csv",
+  "noaa_event_count_2010_2024": 38446,
+  "matching_assumption": "highest NOAA XRS-B peak in [sample timestamp, timestamp + 24 hours), excluding FQ; tied maxima are ambiguous",
+  "spearman_ordered_noaa_class_vs_log10_1p_rxfi": 0.5284852559772638,
+  "split_rules": {
+    "train": "2010-2019, February 15 through December 31",
+    "validation": "2010-2019, January 15 through January 31",
+    "test": "2020-2024, all dates",
+    "leaky_validation": "2010-2019, January 1-14 and February 1-14"
+  }
+}
