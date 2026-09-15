@@ -1,0 +1,41 @@
+experiment_name: vit_small_224_max_flare_class
+output_dir: outputs/vit_small_224_max_flare_class
+
+# SuryaBench supplies only images, timestamps, and frozen membership. NOAA-derived
+# `max_flare_class` in these files is the sole supervised target.
+zarr_path: /mnt/storage/data/surya-bench-224.zarr
+source_split_dir: /mnt/storage/surya/index_data
+derived_target_dir: data/derived
+target_column: max_flare_class
+
+image_size: 224
+in_chans: 13
+channel_order:
+  - aia94
+  - aia131
+  - aia171
+  - aia193
+  - aia211
+  - aia304
+  - aia335
+  - aia1600
+  - hmi_m
+  - hmi_bx
+  - hmi_by
+  - hmi_bz
+  - hmi_v
+normalization: per_sample_per_channel_zscore
+
+model_name: vit_small_patch16_224
+patch_size: 16
+pretrained: false
+optimizer: adamw
+learning_rate: 0.0001
+weight_decay: 0.01
+epochs: 10
+batch_size: 4
+gradient_accumulation_steps: 1
+num_workers: 0
+precision: fp16
+seed: 20260915
+checkpoint_metric: macro_f1

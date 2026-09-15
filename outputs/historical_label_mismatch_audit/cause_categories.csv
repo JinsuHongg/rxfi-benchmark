@@ -1,0 +1,16 @@
+split,category,count,percent
+train,same_ordinal_class,62025,82.96548956661316
+train,no_flare_flare_inclusion_disagreement,5029,6.726859283039058
+train,adjacent_ordinal_class_shift,7688,10.283574103798824
+train,severe_ordinal_class_shift,18,0.024077046548956663
+validation,same_ordinal_class,2928,79.73856209150327
+validation,adjacent_ordinal_class_shift,483,13.15359477124183
+validation,no_flare_flare_inclusion_disagreement,257,6.998910675381263
+validation,severe_ordinal_class_shift,4,0.10893246187363835
+test,same_ordinal_class,41710,95.12406495165116
+test,no_flare_flare_inclusion_disagreement,1240,2.827951103813173
+test,adjacent_ordinal_class_shift,881,2.0092136471446818
+test,severe_ordinal_class_shift,17,0.038770297390987044
+leaky_validation,adjacent_ordinal_class_shift,664,10.97883597883598
+leaky_validation,same_ordinal_class,5047,83.44907407407408
+leaky_validation,no_flare_flare_inclusion_disagreement,337,5.572089947089947

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="500" viewBox="0 0 900 500">
+<style>text{font-family:Arial,sans-serif;fill:#17212b}.title{font-size:18px;font-weight:bold}.label{font-size:12px}.small{font-size:10px}.axis{stroke:#425466}.cell{stroke:#fff}</style>
+<text x="35" y="28" class="title">Exact legacy/regenerated class agreement by year</text>
+<rect x="87.6" y="101.2" width="35.5" height="293.8" fill="#2b6cb0"/><text x="105.3" y="410" text-anchor="middle" class="small">2010</text>
+<rect x="138.3" y="114.6" width="35.5" height="280.4" fill="#2b6cb0"/><text x="156.0" y="410" text-anchor="middle" class="small">2011</text>
+<rect x="188.9" y="124.8" width="35.5" height="270.2" fill="#2b6cb0"/><text x="206.7" y="410" text-anchor="middle" class="small">2012</text>
+<rect x="239.6" y="126.4" width="35.5" height="268.6" fill="#2b6cb0"/><text x="257.3" y="410" text-anchor="middle" class="small">2013</text>
+<rect x="290.3" y="116.4" width="35.5" height="278.6" fill="#2b6cb0"/><text x="308.0" y="410" text-anchor="middle" class="small">2014</text>
+<rect x="340.9" y="126.9" width="35.5" height="268.1" fill="#2b6cb0"/><text x="358.7" y="410" text-anchor="middle" class="small">2015</text>
+<rect x="391.6" y="136.0" width="35.5" height="259.0" fill="#2b6cb0"/><text x="409.3" y="410" text-anchor="middle" class="small">2016</text>
+<rect x="442.3" y="134.5" width="35.5" height="260.5" fill="#2b6cb0"/><text x="460.0" y="410" text-anchor="middle" class="small">2017</text>
+<rect x="492.9" y="120.0" width="35.5" height="275.0" fill="#2b6cb0"/><text x="510.7" y="410" text-anchor="middle" class="small">2018</text>
+<rect x="543.6" y="107.3" width="35.5" height="287.7" fill="#2b6cb0"/><text x="561.3" y="410" text-anchor="middle" class="small">2019</text>
+<rect x="594.3" y="98.2" width="35.5" height="296.8" fill="#2b6cb0"/><text x="612.0" y="410" text-anchor="middle" class="small">2020</text>
+<rect x="644.9" y="80.9" width="35.5" height="314.1" fill="#2b6cb0"/><text x="662.7" y="410" text-anchor="middle" class="small">2021</text>
+<rect x="695.6" y="70.0" width="35.5" height="325.0" fill="#2b6cb0"/><text x="713.3" y="410" text-anchor="middle" class="small">2022</text>
+<rect x="746.3" y="83.1" width="35.5" height="311.9" fill="#2b6cb0"/><text x="764.0" y="410" text-anchor="middle" class="small">2023</text>
+<rect x="796.9" y="73.2" width="35.5" height="321.8" fill="#2b6cb0"/><text x="814.7" y="410" text-anchor="middle" class="small">2024</text>
+<line x1="80" y1="395" x2="840" y2="395" class="axis"/>
+<text x="80" y="435" class="small">Exact ordinal-letter agreement (%)</text>
+</svg>

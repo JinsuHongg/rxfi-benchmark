@@ -1,0 +1,13 @@
+{
+  "legacy_event_identity": "not available in split CSVs",
+  "window_contract": "[t, t + 24 hours)",
+  "rank_order": [
+    "FQ",
+    "A",
+    "B",
+    "C",
+    "M",
+    "X"
+  ],
+  "timing_code_found": false
+}

@@ -1,0 +1,11 @@
+split,timestamp,legacy_class,regenerated_class,legacy_max_intensity,regenerated_max_peak_flux,regenerated_flare_id,flare_count_24h,ordinal_distance,legacy_event_identity
+train,2010-05-24 14:00:00,FQ,B1.1,7.707294476334498e-08,1.106e-07,201005241807,1,2,not available in split CSV
+train,2010-05-24 15:00:00,FQ,B1.1,7.708827740420177e-08,1.106e-07,201005241807,1,2,not available in split CSV
+train,2010-05-27 23:00:00,FQ,B1.8,7.831488867274448e-08,1.836e-07,201005272310,2,2,not available in split CSV
+train,2010-06-03 14:00:00,FQ,B1.1,8.075277856897314e-08,1.107e-07,201006031541,2,2,not available in split CSV
+train,2010-06-03 15:00:00,FQ,B1.1,8.076811120982992e-08,1.107e-07,201006031541,2,2,not available in split CSV
+train,2010-06-03 16:00:00,FQ,B1.0,8.07834438506867e-08,1.045e-07,201006040305,1,2,not available in split CSV
+train,2010-06-03 17:00:00,FQ,B1.0,8.079877649154349e-08,1.045e-07,201006040305,1,2,not available in split CSV
+train,2010-06-03 18:00:00,FQ,B1.0,8.081410913240027e-08,1.045e-07,201006040305,1,2,not available in split CSV
+train,2010-06-03 19:00:00,FQ,B1.0,8.082944177325705e-08,1.045e-07,201006040305,1,2,not available in split CSV
+train,2010-06-03 20:00:00,FQ,B1.0,8.084477441411383e-08,1.045e-07,201006040305,1,2,not available in split CSV
