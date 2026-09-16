@@ -1,8 +1,8 @@
 experiment_name: vit_small_224_cumulative_peak_flux_qr
 output_dir: outputs/vit_small_224_cumulative_peak_flux_qr
-zarr_path: /mnt/storage/data/surya-bench-224.zarr
-source_split_dir: /mnt/storage/surya/index_data
-derived_target_dir: data/derived
+zarr_path: /scratch/users/jhong36/data/surya-bench-224.zarr
+source_split_dir: /scratch/users/jhong36/data
+derived_target_dir: /scratch/users/jhong36/rxfi/data/derived
 target_column: cumulative_peak_flux
 target_transform: {name: log10_1p_scaled, scale: 1.0e-8}
 image_size: 224
