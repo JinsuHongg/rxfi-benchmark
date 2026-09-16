@@ -161,7 +161,12 @@ def git_commit():
 def validate_config(config):
     spec=validate_transform(config.get("target_transform"));required={"experiment_name","output_dir","target_column","quantiles","model_name","checkpoint_metric","precision","batch_size","num_workers","gradient_accumulation_steps"}
     if required-set(config):raise ValueError(f"Missing config fields: {sorted(required-set(config))}")
-    if config["model_name"]!="vit_small_patch16_224" or config["quantiles"]!=[0.05,0.5,0.95] or config["checkpoint_metric"]!="validation_pinball_loss":raise ValueError("Model/quantiles/checkpoint metric are frozen")
+    frozen = {"model_name":"vit_small_patch16_224", "image_size":224, "in_chans":13, "channels":13, "pretrained":False, "quantiles":[0.05,0.5,0.95], "optimizer":"adamw", "learning_rate":1e-4, "lr_policy":"constant", "weight_decay":0.01, "epochs":10, "seed":0, "checkpoint_metric":"validation_pinball_loss"}
+    missing = set(frozen) - set(config)
+    if missing: raise ValueError(f"Missing frozen config fields: {sorted(missing)}")
+    if any(config[key] != value for key, value in frozen.items()): raise ValueError("Model/training/checkpoint settings differ from the frozen QR experiment family")
+    if config["in_chans"] != config["channels"]: raise ValueError("channels must equal in_chans")
+    if int(config["batch_size"]) <= 0 or int(config["num_workers"]) < 0 or int(config["gradient_accumulation_steps"]) <= 0: raise ValueError("Batch size and gradient accumulation must be positive; num_workers cannot be negative")
     if config["precision"] not in PRECISIONS:raise ValueError("Unsupported precision")
     return spec
 

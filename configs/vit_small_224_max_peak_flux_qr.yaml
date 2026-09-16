@@ -13,6 +13,7 @@ target_transform:
 
 image_size: 224
 in_chans: 13
+channels: 13
 channel_order:
   - aia94
   - aia131
@@ -36,10 +37,11 @@ quantiles: [0.05, 0.50, 0.95]
 optimizer: adamw
 learning_rate: 0.0001
 weight_decay: 0.01
+lr_policy: constant
 epochs: 10
-batch_size: 4
+batch_size: 32
 gradient_accumulation_steps: 1
-num_workers: 0
+num_workers: 4
 # FP16 smoke testing on this GTX 1660 Ti produced a non-finite gradient.
 # Use the documented stable fallback; the script enables AMP only for fp16.
 precision: '32'
