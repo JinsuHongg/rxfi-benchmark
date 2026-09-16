@@ -1,0 +1,19 @@
+{
+  "columns": [
+    "split",
+    "original_row_index",
+    "timestamp",
+    "max_peak_flux",
+    "z",
+    "max_flare_class",
+    "q05",
+    "q50",
+    "q95"
+  ],
+  "quantiles": [
+    0.05,
+    0.5,
+    0.95
+  ],
+  "raw_predictions_preserved": true
+}

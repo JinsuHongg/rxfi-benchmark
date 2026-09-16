@@ -209,6 +209,11 @@ data/raw/
 
 # Large local training-state artifacts. Metrics and figures remain versionable.
 outputs/vit_small_224_max_flare_class/checkpoints/
+outputs/vit_small_224_max_peak_flux_qr/checkpoints/
+# Full image-availability listings are reproducible local diagnostics; retain
+# compact target/image counts in documentation or experiment metadata instead.
+outputs/vit_small_224_max_peak_flux_qr/dataset_integrity.json
+outputs/vit_small_224_max_peak_flux_qr/missing_or_unreadable_images.csv
 
 # Ruff stuff:
 .ruff_cache/

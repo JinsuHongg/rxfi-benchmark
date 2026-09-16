@@ -1,0 +1,12 @@
+{
+  "iterations": 32,
+  "batch_size": 4,
+  "finite_loss": true,
+  "finite_gradients": true,
+  "first_pinball_loss": 3.3661725521087646,
+  "last_pinball_loss": 0.2154054492712021,
+  "mean_q05_gt_q95_crossing_rate": 0.0,
+  "peak_memory_mib": 529.04,
+  "precision": "fp32",
+  "device": "NVIDIA GeForce GTX 1660 Ti"
+}
