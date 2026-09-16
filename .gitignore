@@ -205,6 +205,7 @@ tempCodeRunnerFile.py
 
 # Reproducible, potentially large local target files generated from frozen inputs.
 data/derived/
+data/raw/
 
 # Large local training-state artifacts. Metrics and figures remain versionable.
 outputs/vit_small_224_max_flare_class/checkpoints/

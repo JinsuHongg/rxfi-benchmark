@@ -54,9 +54,23 @@ For valid-peak events \(E_t\) in a sample window and valid-RXFI events \(R_t \su
 
 ## No-flare and tie conventions
 
-If a window has no valid-peak events, `flare_count_24h = 0`, all four continuous targets are zero, both identifier fields are empty, and `max_flare_class = FQ`. If a window has peak-flux events but none with valid RXFI, peak targets are still aggregated while both RXFI targets are zero and `max_rxfi_flare_id` is empty.
+If a window has no valid-peak events, `flare_count_24h = 0`, both identifier fields are empty, and `max_flare_class = FQ`. `cumulative_peak_flux`, `max_rxfi`, and `cumulative_rxfi` remain zero. The exception for the continuous maximum is documented below. If a window has peak-flux events but none with valid RXFI, peak targets are still aggregated while both RXFI targets are zero and `max_rxfi_flare_id` is empty.
 
 Ties are not discarded. For maximum peak flux and maximum RXFI separately, the deterministic winner is the earliest peak time; remaining ties use lexical stable event ID order. The generator reports the number of tied candidate windows.
+
+## No-flare continuous max-flux refinement
+
+`max_peak_flux` is now defined for every valid continuous window without changing the confirmed half-open window or event-based targets. For a window with one or more flare-summary events it remains the maximum NOAA flare-report `xrsb_irrad`. For an `FQ` window, it is instead the maximum valid NOAA/NCEI science-quality XRS 1-minute average:
+
+\[
+\texttt{max\_peak\_flux} = \max_{\tau \in [t,t+24\mathrm{h})}\mathrm{XRSB}_{1\mathrm{min}}(\tau).
+\]
+
+The product is NOAA/NCEI XRS L2 `avg1m` (version `v2-2-1`). The field is `xrsb_flux`, the primary 1–8 Å (0.1–0.8 nm) XRS-B irradiance in W/m2. Valid values are finite and positive with `xrsb_flag == 0`; fill values, nonpositive values, and every nonzero quality flag are excluded. NOAA's published primary/secondary XRS transition table determines the source at the sample timestamp (GOES-14/15/13/16/17/18 across this study); the configured secondary is queried only if the primary has no valid observations in the full window. Satellites are never averaged.
+
+`max_flare_class` remains `FQ` for these windows. `cumulative_peak_flux` remains zero because it is a flare-event sum, and `max_rxfi`/`cumulative_rxfi` remain zero because RXFI is never synthesized from the 1-minute background series. A window with no valid 1-minute observation retains its row with `max_peak_flux` missing, not zero. The added provenance columns are `max_peak_flux_source`, `xrsb_1min_valid_count_24h`, and `xrsb_1min_coverage_fraction_24h`.
+
+The raw NetCDF files are cached under ignored `data/raw/noaa_xrs_avg1m/`; their URL pattern and version are retained in `scripts/refine_no_flare_max_peak_flux.py`. The script writes per-window QC, coverage summaries, prior-target backups, metadata, and [a two-panel no-flare/full-log distribution figure](../../outputs/no_flare_max_peak_flux_refinement/no_flare_max_flux_distributions.svg). Of 27,664 FQ windows, 27,559 (99.62%) receive a positive physical maximum; 105 train windows lack a valid observation and remain missing. The assigned FQ maxima have median \(2.93\times10^{-8}\) W/m2 and 99th percentile \(9.53\times10^{-7}\) W/m2.
 
 ## Quality-control results
 

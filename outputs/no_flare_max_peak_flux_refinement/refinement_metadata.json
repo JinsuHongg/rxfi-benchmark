@@ -1,0 +1,52 @@
+{
+  "source_sha256": {
+    "train": "2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865",
+    "validation": "803d2e5584fe9bbe23bc02cbed1b06fb47520e4863c2b22b5f09f9d5c654c658",
+    "test": "40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b",
+    "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e"
+  },
+  "splits": {
+    "train": {
+      "rows": 74760,
+      "fq_rows": 17415,
+      "assigned": 17310,
+      "missing": 105
+    },
+    "validation": {
+      "rows": 3672,
+      "fq_rows": 628,
+      "assigned": 628,
+      "missing": 0
+    },
+    "test": {
+      "rows": 43848,
+      "fq_rows": 8343,
+      "assigned": 8343,
+      "missing": 0
+    },
+    "leaky_validation": {
+      "rows": 6048,
+      "fq_rows": 1278,
+      "assigned": 1278,
+      "missing": 0
+    }
+  },
+  "product": "NOAA/NCEI science-quality XRS L2 avg1m, v2-2-1",
+  "field": "xrsb_flux",
+  "units": "W/m2",
+  "valid_rule": "finite, positive, xrsb_flag == 0",
+  "window": "[t, t + 24 hours)",
+  "no_flare_statistics": {
+    "count": 27559,
+    "min": 9.99999971718e-10,
+    "q1": 1.43304035305e-08,
+    "median": 2.92511952438e-08,
+    "mean": 8.180373937613871e-08,
+    "q3": 6.32147916235e-08,
+    "p90": 9.26942149704e-08,
+    "p95": 1.19973108781e-07,
+    "p99": 9.5262424793e-07,
+    "max": 3.27133311657e-05
+  },
+  "full_log10_valid_count": 128223
+}

@@ -8,6 +8,7 @@ dependencies:
       # CUDA-enabled wheels and their pinned CUDA 12.4 runtime dependencies.
       - --extra-index-url https://download.pytorch.org/whl/cu124
       - matplotlib==3.11.2
+      - netCDF4==1.7.4
       - numcodecs==0.15.1
       - numpy==2.4.6
       - PyYAML==6.0.3

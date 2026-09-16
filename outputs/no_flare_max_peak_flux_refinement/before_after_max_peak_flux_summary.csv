@@ -1,0 +1,5 @@
+split,flare_windows,flare_max_peak_flux_changed,fq_windows,fq_zero_before,fq_positive_after,fq_missing_after
+train,57345,0,17415,17415,17310,105
+validation,3044,0,628,628,628,0
+test,35505,0,8343,8343,8343,0
+leaky_validation,4770,0,1278,1278,1278,0

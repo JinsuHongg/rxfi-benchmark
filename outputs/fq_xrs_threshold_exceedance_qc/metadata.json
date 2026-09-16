@@ -1,0 +1,59 @@
+{
+  "purpose": "read-only FQ XRS threshold-exceedance QC",
+  "thresholds_w_m2": {
+    "A1": 1e-08,
+    "B1": 1e-07,
+    "C1": 1e-06,
+    "M1": 1e-05,
+    "X1": 0.0001
+  },
+  "source_split_sha256": {
+    "train": "2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865",
+    "validation": "803d2e5584fe9bbe23bc02cbed1b06fb47520e4863c2b22b5f09f9d5c654c658",
+    "test": "40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b",
+    "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e"
+  },
+  "derived_target_sha256_before": {
+    "train": "ca9287760088e3ce636817ac2d315318e1d12b67c4f1d0605284e29b193181e6",
+    "validation": "d15af5edc61fdfd541ba595280a2d3b640548801841f84064ca6d923e010852a",
+    "test": "2f7633f7e1387a5356fe2d5f5abf7db81e05b230c2a26975c195a80d95f25772",
+    "leaky_validation": "1c46d1e8992ae26c9493132fe484316a3db87855ae4cd40231741bd76b6ff744"
+  },
+  "derived_target_sha256_after": {
+    "train": "ca9287760088e3ce636817ac2d315318e1d12b67c4f1d0605284e29b193181e6",
+    "validation": "d15af5edc61fdfd541ba595280a2d3b640548801841f84064ca6d923e010852a",
+    "test": "2f7633f7e1387a5356fe2d5f5abf7db81e05b230c2a26975c195a80d95f25772",
+    "leaky_validation": "1c46d1e8992ae26c9493132fe484316a3db87855ae4cd40231741bd76b6ff744"
+  },
+  "target_files_unchanged": true,
+  "fq_selection": "max_flare_class == FQ",
+  "event_catalog": "/tmp/rxfi-noaa-flare-summary.csv",
+  "event_catalog_sha256": "14a2e4612305f5053fca8af40d3a580a35da080038111eea0447d3d7a2857c8a",
+  "overall": {
+    "group": "overall",
+    "fq_count": 27664,
+    "valid_count": 27559,
+    "missing_count": 105,
+    "A1_count": 23762,
+    "A1_percent_valid": 86.22228673028775,
+    "B1_count": 2175,
+    "B1_percent_valid": 7.89215864146014,
+    "C1_count": 257,
+    "C1_percent_valid": 0.9325447222323016,
+    "M1_count": 13,
+    "M1_percent_valid": 0.0471715229144744,
+    "X1_count": 0,
+    "X1_percent_valid": 0.0,
+    "min": 9.99999971718e-10,
+    "q1": 1.43304035305e-08,
+    "median": 2.92511952438e-08,
+    "mean": 8.180373937613871e-08,
+    "q3": 6.32147916235e-08,
+    "p90": 9.26942149704e-08,
+    "p95": 1.19973108781e-07,
+    "p99": 9.5262424793e-07,
+    "max": 3.27133311657e-05
+  },
+  "c1_or_higher_count": 257,
+  "m1_or_higher_count": 13
+}
