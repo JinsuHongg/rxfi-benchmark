@@ -7,7 +7,9 @@ zarr_path: /mnt/storage/data/surya-bench-224.zarr
 source_split_dir: /mnt/storage/surya/index_data
 derived_target_dir: data/derived
 target_column: max_peak_flux
-target_transform: log10
+target_transform:
+  name: log10_scaled
+  scale: 1.0e-8
 
 image_size: 224
 in_chans: 13
@@ -40,6 +42,6 @@ gradient_accumulation_steps: 1
 num_workers: 0
 # FP16 smoke testing on this GTX 1660 Ti produced a non-finite gradient.
 # Use the documented stable fallback; the script enables AMP only for fp16.
-precision: fp32
+precision: '32'
 seed: 0
 checkpoint_metric: validation_pinball_loss

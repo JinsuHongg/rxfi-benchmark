@@ -11,10 +11,10 @@ SuryaBench contributes only 13-channel, 224x224 SDO images, timestamps, and memb
 The regression response is
 
 \[
-z = \log_{10}(\texttt{max\_peak\_flux}),
+z = \log_{10}(\texttt{max\_peak\_flux} / 10^{-8}),
 \]
 
-where flux is in W/m2 and no epsilon is added. For flare windows, the physical value is the maximum NOAA flare-summary XRS-B peak in `[t, t + 24h)`. For `FQ` windows, it is the maximum valid science-quality NOAA XRS-B one-minute flux in the same window. This retains the confirmed distinction between an event-catalog FQ class and a continuous irradiance maximum.
+where flux is in W/m2 and no epsilon is added. Thus A1/B1/C1/M1/X1 map approximately to 0/1/2/3/4, and the inverse is `1e-8 * 10^z`. This intentionally supersedes the earlier unscaled `log10(max_peak_flux)` representation; raw targets remain unchanged. For flare windows, the physical value is the maximum NOAA flare-summary XRS-B peak in `[t, t + 24h)`. For `FQ` windows, it is the maximum valid science-quality NOAA XRS-B one-minute flux in the same window.
 
 ## Missing-target policy
 
@@ -24,7 +24,7 @@ Image availability is audited separately from target validity. On the current lo
 
 ## Model and optimization
 
-The configured model is `vit_small_patch16_224` with 13 input channels, 224-pixel input, random initialization (`pretrained: false`), and three raw outputs in fixed order: `q05`, `q50`, `q95`. It uses AdamW (learning rate `1e-4`, weight decay `0.01`), batch size 4, one seed (0), and ten configured epochs. FP16 was attempted on the GTX 1660 Ti but generated a non-finite gradient during smoke testing, so the checked configuration uses the stable FP32 fallback. The checkpoint metric is minimum validation pinball loss; test data are never used for selection.
+The configured model is `vit_small_patch16_224` with 13 input channels, 224-pixel input, random initialization (`pretrained: false`), and three raw outputs in fixed order: `q05`, `q50`, `q95`. It uses AdamW (learning rate `1e-4`, weight decay `0.01`), one seed (0), and ten configured epochs. The conservative local default is batch size 4 and precision `32`; cluster jobs may override batch size, workers, gradient accumulation, and precision (`32`, `16-mixed`, or `bf16-mixed`) without changing the config file. The checkpoint metric is minimum validation pinball loss; test data are never used for selection.
 
 For each quantile \(\tau \in \{0.05, 0.50, 0.95\}\), the loss is
 
@@ -39,20 +39,20 @@ averaged over samples and quantiles. Raw output order is retained: no sorting or
 There is no OCQR implementation or fixed calibration partition in the current repository, so no adapter or calibration procedure is created here. Full training exports raw prediction CSVs under `outputs/vit_small_224_max_peak_flux_qr/predictions/` with the following schema:
 
 ```text
-split,original_row_index,timestamp,max_peak_flux,z,max_flare_class,q05,q50,q95
+split,original_row_index,timestamp,target_name,target_raw,target_transformed,max_flare_class,q05,q50,q95,q05_raw,q50_raw,q95_raw
 ```
 
 `prediction_schema.json` separately freezes quantile order `[0.05, 0.50, 0.95]`. These values are sufficient for a later OCQR adapter, which must define its nonconformity score and use an explicitly fixed calibration partition without splitting validation or test rows ad hoc. Calibration partitioning is therefore **unresolved** rather than invented.
 
 ## Reproducibility and outputs
 
-Run a checkpoint-free smoke test:
+Validate transforms without launching training:
 
 ```bash
-conda run -n rxfi-benchmark python scripts/train_vit_quantile_regression.py --smoke-only
+conda run -n rxfi-benchmark python scripts/train_vit_quantile_regression.py --config configs/vit_small_224_max_peak_flux_qr.yaml --validate-transforms
 ```
 
-The smoke test performs 32 training iterations, forward/backward/optimizer steps, finite-loss and finite-gradient checks, crossing diagnostics, and peak CUDA-memory measurement. A full run uses the same script without `--smoke-only`; it writes the resolved configuration, integrity metadata, training log, validation metrics, checkpoint metadata, prediction exports, and learning curve. Checkpoint files remain gitignored.
+The same script serves all four target configs. A full run writes the resolved configuration, transform and experiment metadata, cohort report, training log, validation metrics, checkpoint metadata, prediction exports, and learning curve. Checkpoint files remain gitignored. The four-target cluster procedure is documented in [the experiment-family note](vit_small_224_four_target_quantile_regression.md).
 
 ## Limitations and next step
 
