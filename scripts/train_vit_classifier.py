@@ -45,6 +45,25 @@ SOURCE_HASHES = {
     "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e",
 }
 CLASS_PATTERN = re.compile(r"^(?:FQ|[ABCMX][0-9]+(?:\.[0-9]+)?)$")
+BAND_ORDER = ("FQ", "A", "B", "C", "M", "X")
+
+def flare_class_to_band(value: str) -> str:
+    if not isinstance(value, str) or not CLASS_PATTERN.fullmatch(value):
+        raise ValueError(f"Invalid NOAA flare class: {value!r}")
+    return "FQ" if value == "FQ" else value[0]
+
+def class_mapping_for_representation(representation: str) -> dict[str, int]:
+    if representation != "ordinal_band":
+        raise ValueError(f"Unsupported fixed representation: {representation}")
+    return {label: index for index, label in enumerate(BAND_ORDER)}
+
+def encoded_label(raw: str, config: dict[str, Any]) -> str:
+    representation = config.get("target_representation", "exact_class")
+    if representation == "exact_class":
+        if not CLASS_PATTERN.fullmatch(raw): raise ValueError(f"Invalid NOAA flare class: {raw!r}")
+        return raw
+    if representation == "ordinal_band": return flare_class_to_band(raw)
+    raise ValueError(f"Unsupported target_representation: {representation}")
 PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
 ACTIVE_PRECISION = "32"
 
@@ -167,7 +186,7 @@ def attach_zarr_indices(rows: dict[str, list[dict[str, str]]], config: dict[str,
             if (year, stamp) in unavailable:
                 availability["missing_or_unreadable"].append({"split": split, "timestamp": row["timestamp"], "year": year, "reason": "timestamp_not_in_zarr"})
                 continue
-            label = row[config["target_column"]]
+            label = encoded_label(row[config["target_column"]], config)
             records.append(Record(split, row["timestamp"], year, positions[year][stamp], label, mapping[label]))
         result[split] = records
     selected_names, selected_indices = channel_selection(config, channel_order or config["channel_order"])
@@ -306,10 +325,11 @@ def main() -> None:
     seed = int(config["seed"]); random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False; torch.backends.cudnn.deterministic = True
     rows, integrity = load_rows(config)
-    labels = sorted({row[config["target_column"]] for split_rows in rows.values() for row in split_rows}, key=class_sort_key)
-    mapping = {label: index for index, label in enumerate(labels)}
+    representation = config.get("target_representation", "exact_class")
+    mapping = class_mapping_for_representation(representation) if representation == "ordinal_band" else {label: index for index, label in enumerate(sorted({row[config["target_column"]] for split_rows in rows.values() for row in split_rows}, key=class_sort_key))}
+    labels = list(mapping)
     records, availability = attach_zarr_indices(rows, config, mapping)
-    class_counts = {split: dict(sorted(Counter(record.target for record in split_records).items(), key=lambda item: class_sort_key(item[0]))) for split, split_records in records.items()}
+    class_counts = {split: dict(sorted(Counter(record.target for record in split_records).items(), key=lambda item: mapping[item[0]])) for split, split_records in records.items()}
     metadata = {"config": config, "class_mapping": mapping, "class_counts": class_counts, "integrity": integrity, "image_availability": availability, "legacy_label_used_as_target": False, "created_utc": datetime.now(timezone.utc).isoformat()}
     (output / "resolved_config.yaml").write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     (output / "class_mapping.json").write_text(json.dumps(mapping, indent=2) + "\n", encoding="utf-8")
