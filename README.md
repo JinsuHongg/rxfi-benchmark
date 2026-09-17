@@ -12,9 +12,9 @@ Forecasting the largest forthcoming GOES soft-X-ray peak captures absolute flare
 
 For an eligible NOAA flare-report event,
 
-$$
-\operatorname{RXFI}=\frac{F_{\mathrm{peak}}-F_{\mathrm{background}}}{F_{\mathrm{background}}}.
-$$
+```math
+\mathrm{RXFI} = \frac{F_{\mathrm{peak}} - F_{\mathrm{background}}}{F_{\mathrm{background}}}
+```
 
 $F_{\mathrm{peak}}$ is the one-minute GOES XRS-B peak irradiance (`xrsb_irrad`) and $F_{\mathrm{background}}$ is NOAA's event-specific pre-flare background irradiance (`background_irrad`), both in W m$^{-2}$. RXFI is dimensionless; for example, RXFI = 4 means the peak is five times the recorded background. Missing, non-finite, or non-positive inputs are invalid for RXFI calculations.
 
