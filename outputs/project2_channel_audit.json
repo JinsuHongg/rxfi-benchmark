@@ -1,0 +1,207 @@
+{
+  "canonical_channel_order": [
+    "aia94",
+    "aia131",
+    "aia171",
+    "aia193",
+    "aia211",
+    "aia304",
+    "aia335",
+    "aia1600",
+    "hmi_m",
+    "hmi_bx",
+    "hmi_by",
+    "hmi_bz",
+    "hmi_v"
+  ],
+  "canonical_indices": {
+    "aia94": 0,
+    "aia131": 1,
+    "aia171": 2,
+    "aia193": 3,
+    "aia211": 4,
+    "aia304": 5,
+    "aia335": 6,
+    "aia1600": 7,
+    "hmi_m": 8,
+    "hmi_bx": 9,
+    "hmi_by": 10,
+    "hmi_bz": 11,
+    "hmi_v": 12
+  },
+  "configurations": {
+    "aia131": {
+      "selected_channels": [
+        "aia131"
+      ],
+      "selected_channel_indices": [
+        1
+      ],
+      "input_channel_count": 1
+    },
+    "aia193": {
+      "selected_channels": [
+        "aia193"
+      ],
+      "selected_channel_indices": [
+        3
+      ],
+      "input_channel_count": 1
+    },
+    "aia94+aia131+aia171+aia193+aia211+aia304+aia335+aia1600+hmi_m+hmi_bx+hmi_by+hmi_bz+hmi_v": {
+      "selected_channels": [
+        "aia94",
+        "aia131",
+        "aia171",
+        "aia193",
+        "aia211",
+        "aia304",
+        "aia335",
+        "aia1600",
+        "hmi_m",
+        "hmi_bx",
+        "hmi_by",
+        "hmi_bz",
+        "hmi_v"
+      ],
+      "selected_channel_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "input_channel_count": 13
+    },
+    "hmi_m": {
+      "selected_channels": [
+        "hmi_m"
+      ],
+      "selected_channel_indices": [
+        8
+      ],
+      "input_channel_count": 1
+    }
+  },
+  "normalization": "per_sample_per_channel_zscore after selected-channel slicing",
+  "cohort_availability": {
+    "aia131": {
+      "train": {
+        "total_split_rows": 74760,
+        "target_valid_rows": 74760,
+        "selected_channel_image_available_rows": 45034,
+        "image_target_usable_rows": 45034
+      },
+      "validation": {
+        "total_split_rows": 3672,
+        "target_valid_rows": 3672,
+        "selected_channel_image_available_rows": 2422,
+        "image_target_usable_rows": 2422
+      },
+      "test": {
+        "total_split_rows": 43848,
+        "target_valid_rows": 43848,
+        "selected_channel_image_available_rows": 27980,
+        "image_target_usable_rows": 27980
+      },
+      "leaky_validation": {
+        "total_split_rows": 6048,
+        "target_valid_rows": 6048,
+        "selected_channel_image_available_rows": 3755,
+        "image_target_usable_rows": 3755
+      }
+    },
+    "aia193": {
+      "train": {
+        "total_split_rows": 74760,
+        "target_valid_rows": 74760,
+        "selected_channel_image_available_rows": 45034,
+        "image_target_usable_rows": 45034
+      },
+      "validation": {
+        "total_split_rows": 3672,
+        "target_valid_rows": 3672,
+        "selected_channel_image_available_rows": 2422,
+        "image_target_usable_rows": 2422
+      },
+      "test": {
+        "total_split_rows": 43848,
+        "target_valid_rows": 43848,
+        "selected_channel_image_available_rows": 27980,
+        "image_target_usable_rows": 27980
+      },
+      "leaky_validation": {
+        "total_split_rows": 6048,
+        "target_valid_rows": 6048,
+        "selected_channel_image_available_rows": 3755,
+        "image_target_usable_rows": 3755
+      }
+    },
+    "all13": {
+      "train": {
+        "total_split_rows": 74760,
+        "target_valid_rows": 74760,
+        "selected_channel_image_available_rows": 45034,
+        "image_target_usable_rows": 45034
+      },
+      "validation": {
+        "total_split_rows": 3672,
+        "target_valid_rows": 3672,
+        "selected_channel_image_available_rows": 2422,
+        "image_target_usable_rows": 2422
+      },
+      "test": {
+        "total_split_rows": 43848,
+        "target_valid_rows": 43848,
+        "selected_channel_image_available_rows": 27980,
+        "image_target_usable_rows": 27980
+      },
+      "leaky_validation": {
+        "total_split_rows": 6048,
+        "target_valid_rows": 6048,
+        "selected_channel_image_available_rows": 3755,
+        "image_target_usable_rows": 3755
+      }
+    },
+    "hmi_m": {
+      "train": {
+        "total_split_rows": 74760,
+        "target_valid_rows": 74760,
+        "selected_channel_image_available_rows": 45034,
+        "image_target_usable_rows": 45034
+      },
+      "validation": {
+        "total_split_rows": 3672,
+        "target_valid_rows": 3672,
+        "selected_channel_image_available_rows": 2422,
+        "image_target_usable_rows": 2422
+      },
+      "test": {
+        "total_split_rows": 43848,
+        "target_valid_rows": 43848,
+        "selected_channel_image_available_rows": 27980,
+        "image_target_usable_rows": 27980
+      },
+      "leaky_validation": {
+        "total_split_rows": 6048,
+        "target_valid_rows": 6048,
+        "selected_channel_image_available_rows": 3755,
+        "image_target_usable_rows": 3755
+      }
+    }
+  },
+  "common_usable_cohort": {
+    "train": 45034,
+    "validation": 2422,
+    "test": 27980,
+    "leaky_validation": 3755
+  }
+}

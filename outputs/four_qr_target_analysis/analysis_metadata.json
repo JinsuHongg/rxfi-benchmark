@@ -1,0 +1,19 @@
+{
+  "analysis": "completed best-checkpoint QR prediction exports only; no retraining or calibration",
+  "common_test_cohort_n": 27980,
+  "key_columns": [
+    "split",
+    "original_row_index",
+    "timestamp"
+  ],
+  "class_order": [
+    "FQ",
+    "B",
+    "C",
+    "M",
+    "X"
+  ],
+  "event_score": "q50 transformed",
+  "event_cohort": "common-cohort comparison",
+  "validation": "duplicate keys checked; transforms and q50 raw inverse mappings checked"
+}

@@ -19,6 +19,20 @@ SPLITS = ("train", "validation", "test", "leaky_validation")
 SOURCE_HASHES = {"train":"2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865","validation":"803d2e5584fe9bbe23bc02cbed1b06fb47520e4863c2b22b5f09f9d5c654c658","test":"40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b","leaky_validation":"03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e"}
 PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
 
+def channel_selection(config, actual_order):
+    selected = config.get("selected_channels", actual_order)
+    if not selected or len(set(selected)) != len(selected) or any(name not in actual_order for name in selected): raise ValueError("selected_channels must be a non-empty, unique subset of canonical channel_order")
+    indices = [actual_order.index(name) for name in selected]
+    if int(config["in_chans"]) != len(indices): raise ValueError("in_chans must equal selected channel count")
+    return list(selected), indices
+
+def channel_selection(config, actual_order):
+    selected = config.get("selected_channels", actual_order)
+    if not selected or len(set(selected)) != len(selected) or any(name not in actual_order for name in selected): raise ValueError("selected_channels must be a non-empty, unique subset of canonical channel_order")
+    indices = [actual_order.index(name) for name in selected]
+    if int(config["in_chans"]) != len(indices): raise ValueError("in_chans must equal selected channel count")
+    return list(selected), indices
+
 @dataclass(frozen=True)
 class Record:
     split: str; original_row_index: int; timestamp: str; year: int; zarr_index: int; raw: float; transformed: float; flare_class: str
@@ -88,9 +102,9 @@ def attach_images(rows: dict[str,list[dict[str,str]]], config: dict[str,Any], sp
         group_path = root / str(year) / "dataset"
         if not group_path.exists(): positions[year] = {}; availability["missing_or_unreadable"] += [{"year":year,"timestamp_ns":stamp} for stamp in stamps]; continue
         group = zarr.open_group(str(group_path),mode="r"); images,times = group["images"],group["time"]
-        if list(images.attrs["channel_names"]) != config["channel_order"] or tuple(images.shape[1:]) != (int(config["in_chans"]),int(config["image_size"]),int(config["image_size"])): raise RuntimeError(f"{year} image schema mismatch")
+        if list(images.attrs["channel_names"]) != config["channel_order"] or tuple(images.shape[1:]) != (len(config["channel_order"]),int(config["image_size"]),int(config["image_size"])): raise RuntimeError(f"{year} image schema mismatch")
         found = {int(stamp):i for i,stamp in enumerate(np.asarray(times[:],dtype=np.int64))}; missing = stamps-found.keys(); positions[year]=found; availability["per_year"][str(year)]={"requested":len(stamps),"available":len(stamps)-len(missing)}; availability["missing_or_unreadable"] += [{"year":year,"timestamp_ns":stamp} for stamp in missing]
-    unavailable = {(x["year"],x["timestamp_ns"]) for x in availability["missing_or_unreadable"]}; availability["missing_or_unreadable"]=[]; result={}
+    unavailable = {(x["year"],x["timestamp_ns"]) for x in availability["missing_or_unreadable"]}; availability["missing_or_unreadable"]=[]; availability["canonical_channel_order"] = config["channel_order"]; availability["selected_channel_names"], availability["selected_channel_indices"] = channel_selection(config, config["channel_order"]); result={}
     for split, values in rows.items():
         records=[]
         for i,row in enumerate(values):
@@ -103,13 +117,14 @@ def attach_images(rows: dict[str,list[dict[str,str]]], config: dict[str,Any], sp
     return result,availability
 
 class SuryaDataset(Dataset):
-    def __init__(self,records:list[Record],zarr_path:str): self.records,self.zarr_path,self.arrays=records,Path(zarr_path),{}
+    def __init__(self,records:list[Record],zarr_path:str,channel_indices:list[int]): self.records,self.zarr_path,self.channel_indices,self.arrays=records,Path(zarr_path),channel_indices,{}
     def __len__(self): return len(self.records)
     def __getitem__(self,index):
         record=self.records[index]
         if record.year not in self.arrays: self.arrays[record.year]=zarr.open_group(str(self.zarr_path/str(record.year)/"dataset"),mode="r")["images"]
         image=np.asarray(self.arrays[record.year][record.zarr_index],dtype=np.float32)
         if image.shape != (13,224,224) or not np.isfinite(image).all(): raise RuntimeError(f"Unreadable image {record.timestamp}")
+        image = image[self.channel_indices]
         return torch.from_numpy((image-image.mean((1,2),keepdims=True))/np.maximum(image.std((1,2),keepdims=True),1e-6)),torch.tensor(record.transformed,dtype=torch.float32)
 
 def loader(dataset,config,shuffle): return DataLoader(dataset,batch_size=int(config["batch_size"]),shuffle=shuffle,num_workers=int(config["num_workers"]),pin_memory=True)
@@ -161,7 +176,7 @@ def git_commit():
 def validate_config(config):
     spec=validate_transform(config.get("target_transform"));required={"experiment_name","output_dir","target_column","quantiles","model_name","checkpoint_metric","precision","batch_size","num_workers","gradient_accumulation_steps"}
     if required-set(config):raise ValueError(f"Missing config fields: {sorted(required-set(config))}")
-    frozen = {"model_name":"vit_small_patch16_224", "image_size":224, "in_chans":13, "channels":13, "pretrained":False, "quantiles":[0.05,0.5,0.95], "optimizer":"adamw", "learning_rate":1e-4, "lr_policy":"constant", "weight_decay":0.01, "epochs":10, "seed":0, "checkpoint_metric":"validation_pinball_loss"}
+    frozen = {"model_name":"vit_small_patch16_224", "image_size":224, "in_chans":int(config["in_chans"]), "channels":int(config["in_chans"]), "pretrained":False, "quantiles":[0.05,0.5,0.95], "optimizer":"adamw", "learning_rate":1e-4, "lr_policy":"constant", "weight_decay":0.01, "epochs":10, "seed":0, "checkpoint_metric":"validation_pinball_loss"}
     missing = set(frozen) - set(config)
     if missing: raise ValueError(f"Missing frozen config fields: {sorted(missing)}")
     if any(config[key] != value for key, value in frozen.items()): raise ValueError("Model/training/checkpoint settings differ from the frozen QR experiment family")
@@ -180,8 +195,8 @@ def main():
     if not torch.cuda.is_available():raise RuntimeError("CUDA GPU is required; refusing CPU fallback")
     output=Path(config["output_dir"]);output.mkdir(parents=True,exist_ok=True);(output/"checkpoints").mkdir(exist_ok=True);(output/"predictions").mkdir(exist_ok=True)
     random.seed(config["seed"]);np.random.seed(config["seed"]);torch.manual_seed(config["seed"]);torch.cuda.manual_seed_all(config["seed"])
-    rows,integrity=read_rows(config,spec);hashes=dict(integrity["derived_target_sha256"]);records,availability=attach_images(rows,config,spec);datasets={s:SuryaDataset(r,config["zarr_path"]) for s,r in records.items()};loaders={s:loader(d,config,s=="train") for s,d in datasets.items()};device=torch.device("cuda");q=torch.tensor(config["quantiles"],device=device)
-    cohort={s:{"total_split_rows":integrity["target_validity"][s]["total"],"valid_target_rows":integrity["target_validity"][s]["valid"],"image_target_available_rows":len(records[s]),"missing_target_rows":integrity["target_validity"][s]["excluded_missing_or_invalid"],"missing_image_rows":integrity["target_validity"][s]["valid"]-len(records[s])} for s in SPLITS};print(json.dumps({"cohort":cohort}),flush=True);meta={"git_commit":git_commit(),"config_path":args.config,"config":config,"target_transform":spec,"integrity":integrity,"cohort":cohort,"legacy_suryabench_label_used_as_target":False,"torch_version":torch.__version__,"cuda_version":torch.version.cuda,"gpu_name":torch.cuda.get_device_name(device)}
+    rows,integrity=read_rows(config,spec);hashes=dict(integrity["derived_target_sha256"]);records,availability=attach_images(rows,config,spec);datasets={s:SuryaDataset(r,config["zarr_path"],availability["selected_channel_indices"]) for s,r in records.items()};loaders={s:loader(d,config,s=="train") for s,d in datasets.items()};device=torch.device("cuda");q=torch.tensor(config["quantiles"],device=device)
+    cohort={s:{"total_split_rows":integrity["target_validity"][s]["total"],"valid_target_rows":integrity["target_validity"][s]["valid"],"image_target_available_rows":len(records[s]),"missing_target_rows":integrity["target_validity"][s]["excluded_missing_or_invalid"],"missing_image_rows":integrity["target_validity"][s]["valid"]-len(records[s])} for s in SPLITS};print(json.dumps({"cohort":cohort}),flush=True);meta={"git_commit":git_commit(),"config_path":args.config,"config":config,"target_transform":spec,"integrity":integrity,"cohort":cohort,"legacy_suryabench_label_used_as_target":False,"torch_version":torch.__version__,"cuda_version":torch.version.cuda,"gpu_name":torch.cuda.get_device_name(device),"selected_channel_names":availability["selected_channel_names"],"selected_channel_indices":availability["selected_channel_indices"]}
     (output/"resolved_config.yaml").write_text(yaml.safe_dump(config,sort_keys=False));(output/"transform_metadata.json").write_text(json.dumps(spec,indent=2)+"\n");(output/"experiment_metadata.json").write_text(json.dumps(meta,indent=2)+"\n");write_csv(output/"cohort_summary.csv",[{"split":s,**cohort[s]} for s in SPLITS]);write_csv(output/"missing_or_unreadable_images.csv",availability["missing_or_unreadable"],["split","timestamp","year","reason"])
     fields=["split","original_row_index","timestamp","target_name","target_raw","target_transformed","max_flare_class","q05","q50","q95","q05_raw","q50_raw","q95_raw"];(output/"prediction_schema.json").write_text(json.dumps({"columns":fields,"quantiles":config["quantiles"],"target_transform":spec},indent=2)+"\n")
     model=timm.create_model(config["model_name"],pretrained=False,in_chans=config["in_chans"],num_classes=3).to(device)

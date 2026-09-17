@@ -1,0 +1,28 @@
+experiment_name: project2_vit_small_224_aia131_cumulative_peak_flux_qr
+output_dir: outputs/project2/vit_small_224_aia131_cumulative_peak_flux_qr
+zarr_path: /scratch/users/jhong36/data/surya-bench-224.zarr
+source_split_dir: /scratch/users/jhong36/data
+derived_target_dir: /scratch/users/jhong36/rxfi/data/derived
+target_column: cumulative_peak_flux
+target_transform: {name: log10_1p_scaled, scale: 1.0e-8}
+image_size: 224
+in_chans: 1
+channels: 1
+channel_order: [aia94, aia131, aia171, aia193, aia211, aia304, aia335, aia1600, hmi_m, hmi_bx, hmi_by, hmi_bz, hmi_v]
+selected_channels: [aia131]
+normalization: per_sample_per_channel_zscore
+model_name: vit_small_patch16_224
+patch_size: 16
+pretrained: false
+quantiles: [0.05, 0.50, 0.95]
+optimizer: adamw
+learning_rate: 0.0001
+weight_decay: 0.01
+lr_policy: constant
+epochs: 10
+batch_size: 32
+gradient_accumulation_steps: 1
+num_workers: 4
+precision: '32'
+seed: 0
+checkpoint_metric: validation_pinball_loss

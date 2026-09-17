@@ -12,5 +12,9 @@
 - Four-target ViT-Small quantile-regression configuration and cluster launch scripts: completed. The shared pipeline supports frozen config-driven transforms, q05/q50/q95 prediction exports, validation pinball-loss checkpoint selection, GPU/precision/batch/worker overrides, and a Slurm array template. It is calibration-ready, but the repository contains neither an OCQR implementation nor a fixed calibration partition.
 - Validation note: generated NOAA science-quality `max_flare_class` differs from the supplied historical class string for many pre-GOES-R rows. This is recorded as legacy-label compatibility evidence and does not alter frozen split labels or membership.
 - Historical GOES label mismatch audit: completed. Broad ordinal-class agreement is 79.74–83.45% in historical validation-style splits and 95.12% in test; high continuous-flux correlation supports a historical source-version compatibility difference, with a documented no-flare/flare inclusion subset and no available legacy event IDs for exact-event proof.
-- In progress: cluster training of QR-1 through QR-4.
-- Next task: export predictions, fix the calibration partition, then run the shared OCQR comparison.
+- QR-1 through QR-4 full training: completed.
+- Four-target learnability analysis: completed.
+- Severe-event relevance analysis: completed.
+- Project 2 preliminary channel-comparison design, configs, and cluster scripts: completed; training has not started.
+- Next task: launch four classification plus four cumulative-peak-flux QR runs, analyze single-channel versus all-13 results, then decide which horizons or targets merit expansion.
+- Project 1 next task: interpret the target comparison, freeze the conformal calibration partition, then run OCQR consistently across selected or all targets.

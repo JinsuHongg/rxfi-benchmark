@@ -45,6 +45,17 @@ SOURCE_HASHES = {
     "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e",
 }
 CLASS_PATTERN = re.compile(r"^(?:FQ|[ABCMX][0-9]+(?:\.[0-9]+)?)$")
+PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
+ACTIVE_PRECISION = "32"
+
+def channel_selection(config, actual_order):
+    selected = config.get("selected_channels", actual_order)
+    if not selected or len(set(selected)) != len(selected) or any(name not in actual_order for name in selected):
+        raise ValueError("selected_channels must be a non-empty, unique subset of canonical channel_order")
+    indices = [actual_order.index(name) for name in selected]
+    if int(config["in_chans"]) != len(indices):
+        raise ValueError("in_chans must equal selected channel count")
+    return list(selected), indices
 
 
 @dataclass(frozen=True)
@@ -131,10 +142,10 @@ def attach_zarr_indices(rows: dict[str, list[dict[str, str]]], config: dict[str,
             channel_order = actual_order
         if actual_order != channel_order or actual_order != config["channel_order"]:
             raise RuntimeError(f"{year}: channel order differs from config: {actual_order}")
-        if images.shape[1:] != (config["in_chans"], config["image_size"], config["image_size"]):
+        if images.shape[1:] != (len(actual_order), config["image_size"], config["image_size"]):
             raise RuntimeError(f"{year}: unexpected image shape {images.shape}")
         found = {int(value): index for index, value in enumerate(np.asarray(times[:], dtype=np.int64))}
-        duplicate_times = len(found) != len(times)
+        duplicate_times = len(found) != int(times.shape[0])
         missing = sorted(requested - found.keys())
         availability["missing_or_unreadable"].extend({"year": year, "timestamp_ns": value, "reason": "timestamp_not_in_zarr"} for value in missing)
         positions[year] = found
@@ -159,13 +170,16 @@ def attach_zarr_indices(rows: dict[str, list[dict[str, str]]], config: dict[str,
             label = row[config["target_column"]]
             records.append(Record(split, row["timestamp"], year, positions[year][stamp], label, mapping[label]))
         result[split] = records
-    availability["channel_order"] = channel_order
+    selected_names, selected_indices = channel_selection(config, channel_order or config["channel_order"])
+    availability["canonical_channel_order"] = channel_order
+    availability["selected_channel_names"] = selected_names
+    availability["selected_channel_indices"] = selected_indices
     return result, availability
 
 
 class SuryaDataset(Dataset[tuple[torch.Tensor, int]]):
-    def __init__(self, records: list[Record], zarr_path: str) -> None:
-        self.records, self.zarr_path = records, Path(zarr_path)
+    def __init__(self, records: list[Record], zarr_path: str, channel_indices: list[int]) -> None:
+        self.records, self.zarr_path, self.channel_indices = records, Path(zarr_path), channel_indices
         self.arrays: dict[int, Any] = {}
 
     def __len__(self) -> int:
@@ -178,7 +192,8 @@ class SuryaDataset(Dataset[tuple[torch.Tensor, int]]):
         image = np.asarray(self.arrays[record.year][record.zarr_index], dtype=np.float32)
         if image.shape != (13, 224, 224) or not np.isfinite(image).all():
             raise RuntimeError(f"Unreadable/non-finite image: split={record.split} timestamp={record.timestamp}")
-        # Training-only, per-image/channel normalization avoids leakage and preserves the stored channel order.
+        image = image[self.channel_indices]
+        # Training-only, per-image/channel normalization avoids leakage and applies to each selected actual channel.
         mean = image.mean(axis=(1, 2), keepdims=True)
         std = image.std(axis=(1, 2), keepdims=True)
         image = (image - mean) / np.maximum(std, 1e-6)
@@ -208,7 +223,7 @@ def run_epoch(model: nn.Module, loader: DataLoader[Any], optimizer: torch.optim.
         optimizer.zero_grad(set_to_none=True)
     for step, (inputs, targets) in enumerate(loader):
         inputs, targets = inputs.to(device, non_blocking=True), targets.to(device, non_blocking=True)
-        with torch.set_grad_enabled(is_train), torch.amp.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
+        with torch.set_grad_enabled(is_train), torch.amp.autocast("cuda", dtype=torch.bfloat16 if ACTIVE_PRECISION == "bf16-mixed" else torch.float16, enabled=device.type == "cuda" and ACTIVE_PRECISION != "32"):
             logits = model(inputs)
             loss = criterion(logits, targets)
         if not torch.isfinite(loss):
@@ -255,7 +270,7 @@ def plot_confusion(path: Path, matrix: np.ndarray, labels: list[str]) -> None:
 
 def smoke_test(model: nn.Module, loader: DataLoader[Any], config: dict[str, Any], device: torch.device, output: Path) -> dict[str, Any]:
     model.train(); optimizer = torch.optim.AdamW(model.parameters(), lr=float(config["learning_rate"]), weight_decay=float(config["weight_decay"]))
-    scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
+    scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda" and ACTIVE_PRECISION == "16-mixed")
     criterion = nn.CrossEntropyLoss(); losses = []
     torch.cuda.reset_peak_memory_stats(device)
     iterator = iter(loader)
@@ -264,7 +279,7 @@ def smoke_test(model: nn.Module, loader: DataLoader[Any], config: dict[str, Any]
         except StopIteration: iterator = iter(loader); inputs, targets = next(iterator)
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad(set_to_none=True)
-        with torch.amp.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
+        with torch.amp.autocast("cuda", dtype=torch.bfloat16 if ACTIVE_PRECISION == "bf16-mixed" else torch.float16, enabled=device.type == "cuda" and ACTIVE_PRECISION != "32"):
             loss = criterion(model(inputs), targets)
         if not torch.isfinite(loss): raise RuntimeError(f"Non-finite smoke loss at step {step}")
         scaler.scale(loss).backward(); scaler.step(optimizer); scaler.update(); losses.append(float(loss.detach()))
@@ -275,11 +290,16 @@ def smoke_test(model: nn.Module, loader: DataLoader[Any], config: dict[str, Any]
 
 
 def main() -> None:
+    global ACTIVE_PRECISION
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/vit_small_224_max_flare_class.yaml")
-    parser.add_argument("--smoke-only", action="store_true")
+    parser.add_argument("--smoke-only", action="store_true"); parser.add_argument("--batch-size", type=int); parser.add_argument("--precision", choices=sorted(PRECISIONS)); parser.add_argument("--num-workers", type=int); parser.add_argument("--gradient-accumulation-steps", type=int)
     args = parser.parse_args()
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
+    for name in ("batch_size", "precision", "num_workers", "gradient_accumulation_steps"):
+        if getattr(args, name) is not None: config[name] = getattr(args, name)
+    if config.get("precision") not in PRECISIONS: raise ValueError("precision must be 32, 16-mixed, or bf16-mixed")
+    ACTIVE_PRECISION = config["precision"]
     output = Path(config["output_dir"]); output.mkdir(parents=True, exist_ok=True)
     (output / "checkpoints").mkdir(exist_ok=True)
     if not torch.cuda.is_available(): raise RuntimeError("CUDA GPU is required for this baseline")
@@ -296,7 +316,7 @@ def main() -> None:
     (output / "dataset_integrity.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     write_csv(output / "missing_or_unreadable_images.csv", availability["missing_or_unreadable"])
     write_csv(output / "class_distribution.csv", [{"split": split, "class": label, "count": count} for split, counts in class_counts.items() for label, count in counts.items()])
-    datasets = {split: SuryaDataset(split_records, config["zarr_path"]) for split, split_records in records.items()}
+    datasets = {split: SuryaDataset(split_records, config["zarr_path"], availability["selected_channel_indices"]) for split, split_records in records.items()}
     loaders = {split: make_loader(dataset, config, shuffle=(split == "train")) for split, dataset in datasets.items()}
     device = torch.device("cuda")
     model = timm.create_model(config["model_name"], pretrained=bool(config["pretrained"]), in_chans=int(config["in_chans"]), num_classes=len(labels)).to(device)

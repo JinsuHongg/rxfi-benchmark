@@ -1,0 +1,5 @@
+target,total_epochs_completed,best_epoch,best_val_pinball,final_val_pinball,best_epoch_is_final,last_three_val_pinball,logged_training_seconds,possible_undertraining
+max_peak_flux,10,2,0.12605004889919774,0.165684701242691,False,"[0.160962146486161, 0.169188767597756, 0.165684701242691]",25414.059999999998,no: best checkpoint precedes final epoch
+cumulative_peak_flux,10,1,0.15046281045768795,0.1929124111569587,False,"[0.1866660550864249, 0.1864873681626568, 0.1929124111569587]",25395.28,no: best checkpoint precedes final epoch
+max_rxfi,10,1,0.08503381232404197,0.1255771680885017,False,"[0.1225139440831741, 0.1219836344048811, 0.1255771680885017]",18553.770000000004,no: best checkpoint precedes final epoch
+cumulative_rxfi,10,1,0.09826725140570806,0.1712591770565726,False,"[0.1549961104201542, 0.153626169634077, 0.1712591770565726]",18590.550000000003,no: best checkpoint precedes final epoch
