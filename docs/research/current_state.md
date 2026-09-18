@@ -15,6 +15,7 @@
 - QR-1 through QR-4 full training: completed.
 - Four-target learnability analysis: completed.
 - Severe-event relevance analysis: completed.
-- Project 2 preliminary channel-comparison design, configs, and cluster scripts: completed; training has not started.
-- Next task: launch four classification plus four cumulative-peak-flux QR runs, analyze single-channel versus all-13 results, then decide which horizons or targets merit expansion.
+- Project 2 first-wave multichannel experiments: completed. Four cumulative-peak-flux QR runs, four original exact-string classification runs (audit only), and four corrected ordinal6 classification runs completed on the frozen common cohorts.
+- Project 2 integrated preliminary analysis: completed. All13 is strongest across listed QR metrics; corrected classification is mixed, with AIA131 leading observed-class macro-F1/balanced accuracy and all13 retaining limited nonzero X recall.
+- Project 2 next task: review the preliminary findings and define the second wave (additional seeds first, then shorter horizons and selected channel groups).
 - Project 1 next task: interpret the target comparison, freeze the conformal calibration partition, then run OCQR consistently across selected or all targets.

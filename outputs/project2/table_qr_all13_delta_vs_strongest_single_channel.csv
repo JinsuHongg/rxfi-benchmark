@@ -1,0 +1,2 @@
+strongest_single_channel,delta_spearman,delta_r2,delta_mae_iqr,delta_mplus_auprc,delta_mplus_auroc,delta_xplus_auprc,delta_xplus_auroc
+aia131,0.038729658272602885,0.0235023172518547,-0.02528897335904412,0.05734945338908515,0.025766169567586372,0.01192919340082503,0.028641100588290724

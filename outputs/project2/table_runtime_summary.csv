@@ -1,0 +1,9 @@
+task,input,runtime_seconds_epoch_sum,runtime_hours_epoch_sum,runtime_source,best_epoch,gpu,batch_size,precision,num_workers,gradient_accumulation_steps,test_pinball_loss
+classification_ordinal6,hmi_m,17989.28,4.997022222222222,training_log elapsed_seconds sum (excludes setup/evaluation),2,NVIDIA A30,32,bf16-mixed,4,1,
+classification_ordinal6,aia131,17790.49,4.941802777777778,training_log elapsed_seconds sum (excludes setup/evaluation),1,NVIDIA A30,32,bf16-mixed,4,1,
+classification_ordinal6,aia193,17961.370000000003,4.989269444444445,training_log elapsed_seconds sum (excludes setup/evaluation),1,NVIDIA A30,32,bf16-mixed,4,1,
+classification_ordinal6,all13,18915.180000000004,5.254216666666668,training_log elapsed_seconds sum (excludes setup/evaluation),3,NVIDIA A30,32,bf16-mixed,4,1,
+cumulative_peak_flux_qr,hmi_m,34234.1,9.509472222222222,training_log elapsed_seconds sum (excludes setup/evaluation),3,NVIDIA A30,32,bf16-mixed,4,1,0.1554097505745673
+cumulative_peak_flux_qr,aia131,34461.25,9.572569444444444,training_log elapsed_seconds sum (excludes setup/evaluation),2,NVIDIA A30,32,bf16-mixed,4,1,0.1366339547899129
+cumulative_peak_flux_qr,aia193,34396.54,9.554594444444446,training_log elapsed_seconds sum (excludes setup/evaluation),2,NVIDIA A30,32,bf16-mixed,4,1,0.17103599673556463
+cumulative_peak_flux_qr,all13,34999.19,9.721997222222223,training_log elapsed_seconds sum (excludes setup/evaluation),3,NVIDIA A30,32,bf16-mixed,4,1,0.13018693747404986
