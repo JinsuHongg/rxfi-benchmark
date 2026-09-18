@@ -1,0 +1,101 @@
+{
+  "checkpoint_epoch": 1,
+  "checkpoint_selection_metric": "validation_pinball_loss",
+  "checkpoint_selection_split": "validation",
+  "class_mapping": {
+    "A": 1,
+    "B": 2,
+    "C": 3,
+    "FQ": 0,
+    "M": 4,
+    "X": 5
+  },
+  "class_order": [
+    "FQ",
+    "A",
+    "B",
+    "C",
+    "M",
+    "X"
+  ],
+  "created_at": "2026-09-18T01:11:17.336739+00:00",
+  "dataset": "surya_bench_noaa_ncei_24h",
+  "derived_target_integrity": {
+    "leaky_validation": "1c46d1e8992ae26c9493132fe484316a3db87855ae4cd40231741bd76b6ff744",
+    "test": "2f7633f7e1387a5356fe2d5f5abf7db81e05b230c2a26975c195a80d95f25772",
+    "train": "ca9287760088e3ce636817ac2d315318e1d12b67c4f1d0605284e29b193181e6",
+    "validation": "d15af5edc61fdfd541ba595280a2d3b640548801841f84064ca6d923e010852a"
+  },
+  "experiment_id": "vit_small_224_cumulative_peak_flux_qr",
+  "forecast_horizon_hours": 24,
+  "git_commit": "10cc0a617989ebf6b747c83489ff66c471a63278",
+  "image_configuration": {
+    "image_size": 224,
+    "in_chans": 13,
+    "normalization": "per_sample_per_channel_zscore",
+    "selected_channels": [
+      "aia94",
+      "aia131",
+      "aia171",
+      "aia193",
+      "aia211",
+      "aia304",
+      "aia335",
+      "aia1600",
+      "hmi_m",
+      "hmi_bx",
+      "hmi_by",
+      "hmi_bz",
+      "hmi_v"
+    ]
+  },
+  "model": {
+    "name": "vit_small_patch16_224",
+    "patch_size": 16,
+    "pretrained": false
+  },
+  "quantiles": [
+    0.05,
+    0.5,
+    0.95
+  ],
+  "schema_version": "project3_prediction_export_v1",
+  "scope": "prediction_export_only_no_conformal_methodology",
+  "seed": 0,
+  "source_model": "vit_small_patch16_224",
+  "source_prediction_directory": "/home/users/jhong36/project/rxfi-benchmark/outputs/vit_small_224_cumulative_peak_flux_qr/predictions",
+  "source_prediction_sha256": {
+    "leaky_validation": "e484e8f5a482f485ec4f48d0afa979ec32c145fab0470265b27a783146c0e849",
+    "test": "db93138c7c63faec1b7466500d32c05412abbcbcb670a001cf14ee7f52f7a767",
+    "validation": "55b915690c2d15be1ef4d3df9dc8fb3c1edc115a6409a39661d807b93d24c2b5"
+  },
+  "source_predictions": "completed_best_validation_checkpoint_predictions",
+  "source_split_integrity": {
+    "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e",
+    "test": "40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b",
+    "train": "2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865",
+    "validation": "803d2e5584fe9bbe23bc02cbed1b06fb47520e4863c2b22b5f09f9d5c654c658"
+  },
+  "split_role_mapping": {
+    "leaky_validation": {
+      "logical_role": "calibration",
+      "proposal_status": "preliminary_integration_plan",
+      "source_split": "leaky_validation"
+    },
+    "test": {
+      "logical_role": "final_conformal_evaluation"
+    },
+    "train": {
+      "logical_role": "predictive_model_fitting"
+    },
+    "validation": {
+      "logical_role": "checkpoint_selection"
+    }
+  },
+  "target_name": "cumulative_peak_flux",
+  "target_priority": "primary",
+  "target_transform": "log10_1p_scaled",
+  "target_transform_parameters": {
+    "scale": 1e-08
+  }
+}

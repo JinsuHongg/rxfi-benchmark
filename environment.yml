@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.11.16
   - pip=26.2.1
+  - pytest=9.0.2
   - pip:
       # CUDA-enabled wheels and their pinned CUDA 12.4 runtime dependencies.
       - --extra-index-url https://download.pytorch.org/whl/cu124

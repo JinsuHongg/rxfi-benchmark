@@ -19,3 +19,7 @@
 - Project 2 integrated preliminary analysis: completed. All13 is strongest across listed QR metrics; corrected classification is mixed, with AIA131 leading observed-class macro-F1/balanced accuracy and all13 retaining limited nonzero X recall.
 - Project 2 next task: review the preliminary findings and define the second wave (additional seeds first, then shorter horizons and selected channel groups).
 - Project 1 next task: interpret the target comparison, freeze the conformal calibration partition, then run OCQR consistently across selected or all targets.
+- Project 1: complete enough for proposal; standardized QR exports now provide the Project 3 boundary.
+- Project 2: preliminary multichannel analysis complete.
+- Project 3: repository boundary defined and prediction-export interface frozen; OCQR calibration/evaluation will move to `ordinal-cqr`.
+- Next: validate Project 3 exports, consume them in `ordinal-cqr`, implement/reuse OCQR calibration there, and produce preliminary coverage/set-size results.
