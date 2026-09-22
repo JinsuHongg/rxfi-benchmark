@@ -16,12 +16,21 @@ set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 CONFIG="${CONFIG:-configs/vit_small_224_max_flare_class.yaml}"
-CONDA_ENV_PREFIX="${CONDA_ENV_PREFIX:-/mnt/storage/conda_envs/rxfi-benchmark}"
+CONDA_ENV_PREFIX="${CONDA_ENV_PREFIX:-/home/users/jhong36/miniforge3/envs/rxfi-benchmark}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/vit_small_224_max_flare_class_slurm_${SLURM_JOB_ID:?missing SLURM_JOB_ID}}"
 
-test -f "$CONFIG" || { echo "Missing config: $CONFIG" >&2; exit 2; }
-test -d "$CONDA_ENV_PREFIX" || { echo "Missing Conda environment: $CONDA_ENV_PREFIX" >&2; exit 2; }
-test ! -e "$OUTPUT_DIR" || { echo "Refusing to overwrite existing output: $OUTPUT_DIR" >&2; exit 3; }
+test -f "$CONFIG" || {
+  echo "Missing config: $CONFIG" >&2
+  exit 2
+}
+test -d "$CONDA_ENV_PREFIX" || {
+  echo "Missing Conda environment: $CONDA_ENV_PREFIX" >&2
+  exit 2
+}
+test ! -e "$OUTPUT_DIR" || {
+  echo "Refusing to overwrite existing output: $OUTPUT_DIR" >&2
+  exit 3
+}
 mkdir -p "$(dirname "$OUTPUT_DIR")" logs/vit_small_224_max_flare_class
 
 source "$(conda info --base)/etc/profile.d/conda.sh"

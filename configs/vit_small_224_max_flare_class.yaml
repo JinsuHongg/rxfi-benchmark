@@ -3,8 +3,8 @@ output_dir: outputs/vit_small_224_max_flare_class
 
 # SuryaBench supplies only images, timestamps, and frozen membership. NOAA-derived
 # `max_flare_class` in these files is the sole supervised target.
-zarr_path: /mnt/storage/data/surya-bench-224.zarr
-source_split_dir: /mnt/storage/surya/index_data
+zarr_path: /scratch/users/jhong36/data/surya-bench-224.zarr
+source_split_dir: /scratch/users/jhong36/data
 derived_target_dir: data/derived
 target_column: max_flare_class
 
