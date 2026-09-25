@@ -1,0 +1,21 @@
+family,target,input_condition,artifact_type,split,availability,reason
+project2_classification,max_flare_class_ordinal6,hmi_m,corrected_classification_confusion_matrix,test,available,verified saved six-class confusion matrix
+project2_classification,max_flare_class_ordinal6,hmi_m,binary_severe_metrics,validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,hmi_m,binary_severe_metrics,leaky_validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,aia131,corrected_classification_confusion_matrix,test,available,verified saved six-class confusion matrix
+project2_classification,max_flare_class_ordinal6,aia131,binary_severe_metrics,validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,aia131,binary_severe_metrics,leaky_validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,aia193,corrected_classification_confusion_matrix,test,available,verified saved six-class confusion matrix
+project2_classification,max_flare_class_ordinal6,aia193,binary_severe_metrics,validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,aia193,binary_severe_metrics,leaky_validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,all13,corrected_classification_confusion_matrix,test,available,verified saved six-class confusion matrix
+project2_classification,max_flare_class_ordinal6,all13,binary_severe_metrics,validation,unavailable,no saved row-level predictions or confusion matrix
+project2_classification,max_flare_class_ordinal6,all13,binary_severe_metrics,leaky_validation,unavailable,no saved row-level predictions or confusion matrix
+project1_qr,max_peak_flux,all13,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project1_qr,cumulative_peak_flux,all13,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project1_qr,max_rxfi,all13,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project1_qr,cumulative_rxfi,all13,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project2_qr,cumulative_peak_flux,hmi_m,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project2_qr,cumulative_peak_flux,aia131,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project2_qr,cumulative_peak_flux,aia193,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs
+project2_qr,cumulative_peak_flux,all13,qr_predictions,"validation,test,leaky_validation",available,saved q50 prediction CSVs

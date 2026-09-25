@@ -17,6 +17,7 @@
 - Severe-event relevance analysis: completed.
 - Project 2 first-wave multichannel experiments: completed. Four cumulative-peak-flux QR runs, four original exact-string classification runs (audit only), and four corrected ordinal6 classification runs completed on the frozen common cohorts.
 - Project 2 integrated preliminary analysis: completed. All13 is strongest across listed QR metrics; corrected classification is mixed, with AIA131 leading observed-class macro-F1/balanced accuracy and all13 retaining limited nonzero X recall.
+- Severe-event binary evaluation: completed from saved outputs only. M+/X+ confusion-count metrics, validation-frozen QR thresholds, exact threshold curves, and scientifically limited max-peak-flux physical thresholds are under `outputs/severe_event_binary_metrics/`; corrected classification is TEST-only because only saved TEST matrices support exact collapse, and its AUROC/AUPRC remain unavailable without saved probabilities.
 - Project 2 next task: review the preliminary findings and define the second wave (additional seeds first, then shorter horizons and selected channel groups).
 - Project 1 next task: interpret the target comparison, freeze the conformal calibration partition, then run OCQR consistently across selected or all targets.
 - Project 1: complete enough for proposal; standardized QR exports now provide the Project 3 boundary.
