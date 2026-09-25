@@ -1,0 +1,13 @@
+{
+  "source_csv": "/tmp/noaa_flare_report_2024.csv",
+  "source_sha256": "74f23ea854f8f1f39b7b6521a08d7cf280a46e46f06ac6924b308d1ae070b4cd",
+  "window_start_utc": "2024-06-16T01:11:00",
+  "window_end_utc": "2024-06-17T01:11:00",
+  "event_count": 34,
+  "target_definitions": {
+    "max_peak_flux": "maximum xrsb_irrad",
+    "cumulative_peak_flux": "sum xrsb_irrad",
+    "max_rxfi": "maximum (xrsb_irrad-background_irrad)/background_irrad",
+    "cumulative_rxfi": "sum event-level RXFI"
+  }
+}
