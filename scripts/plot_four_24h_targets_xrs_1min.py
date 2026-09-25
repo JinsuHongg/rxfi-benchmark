@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Render text-free one-minute XRS-B line plots for four 24-hour targets.
+"""Render one-minute XRS-B line plots for four 24-hour targets.
 
 Uses actual NOAA/NCEI GOES XRS L2 ``avg1m`` XRS-B observations and catalogued
-NOAA flare-summary events. The maximum figures highlight one event; cumulative
-figures mark every contributing event. No text, axes, ticks, or legend is drawn.
+NOAA flare-summary events. Maximum figures highlight one event; cumulative
+figures mark every contributing event. RXFI panels show background-to-peak rise.
 """
 from __future__ import annotations
 
@@ -58,45 +58,63 @@ def line_value(hours: np.ndarray, flux: np.ndarray, event_hour: float) -> float:
     return float(np.interp(event_hour, hours, flux))
 
 
-def base_plot(hours: np.ndarray, flux: np.ndarray):
+def base_plot(hours: np.ndarray, flux: np.ndarray, title: str, subtitle: str):
     figure, axis = plt.subplots(figsize=(7.2, 3.2), constrained_layout=True)
     figure.patch.set_facecolor("white")
     axis.set_facecolor("white")
-    axis.plot(hours, flux, color="#173f5f", linewidth=1.05, solid_capstyle="round")
+    axis.plot(hours, flux, color="#173f5f", linewidth=1.05, solid_capstyle="round", zorder=1)
     axis.set_xlim(0, 24)
     axis.set_ylim(max(float(np.nanmin(flux)) * 0.82, 1e-9), float(np.nanmax(flux)) * 1.16)
-    axis.set_axis_off()
+    axis.set_xlabel("Time since window start (h)", color="#24445d", fontsize=10.5)
+    axis.set_ylabel("X-ray flux (W m$^{-2}$)", color="#24445d", fontsize=10.5)
+    axis.set_title(title, loc="left", color="#102a43", fontsize=15, fontweight="bold", pad=10)
+    axis.text(0, 1.01, subtitle, transform=axis.transAxes, color="#526a7a", fontsize=9.5, va="bottom")
+    axis.spines["top"].set_visible(False); axis.spines["right"].set_visible(False)
+    axis.spines["left"].set_color("#9fb3c8"); axis.spines["bottom"].set_color("#9fb3c8")
+    axis.tick_params(colors="#526a7a", labelsize=9)
+    axis.grid(axis="y", color="#e7eef4", linewidth=0.8, zorder=0)
     return figure, axis
 
 
 def mark_peak(axis, event: dict[str, object], hours: np.ndarray, flux: np.ndarray, color: str) -> None:
-    x, y = float(event["hours"]), line_value(hours, flux, float(event["hours"]))
+    x, y = float(event["hours"]), float(event["peak"])
     axis.vlines(x, axis.get_ylim()[0], y, color=color, linewidth=1.25, alpha=0.9, zorder=3)
     axis.scatter([x], [y], s=41, color=color, edgecolor="white", linewidth=0.9, zorder=4)
 
 
-def mark_rxfi(axis, event: dict[str, object], hours: np.ndarray, flux: np.ndarray, color: str) -> None:
-    x, peak_on_line = float(event["hours"]), line_value(hours, flux, float(event["hours"]))
+def mark_rxfi(axis, event: dict[str, object], hours: np.ndarray, flux: np.ndarray, color: str, emphasize: bool = False) -> None:
+    x, peak_on_line = float(event["hours"]), float(event["peak"])
     background = float(event["background"])
-    axis.vlines(x, background, peak_on_line, color=color, linewidth=2.1, alpha=0.9, zorder=3)
-    axis.scatter([x, x], [background, peak_on_line], s=[20, 43], color=color, edgecolor="white", linewidth=0.8, zorder=4)
+    linewidth, marker_scale = (3.0, 1.4) if emphasize else (1.65, 1.0)
+    axis.vlines(x, background, peak_on_line, color=color, linewidth=linewidth, alpha=0.92, zorder=3)
+    axis.hlines([background, peak_on_line], x - 0.13, x + 0.13, color=color, linewidth=linewidth * 0.70, zorder=3)
+    axis.scatter([x, x], [background, peak_on_line], s=[20 * marker_scale, 43 * marker_scale], color=color, edgecolor="white", linewidth=0.8, zorder=4)
+    if emphasize:
+        axis.annotate("largest relative increase", xy=(x, (background + peak_on_line) / 2), xytext=(0.98, 0.84), textcoords="axes fraction", ha="right", color="#513ea1", fontsize=10, fontweight="bold", arrowprops={"arrowstyle": "-", "color": "#7158d6", "lw": 1.2})
 
 
 def save_plot(path: Path, hours: np.ndarray, flux: np.ndarray, events: list[dict[str, object]], kind: str) -> None:
-    figure, axis = base_plot(hours, flux)
+    labels = {
+        "max_peak_flux": ("Max Peak X-ray Flux", "Maximum catalogued flare peak"),
+        "cumulative_peak_flux": ("Cumulative Peak X-ray Flux", "All catalogued flare peaks"),
+        "max_rxfi": ("Max RXFI", "Largest background-to-peak relative increase"),
+        "cumulative_rxfi": ("Cumulative RXFI", "All background-to-peak relative increases"),
+    }
+    figure, axis = base_plot(hours, flux, *labels[kind])
     if kind == "max_peak_flux":
-        mark_peak(axis, max(events, key=lambda event: float(event["peak"])), hours, flux, "#f36f45")
+        maximum = max(events, key=lambda event: float(event["peak"]))
+        mark_peak(axis, maximum, hours, flux, "#f36f45")
+        axis.annotate("maximum peak", xy=(float(maximum["hours"]), float(maximum["peak"])), xytext=(0.98, 0.84), textcoords="axes fraction", ha="right", color="#b64625", fontsize=10, fontweight="bold", arrowprops={"arrowstyle": "-", "color": "#f36f45", "lw": 1.2})
     elif kind == "cumulative_peak_flux":
         for event in events: mark_peak(axis, event, hours, flux, "#f36f45")
     elif kind == "max_rxfi":
-        mark_rxfi(axis, max(events, key=lambda event: float(event["rxfi"])), hours, flux, "#7158d6")
+        mark_rxfi(axis, max(events, key=lambda event: float(event["rxfi"])), hours, flux, "#7158d6", emphasize=True)
     elif kind == "cumulative_rxfi":
         for event in events: mark_rxfi(axis, event, hours, flux, "#7158d6")
     else:
         raise ValueError(kind)
     figure.savefig(path, format="svg", facecolor="white", bbox_inches="tight", pad_inches=0.02)
     plt.close(figure)
-
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
