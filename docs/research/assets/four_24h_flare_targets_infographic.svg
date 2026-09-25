@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Four intuitive 24-hour solar flare forecasting targets</title>
+  <desc id="desc">A two by two scientific infographic comparing maximum and cumulative X-ray flux and RXFI targets.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .card { fill: #ffffff; stroke: #d8e2eb; stroke-width: 2; }
+      .heading { font: 700 31px Arial, Helvetica, sans-serif; fill: #102a43; }
+      .sub { font: 400 20px Arial, Helvetica, sans-serif; fill: #526a7a; }
+      .label { font: 600 18px Arial, Helvetica, sans-serif; fill: #24445d; }
+      .small { font: 400 16px Arial, Helvetica, sans-serif; fill: #607789; }
+      .axis { stroke: #9fb3c8; stroke-width: 2; }
+      .grid { stroke: #e8eef4; stroke-width: 1.5; }
+      .flux { stroke: #f36f45; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .fluxfill { fill: #f36f45; opacity: .16; }
+      .relative { stroke: #7158d6; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .relativefill { fill: #7158d6; opacity: .14; }
+      .accent-orange { fill: #f36f45; }
+      .accent-purple { fill: #7158d6; }
+      .callout { fill: #eef5fa; }
+      .window { fill: #f3f8fb; stroke: #c8d8e6; stroke-width: 2; stroke-dasharray: 7 6; }
+      .arrow { stroke: #24445d; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#24445d"/></marker>
+  </defs>
+
+  <rect class="bg" width="1600" height="1000"/>
+  <text x="800" y="66" text-anchor="middle" class="heading" style="font-size:39px">Four complementary 24-hour forecasting targets</text>
+  <text x="800" y="103" text-anchor="middle" class="sub" style="font-size:22px">One future window, viewed through absolute X-ray activity and background-relative change</text>
+
+  <!-- Max peak flux -->
+  <g transform="translate(55 150)">
+    <rect class="card" rx="22" width="720" height="365"/>
+    <rect class="accent-orange" x="0" y="0" width="12" height="365" rx="6"/>
+    <text x="42" y="52" class="heading">Max Peak X-ray Flux</text>
+    <text x="42" y="82" class="sub">The tallest flare inside the next 24 h</text>
+    <rect class="window" x="48" y="111" width="390" height="180" rx="8"/>
+    <text x="243" y="140" text-anchor="middle" class="small">future 24 h window</text>
+    <line class="axis" x1="75" y1="260" x2="414" y2="260"/>
+    <line class="axis" x1="75" y1="260" x2="75" y2="157"/>
+    <path class="flux" d="M75 260 C100 258,108 243,121 250 C139 258,144 204,160 258 C184 260,196 236,210 249 C229 260,241 173,258 258 C280 260,292 195,309 256 C337 260,348 143,367 258 C388 260,399 239,414 256"/>
+    <circle class="accent-orange" cx="367" cy="143" r="8"/>
+    <path class="arrow" d="M450 172 C426 172,404 158,375 148"/>
+    <rect class="callout" x="467" y="145" width="218" height="82" rx="13"/>
+    <text x="486" y="178" class="label">keep only the</text>
+    <text x="486" y="204" class="label">highest peak</text>
+    <text x="76" y="322" class="small">time →</text>
+  </g>
+
+  <!-- cumulative peak flux -->
+  <g transform="translate(825 150)">
+    <rect class="card" rx="22" width="720" height="365"/>
+    <rect class="accent-orange" x="0" y="0" width="12" height="365" rx="6"/>
+    <text x="42" y="52" class="heading">Cumulative Peak X-ray Flux</text>
+    <text x="42" y="82" class="sub">All flare peaks added across the next 24 h</text>
+    <rect class="window" x="48" y="111" width="390" height="180" rx="8"/>
+    <text x="243" y="140" text-anchor="middle" class="small">future 24 h window</text>
+    <line class="axis" x1="75" y1="260" x2="414" y2="260"/>
+    <line class="axis" x1="75" y1="260" x2="75" y2="157"/>
+    <path class="fluxfill" d="M75 260 C100 258,108 243,121 250 C139 258,144 204,160 258 C184 260,196 236,210 249 C229 260,241 173,258 258 C280 260,292 195,309 256 C337 260,348 143,367 258 C388 260,399 239,414 256 L414 260 Z"/>
+    <path class="flux" d="M75 260 C100 258,108 243,121 250 C139 258,144 204,160 258 C184 260,196 236,210 249 C229 260,241 173,258 258 C280 260,292 195,309 256 C337 260,348 143,367 258 C388 260,399 239,414 256"/>
+    <path class="arrow" d="M447 190 C422 190,402 202,383 218"/>
+    <rect class="callout" x="467" y="145" width="218" height="104" rx="13"/>
+    <text x="486" y="177" class="label">add every flare</text>
+    <text x="486" y="203" class="label">peak: total activity</text>
+    <text x="486" y="229" class="small">(orange area)</text>
+    <text x="76" y="322" class="small">time →</text>
+  </g>
+
+  <!-- max RXFI -->
+  <g transform="translate(55 575)">
+    <rect class="card" rx="22" width="720" height="365"/>
+    <rect class="accent-purple" x="0" y="0" width="12" height="365" rx="6"/>
+    <text x="42" y="52" class="heading">Max RXFI</text>
+    <text x="42" y="82" class="sub">The largest increase from local background to peak</text>
+    <rect class="window" x="48" y="111" width="390" height="180" rx="8"/>
+    <text x="243" y="140" text-anchor="middle" class="small">future 24 h window</text>
+    <line class="axis" x1="75" y1="260" x2="414" y2="260"/>
+    <line class="axis" x1="75" y1="260" x2="75" y2="157"/>
+    <path class="relative" d="M75 247 C101 246,113 241,126 246 C145 249,151 205,167 245 C186 248,202 238,218 245 C238 250,249 221,264 245 C285 249,300 154,316 244 C336 248,350 228,365 245 C384 248,397 240,414 246"/>
+    <line x1="301" y1="225" x2="301" y2="244" stroke="#7158d6" stroke-width="3" stroke-dasharray="4 4"/>
+    <line x1="316" y1="154" x2="316" y2="244" stroke="#7158d6" stroke-width="4"/>
+    <path class="arrow" d="M450 172 C427 172,397 159,325 158"/>
+    <rect class="callout" x="467" y="145" width="218" height="104" rx="13"/>
+    <text x="486" y="177" class="label">keep the largest</text>
+    <text x="486" y="203" class="label">background → peak</text>
+    <text x="486" y="229" class="small">relative jump</text>
+    <text x="76" y="322" class="small">time →</text>
+  </g>
+
+  <!-- cumulative RXFI -->
+  <g transform="translate(825 575)">
+    <rect class="card" rx="22" width="720" height="365"/>
+    <rect class="accent-purple" x="0" y="0" width="12" height="365" rx="6"/>
+    <text x="42" y="52" class="heading">Cumulative RXFI</text>
+    <text x="42" y="82" class="sub">All background-to-peak increases added together</text>
+    <rect class="window" x="48" y="111" width="390" height="180" rx="8"/>
+    <text x="243" y="140" text-anchor="middle" class="small">future 24 h window</text>
+    <line class="axis" x1="75" y1="260" x2="414" y2="260"/>
+    <line class="axis" x1="75" y1="260" x2="75" y2="157"/>
+    <path class="relativefill" d="M75 247 C101 246,113 241,126 246 C145 249,151 205,167 245 C186 248,202 238,218 245 C238 250,249 221,264 245 C285 249,300 154,316 244 C336 248,350 228,365 245 C384 248,397 240,414 246 L414 260 L75 260 Z"/>
+    <path class="relative" d="M75 247 C101 246,113 241,126 246 C145 249,151 205,167 245 C186 248,202 238,218 245 C238 250,249 221,264 245 C285 249,300 154,316 244 C336 248,350 228,365 245 C384 248,397 240,414 246"/>
+    <path class="arrow" d="M447 190 C423 190,401 207,374 224"/>
+    <rect class="callout" x="467" y="145" width="218" height="104" rx="13"/>
+    <text x="486" y="177" class="label">add all relative</text>
+    <text x="486" y="203" class="label">increases: total</text>
+    <text x="486" y="229" class="small">background-sensitive activity</text>
+    <text x="76" y="322" class="small">time →</text>
+  </g>
+
+  <line x1="110" y1="974" x2="1490" y2="974" stroke="#d8e2eb" stroke-width="2"/>
+  <text x="110" y="995" class="small">Absolute activity</text>
+  <circle cx="270" cy="989" r="7" class="accent-orange"/>
+  <text x="800" y="995" text-anchor="middle" class="small">same 24 h forecast window</text>
+  <circle cx="1318" cy="989" r="7" class="accent-purple"/>
+  <text x="1335" y="995" class="small">Background-relative activity</text>
+</svg>
