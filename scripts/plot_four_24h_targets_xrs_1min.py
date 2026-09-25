@@ -58,7 +58,7 @@ def line_value(hours: np.ndarray, flux: np.ndarray, event_hour: float) -> float:
     return float(np.interp(event_hour, hours, flux))
 
 
-def base_plot(hours: np.ndarray, flux: np.ndarray, title: str, subtitle: str):
+def base_plot(hours: np.ndarray, flux: np.ndarray):
     figure, axis = plt.subplots(figsize=(7.2, 3.2), constrained_layout=True)
     figure.patch.set_facecolor("white")
     axis.set_facecolor("white")
@@ -67,8 +67,6 @@ def base_plot(hours: np.ndarray, flux: np.ndarray, title: str, subtitle: str):
     axis.set_ylim(max(float(np.nanmin(flux)) * 0.82, 1e-9), float(np.nanmax(flux)) * 1.16)
     axis.set_xlabel("Time since window start (h)", color="#24445d", fontsize=10.5)
     axis.set_ylabel("X-ray flux (W m$^{-2}$)", color="#24445d", fontsize=10.5)
-    axis.set_title(title, loc="left", color="#102a43", fontsize=15, fontweight="bold", pad=10)
-    axis.text(0, 1.01, subtitle, transform=axis.transAxes, color="#526a7a", fontsize=9.5, va="bottom")
     axis.spines["top"].set_visible(False); axis.spines["right"].set_visible(False)
     axis.spines["left"].set_color("#9fb3c8"); axis.spines["bottom"].set_color("#9fb3c8")
     axis.tick_params(colors="#526a7a", labelsize=9)
@@ -94,13 +92,7 @@ def mark_rxfi(axis, event: dict[str, object], hours: np.ndarray, flux: np.ndarra
 
 
 def save_plot(path: Path, hours: np.ndarray, flux: np.ndarray, events: list[dict[str, object]], kind: str) -> None:
-    labels = {
-        "max_peak_flux": ("Max Peak X-ray Flux", "Maximum catalogued flare peak"),
-        "cumulative_peak_flux": ("Cumulative Peak X-ray Flux", "All catalogued flare peaks"),
-        "max_rxfi": ("Max RXFI", "Largest background-to-peak relative increase"),
-        "cumulative_rxfi": ("Cumulative RXFI", "All background-to-peak relative increases"),
-    }
-    figure, axis = base_plot(hours, flux, *labels[kind])
+    figure, axis = base_plot(hours, flux)
     if kind == "max_peak_flux":
         maximum = max(events, key=lambda event: float(event["peak"]))
         mark_peak(axis, maximum, hours, flux, "#f36f45")
