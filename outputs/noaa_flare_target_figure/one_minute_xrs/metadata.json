@@ -1,0 +1,12 @@
+{
+  "window": "[2024-06-16T01:11:00+00:00, 2024-06-17T01:11:00+00:00)",
+  "event_count": 34,
+  "one_minute_valid_sample_count": 1439,
+  "flare_catalog": "/tmp/noaa_flare_report_2024.csv",
+  "flare_catalog_sha256": "74f23ea854f8f1f39b7b6521a08d7cf280a46e46f06ac6924b308d1ae070b4cd",
+  "xrs_avg1m": "/tmp/noaa_xrs_1min/goes18_2024_avg1m.nc",
+  "xrs_avg1m_sha256": "2af30d9e3b315bc60a48e05f4fd61adc292c7f914962fb506c8f38ef9daa25bb",
+  "xrs_field": "xrsb_flux",
+  "valid_rule": "finite, positive, xrsb_flag == 0",
+  "satellite": "GOES-18"
+}
