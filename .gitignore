@@ -206,6 +206,7 @@ tempCodeRunnerFile.py
 # Reproducible, potentially large local target files generated from frozen inputs.
 data/derived/
 data/raw/
+data/xrs_lv2/
 
 # Large local training-state artifacts. Metrics and figures remain versionable.
 outputs/vit_small_224_max_flare_class/checkpoints/
@@ -213,6 +214,7 @@ outputs/vit_small_224_max_peak_flux_qr/checkpoints/
 outputs/vit_small_224_cumulative_peak_flux_qr/checkpoints/
 outputs/vit_small_224_max_rxfi_qr/checkpoints/
 outputs/vit_small_224_cumulative_rxfi_qr/checkpoints/
+outputs/noaa_single_flare_classification/
 # Full image-availability listings are reproducible local diagnostics; retain
 # compact target/image counts in documentation or experiment metadata instead.
 outputs/vit_small_224_max_peak_flux_qr/dataset_integrity.json
