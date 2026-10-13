@@ -1,0 +1,50 @@
+{
+  "config_schema_version": 1,
+  "algorithm_version": "lower-half-background-v1",
+  "output_schema_version": 2,
+  "catalog": {
+    "filename": "sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+    "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+    "sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+    "version": "v1-0-1",
+    "peak_time_start_utc": "2010-01-01T00:00:00Z",
+    "peak_time_end_exclusive_utc": "2026-01-01T00:00:00Z",
+    "deduplicate_key": [
+      "flare_id",
+      "time"
+    ]
+  },
+  "input_lock": "configs/paper_background_sensitivity.inputs.lock.json",
+  "xrs_l2": {
+    "product": "science-quality GOES XRS Level 2 avg1m",
+    "version": "v2-2-1",
+    "channel": "xrsb_flux",
+    "quality_flag": "xrsb_flag",
+    "valid_quality_value": 0,
+    "satellite_field": "xrsb_irrad_source",
+    "cache_subdirectory": "xrs_l2"
+  },
+  "method": {
+    "window_seconds": 86400,
+    "window_start_inclusive": true,
+    "window_end_exclusive": true,
+    "other_flare_start_inclusive": true,
+    "other_flare_end_inclusive": true,
+    "valid_flux": "finite_positive",
+    "upper_cap": "xrsb_flux_at_exact_catalog_start_time_same_satellite",
+    "upper_cap_inclusive": true,
+    "rxfi": "(peak_flux - background) / background",
+    "average": "arithmetic_mean",
+    "lower_fraction": 0.5,
+    "lower_fraction_selection": "lowest ceil(N * lower_fraction) eligible measurements after quality and other-flare interval filtering"
+  },
+  "output": {
+    "float_format": ".12g",
+    "event_order": [
+      "time",
+      "flare_id"
+    ],
+    "directory": "outputs/background_lower50/runs"
+  },
+  "input_lock_sha256": "e7be55716112b84380b7d6098c2f420812d264a7d6a920f8855ba536ebd85cee"
+}

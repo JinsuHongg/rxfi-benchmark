@@ -38,6 +38,10 @@ EVENT_FIELDS = [
     "rxfi_uncapped_fractional_excess", "rxfi_capped_fractional_excess",
     "uncapped_status", "capped_status",
 ]
+LOWER_FIELDS = [
+    "lower_fraction", "lower_retained_minutes", "lower_coverage_fraction",
+    "background_lower_fraction_W_m2", "rxfi_lower_fractional_excess", "lower_status",
+]
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -279,8 +283,9 @@ def run_calculation(
             window_seconds=int(config["method"]["window_seconds"]), expected_minutes=expected_minutes,
             start_sample_status=sample_status,
             indexed_flare_intervals=interval_indexes_by_start_years[year_key],
+            lower_fraction=config["method"].get("lower_fraction"),
         )
-        event_rows.append({
+        row = {
             "time": event.get("time", ""), "start_time": event.get("start_time", ""),
             "end_time": event.get("end_time", ""), "flare_id": event.get("flare_id", ""),
             "flare_class": event.get("flare_class", ""), "satellite": f"GOES-{sat}",
@@ -301,7 +306,17 @@ def run_calculation(
             "rxfi_uncapped_fractional_excess": _fmt(calc["rxfi_uncapped"], precision),
             "rxfi_capped_fractional_excess": _fmt(calc["rxfi_capped"], precision),
             "uncapped_status": calc["uncapped_status"], "capped_status": calc["capped_status"],
-        })
+        }
+        if "lower_fraction" in calc:
+            row.update({
+                "lower_fraction": _fmt(calc["lower_fraction"], precision),
+                "lower_retained_minutes": calc["lower_retained_count"],
+                "lower_coverage_fraction": _fmt(calc["lower_coverage_fraction"], precision),
+                "background_lower_fraction_W_m2": _fmt(calc["background_lower"], precision),
+                "rxfi_lower_fractional_excess": _fmt(calc["rxfi_lower"], precision),
+                "lower_status": calc["lower_status"],
+            })
+        event_rows.append(row)
 
     status_counts = Counter(row["uncapped_status"] for row in event_rows)
     summary = {
@@ -325,6 +340,18 @@ def run_calculation(
         "failed_l2_file_count": 0,
         "note": "RXFI columns use project fractional-excess convention (F_peak - B)/B; NOAA background_irrad is included only for comparison.",
     }
+    if "lower_fraction" in config["method"]:
+        summary.update({
+            "lower_fraction": float(config["method"]["lower_fraction"]),
+            "lower_background_valid": sum(bool(row.get("background_lower_fraction_W_m2")) for row in event_rows),
+            "lower_status_counts": dict(Counter(row.get("lower_status", "not_requested") for row in event_rows)),
+            "total_lower_retained_minutes": sum(int(row.get("lower_retained_minutes", 0)) for row in event_rows),
+            "events_lower_rxfi_negative": sum(
+                float(row["rxfi_lower_fractional_excess"]) < 0
+                for row in event_rows if row.get("rxfi_lower_fractional_excess")
+            ),
+            "lower_fraction_definition": "arithmetic mean of the lowest ceil(N * lower_fraction) eligible measurements after quality and other-flare interval filtering",
+        })
     fingerprint_inputs = {
         "config": config, "input_lock_sha256": actual_lock_sha,
         "catalog_sha256": catalog_record["sha256"],
@@ -339,7 +366,8 @@ def run_calculation(
     staging = Path(tempfile.mkdtemp(prefix=f".{fingerprint}.", dir=output_root))
     try:
         with (staging / "event_backgrounds.csv").open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=EVENT_FIELDS, lineterminator="\n")
+            fields = EVENT_FIELDS + (LOWER_FIELDS if "lower_fraction" in config["method"] else [])
+            writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
             writer.writeheader()
             writer.writerows(event_rows)
         _write_json(staging / "summary.json", summary)

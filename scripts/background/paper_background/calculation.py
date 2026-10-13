@@ -181,6 +181,7 @@ def calculate_event_backgrounds(
     start_sample_status: str | None = None,
     merged_flare_intervals: tuple[np.ndarray, np.ndarray] | None = None,
     indexed_flare_intervals: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None = None,
+    lower_fraction: float | None = None,
 ) -> dict[str, Any]:
     """Calculate paired 24-hour arithmetic backgrounds and fractional RXFI.
 
@@ -194,6 +195,8 @@ def calculate_event_backgrounds(
         raise ValueError("timestamp, flux, and quality flag arrays must have the same length")
     if window_seconds <= 0 or expected_minutes <= 0:
         raise ValueError("window_seconds and expected_minutes must be positive")
+    if lower_fraction is not None and not (0 < float(lower_fraction) <= 1):
+        raise ValueError("lower_fraction must be in the interval (0, 1]")
     start_seconds = int(start_seconds)
     lower = start_seconds - int(window_seconds)
     in_window = (seconds >= lower) & (seconds < start_seconds)
@@ -213,6 +216,23 @@ def calculate_event_backgrounds(
     common = valid & ~flare_mask
     uncapped_values = values[common]
     background_uncapped = float(np.mean(uncapped_values)) if len(uncapped_values) else None
+
+    lower_values = np.empty(0, dtype=float)
+    background_lower = None
+    lower_status = "not_requested"
+    lower_count = None
+    lower_rxfi = None
+    if lower_fraction is not None:
+        lower_count = int(math.ceil(len(uncapped_values) * float(lower_fraction)))
+        if lower_count:
+            # Partition selects the exact lowest ceil(N * fraction) observations
+            # without sorting the full sample set.
+            lower_values = np.partition(uncapped_values, lower_count - 1)[:lower_count]
+            background_lower = float(np.mean(lower_values))
+            lower_status = "ok"
+            lower_rxfi = (float(peak_flux) - background_lower) / background_lower
+        else:
+            lower_status = "no_valid_background_samples"
 
     if start_sample_status is None:
         start_sample_status = "valid" if start_threshold is not None else "missing_exact_sample"
@@ -243,7 +263,7 @@ def calculate_event_backgrounds(
         else None
     )
 
-    return {
+    result = {
         "candidate_count": int(len(values)),
         "valid_quality_count": valid_quality_count,
         "other_flare_masked_count": other_flare_masked_count,
@@ -260,3 +280,13 @@ def calculate_event_backgrounds(
         "rxfi_uncapped": rxfi_uncapped,
         "rxfi_capped": rxfi_capped,
     }
+    if lower_fraction is not None:
+        result.update({
+            "lower_fraction": float(lower_fraction),
+            "lower_retained_count": int(lower_count),
+            "lower_coverage_fraction": len(lower_values) / expected_minutes,
+            "background_lower": background_lower,
+            "lower_status": lower_status,
+            "rxfi_lower": lower_rxfi,
+        })
+    return result

@@ -1,0 +1,512 @@
+{
+  "fingerprint": "a7e506fa45a732128ad3192cc023661000c6dab37f9633c320b21dab4ff1cb55",
+  "fingerprint_inputs": {
+    "config": {
+      "config_schema_version": 1,
+      "algorithm_version": "lower-half-background-v1",
+      "output_schema_version": 2,
+      "catalog": {
+        "filename": "sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+        "sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+        "version": "v1-0-1",
+        "peak_time_start_utc": "2010-01-01T00:00:00Z",
+        "peak_time_end_exclusive_utc": "2026-01-01T00:00:00Z",
+        "deduplicate_key": [
+          "flare_id",
+          "time"
+        ]
+      },
+      "input_lock": "configs/paper_background_sensitivity.inputs.lock.json",
+      "xrs_l2": {
+        "product": "science-quality GOES XRS Level 2 avg1m",
+        "version": "v2-2-1",
+        "channel": "xrsb_flux",
+        "quality_flag": "xrsb_flag",
+        "valid_quality_value": 0,
+        "satellite_field": "xrsb_irrad_source",
+        "cache_subdirectory": "xrs_l2"
+      },
+      "method": {
+        "window_seconds": 86400,
+        "window_start_inclusive": true,
+        "window_end_exclusive": true,
+        "other_flare_start_inclusive": true,
+        "other_flare_end_inclusive": true,
+        "valid_flux": "finite_positive",
+        "upper_cap": "xrsb_flux_at_exact_catalog_start_time_same_satellite",
+        "upper_cap_inclusive": true,
+        "rxfi": "(peak_flux - background) / background",
+        "average": "arithmetic_mean",
+        "lower_fraction": 0.5,
+        "lower_fraction_selection": "lowest ceil(N * lower_fraction) eligible measurements after quality and other-flare interval filtering"
+      },
+      "output": {
+        "float_format": ".12g",
+        "event_order": [
+          "time",
+          "flare_id"
+        ],
+        "directory": "outputs/background_lower50/runs"
+      },
+      "input_lock_sha256": "e7be55716112b84380b7d6098c2f420812d264a7d6a920f8855ba536ebd85cee"
+    },
+    "input_lock_sha256": "e7be55716112b84380b7d6098c2f420812d264a7d6a920f8855ba536ebd85cee",
+    "catalog_sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+    "xrs_l2_sha256": [
+      "026c972b2109f319394ee672e85c9d6a3db3290b2ab854f7ad831af6a4462532",
+      "02e085b2876e5af0e20e2067bf75c08781868148afac594dc8b26d1a0eb5d5fe",
+      "037c3c511bf5c20e862a85353231f5ce98db7f55ea95590d4dd7ed8d244577c8",
+      "102bda0d7bed6444a35bef79cbf380c4f26613bae2fe5202f210df7ec1b113f5",
+      "156ef5702c443f77373b57fb00394cc108fa298c03e8a61e6bc5b182e1970291",
+      "17ceaa1bd787de38579f7de8f91f2a26065eac2ff13398b8c9d85e3a52f673a3",
+      "287e63db902efec60d62b3f13277f1e1126b1599c65f27ddccf12ba1fad91459",
+      "2af30d9e3b315bc60a48e05f4fd61adc292c7f914962fb506c8f38ef9daa25bb",
+      "37d09613ceef8f4821724afb3c638b639047d24a75fc56cf0a7f90c1dcdbfb99",
+      "3ae55615bc290517b1b641259c260901006a61c8bc6c1ec9847e0fd335a329bf",
+      "4a1ced320dabca835ebdba8727421ec22a2466fcea5ead028f4d21183486df3d",
+      "4de8e919a46d806b092c2161e839049d697cdc5e433624842e31db9f5c35a857",
+      "53a96f3c341484eb1107f0bada78a1b411a64d49fd07e65ab32a494cce38439e",
+      "565fbc77fa0e93e4ca29d16e9cfcb2a1224a0aa791c052b2aecdfaa1f6aec425",
+      "5e53b69d68894e57fa310816d45a9c9ef53ca2cfa5c91e7e2a12e1bdf109de47",
+      "6761e8dea1b306d39c02336fad139717a51c21531efe4cd598710f33e88d3f47",
+      "6b7919a26ca630544726d7ee5f48ddf872ecc55b5b15a660ced4f36b3ad28a5e",
+      "7635f9545b7c7f256eb4d8016cfcdd9c35d5e990d8c60b40685681c8e2f87a29",
+      "7f3ef5e7fe9c9daba7f4e3002b86add0ac3b34e5e5a2b2ec9e6fda13d0523f14",
+      "83297934083e9d2943ef7ec75bb0c7e5b91fa1b714ea038fc6790abbafc435b6",
+      "8889095d1094fa5d24e96e08747849e1d72186875ede79fe4eba820ba34e4d53",
+      "8daf2065d8e6cb196aadc45e73ac29b764fd48c6db9ca6a2890eb50f5bfbfe75",
+      "9107ff8ccb049d1bd7e2b433a90b17de01a72e55278cd7d72ec5c77c25410144",
+      "933d66c97abe347dab52713b0043169ba3f32c9e5e0d8b90dfb8b42fcd4dd33b",
+      "94330758625903bdf20826085863c6e1b2ca68a9cf27eedba18336cf863ff6eb",
+      "9673caf1ad06ae59d571d73372e5b1195b02908dc422bea856ee702433e266fe",
+      "9c59038db6941d20fa44039884a7cdf7f63b6b5590a156ac594908e28a479dda",
+      "a4b8006e12905a1381e405c49736147974eaa40679eebbe3f3e24abfeb687af3",
+      "a66430af74c3580ce498eb2bc81241cce656f188885f6b91c96bc120f751400b",
+      "aa89a8e773292c565bf0c162be3021218e56db9911839a05bba68af981ed28fe",
+      "aff9cdd5d32484d6a71ee68de41383ff9a411a75bf31fb673c049d7b297ea8d5",
+      "b558e0345cab675691b2e08fdc261fa312a9eac30841c0a1d96496d815fcb751",
+      "b987a93c7fbd2b7cdbf2c574eee7292d4959cbbe0952817f33cb4d181698a930",
+      "baeef67736e5e6addf1f3f438733ce2b52c20cefc2849662ff133c50c2b7c579",
+      "c25cde23fe3ecb1b6185ec823126cd0d68893461216d3f2ca687e1c08034af31",
+      "c3905dac6a553cdfe917e395f2d8681f9df180cb81c55d5d1777f5956f5c89f0",
+      "c4bea99ef5de36ff6873e8df63ac163f986650e7e51e8127b29a7e197eda92d6",
+      "dabfe2a5fae0a6a114b35f8545093b07ce8ff9c14d18a4af6ccf25ac785e0e7d",
+      "e037b88d2375592b002553d5faa8160eac11c21947cc6366a10b4fc0009e0021",
+      "e68c47d6b97a113cb80e7b886a5ee99448a4a2baa5c35746d6c6351eb5420764",
+      "e9bdb405fd332c09f77f8daf319be198e239781d0dcd5bf36b5f0915b1d476be",
+      "f54ec5efbde711e2adffe62d05488f2a2b63b8b86b2c1e585f877bacaaba3f38",
+      "f6b2f1d007eeb03d46746b27fa7b3d0a118b377d9e0fae7fa22e941d65f58823"
+    ]
+  },
+  "config": {
+    "config_schema_version": 1,
+    "algorithm_version": "lower-half-background-v1",
+    "output_schema_version": 2,
+    "catalog": {
+      "filename": "sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+      "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+      "sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+      "version": "v1-0-1",
+      "peak_time_start_utc": "2010-01-01T00:00:00Z",
+      "peak_time_end_exclusive_utc": "2026-01-01T00:00:00Z",
+      "deduplicate_key": [
+        "flare_id",
+        "time"
+      ]
+    },
+    "input_lock": "configs/paper_background_sensitivity.inputs.lock.json",
+    "xrs_l2": {
+      "product": "science-quality GOES XRS Level 2 avg1m",
+      "version": "v2-2-1",
+      "channel": "xrsb_flux",
+      "quality_flag": "xrsb_flag",
+      "valid_quality_value": 0,
+      "satellite_field": "xrsb_irrad_source",
+      "cache_subdirectory": "xrs_l2"
+    },
+    "method": {
+      "window_seconds": 86400,
+      "window_start_inclusive": true,
+      "window_end_exclusive": true,
+      "other_flare_start_inclusive": true,
+      "other_flare_end_inclusive": true,
+      "valid_flux": "finite_positive",
+      "upper_cap": "xrsb_flux_at_exact_catalog_start_time_same_satellite",
+      "upper_cap_inclusive": true,
+      "rxfi": "(peak_flux - background) / background",
+      "average": "arithmetic_mean",
+      "lower_fraction": 0.5,
+      "lower_fraction_selection": "lowest ceil(N * lower_fraction) eligible measurements after quality and other-flare interval filtering"
+    },
+    "output": {
+      "float_format": ".12g",
+      "event_order": [
+        "time",
+        "flare_id"
+      ],
+      "directory": "outputs/background_lower50/runs"
+    },
+    "input_lock_sha256": "e7be55716112b84380b7d6098c2f420812d264a7d6a920f8855ba536ebd85cee"
+  },
+  "input_lock": {
+    "lock_schema_version": 1,
+    "catalog": {
+      "filename": "sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+      "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+      "size_bytes": 12494926,
+      "sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+      "version": "v1-0-1"
+    },
+    "xrs_l2": {
+      "product": "science-quality GOES XRS L2 avg1m",
+      "version": "v2-2-1",
+      "files": [
+        {
+          "satellite": 13,
+          "year": 2013,
+          "filename": "2013.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes13/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g13_y2013_v2-2-1.nc",
+          "size_bytes": 2049021,
+          "sha256": "a66430af74c3580ce498eb2bc81241cce656f188885f6b91c96bc120f751400b"
+        },
+        {
+          "satellite": 13,
+          "year": 2014,
+          "filename": "2014.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes13/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g13_y2014_v2-2-1.nc",
+          "size_bytes": 3477544,
+          "sha256": "287e63db902efec60d62b3f13277f1e1126b1599c65f27ddccf12ba1fad91459"
+        },
+        {
+          "satellite": 13,
+          "year": 2015,
+          "filename": "2015.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes13/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g13_y2015_v2-2-1.nc",
+          "size_bytes": 3953839,
+          "sha256": "aa89a8e773292c565bf0c162be3021218e56db9911839a05bba68af981ed28fe"
+        },
+        {
+          "satellite": 13,
+          "year": 2016,
+          "filename": "2016.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes13/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g13_y2016_v2-2-1.nc",
+          "size_bytes": 3360778,
+          "sha256": "c4bea99ef5de36ff6873e8df63ac163f986650e7e51e8127b29a7e197eda92d6"
+        },
+        {
+          "satellite": 13,
+          "year": 2017,
+          "filename": "2017.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes13/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g13_y2017_v2-2-1.nc",
+          "size_bytes": 3244581,
+          "sha256": "565fbc77fa0e93e4ca29d16e9cfcb2a1224a0aa791c052b2aecdfaa1f6aec425"
+        },
+        {
+          "satellite": 14,
+          "year": 2009,
+          "filename": "2009.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2009_v2-2-1.nc",
+          "size_bytes": 538872,
+          "sha256": "02e085b2876e5af0e20e2067bf75c08781868148afac594dc8b26d1a0eb5d5fe"
+        },
+        {
+          "satellite": 14,
+          "year": 2010,
+          "filename": "2010.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2010_v2-2-1.nc",
+          "size_bytes": 2931368,
+          "sha256": "8889095d1094fa5d24e96e08747849e1d72186875ede79fe4eba820ba34e4d53"
+        },
+        {
+          "satellite": 14,
+          "year": 2012,
+          "filename": "2012.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc",
+          "size_bytes": 596652,
+          "sha256": "baeef67736e5e6addf1f3f438733ce2b52c20cefc2849662ff133c50c2b7c579"
+        },
+        {
+          "satellite": 14,
+          "year": 2015,
+          "filename": "2015.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2015_v2-2-1.nc",
+          "size_bytes": 341802,
+          "sha256": "e68c47d6b97a113cb80e7b886a5ee99448a4a2baa5c35746d6c6351eb5420764"
+        },
+        {
+          "satellite": 14,
+          "year": 2016,
+          "filename": "2016.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2016_v2-2-1.nc",
+          "size_bytes": 903476,
+          "sha256": "aff9cdd5d32484d6a71ee68de41383ff9a411a75bf31fb673c049d7b297ea8d5"
+        },
+        {
+          "satellite": 14,
+          "year": 2017,
+          "filename": "2017.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2017_v2-2-1.nc",
+          "size_bytes": 677825,
+          "sha256": "c3905dac6a553cdfe917e395f2d8681f9df180cb81c55d5d1777f5956f5c89f0"
+        },
+        {
+          "satellite": 14,
+          "year": 2018,
+          "filename": "2018.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2018_v2-2-1.nc",
+          "size_bytes": 2633441,
+          "sha256": "7635f9545b7c7f256eb4d8016cfcdd9c35d5e990d8c60b40685681c8e2f87a29"
+        },
+        {
+          "satellite": 14,
+          "year": 2019,
+          "filename": "2019.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2019_v2-2-1.nc",
+          "size_bytes": 2570639,
+          "sha256": "9107ff8ccb049d1bd7e2b433a90b17de01a72e55278cd7d72ec5c77c25410144"
+        },
+        {
+          "satellite": 15,
+          "year": 2010,
+          "filename": "2010.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2010_v2-2-1.nc",
+          "size_bytes": 1691000,
+          "sha256": "94330758625903bdf20826085863c6e1b2ca68a9cf27eedba18336cf863ff6eb"
+        },
+        {
+          "satellite": 15,
+          "year": 2011,
+          "filename": "2011.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2011_v2-2-1.nc",
+          "size_bytes": 4037062,
+          "sha256": "dabfe2a5fae0a6a114b35f8545093b07ce8ff9c14d18a4af6ccf25ac785e0e7d"
+        },
+        {
+          "satellite": 15,
+          "year": 2012,
+          "filename": "2012.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc",
+          "size_bytes": 3950431,
+          "sha256": "9c59038db6941d20fa44039884a7cdf7f63b6b5590a156ac594908e28a479dda"
+        },
+        {
+          "satellite": 15,
+          "year": 2013,
+          "filename": "2013.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2013_v2-2-1.nc",
+          "size_bytes": 4049555,
+          "sha256": "8daf2065d8e6cb196aadc45e73ac29b764fd48c6db9ca6a2890eb50f5bfbfe75"
+        },
+        {
+          "satellite": 15,
+          "year": 2014,
+          "filename": "2014.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2014_v2-2-1.nc",
+          "size_bytes": 4317485,
+          "sha256": "6b7919a26ca630544726d7ee5f48ddf872ecc55b5b15a660ced4f36b3ad28a5e"
+        },
+        {
+          "satellite": 15,
+          "year": 2015,
+          "filename": "2015.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2015_v2-2-1.nc",
+          "size_bytes": 3824220,
+          "sha256": "a4b8006e12905a1381e405c49736147974eaa40679eebbe3f3e24abfeb687af3"
+        },
+        {
+          "satellite": 15,
+          "year": 2016,
+          "filename": "2016.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2016_v2-2-1.nc",
+          "size_bytes": 3203507,
+          "sha256": "4de8e919a46d806b092c2161e839049d697cdc5e433624842e31db9f5c35a857"
+        },
+        {
+          "satellite": 15,
+          "year": 2017,
+          "filename": "2017.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2017_v2-2-1.nc",
+          "size_bytes": 2967777,
+          "sha256": "83297934083e9d2943ef7ec75bb0c7e5b91fa1b714ea038fc6790abbafc435b6"
+        },
+        {
+          "satellite": 15,
+          "year": 2018,
+          "filename": "2018.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2018_v2-2-1.nc",
+          "size_bytes": 2477521,
+          "sha256": "6761e8dea1b306d39c02336fad139717a51c21531efe4cd598710f33e88d3f47"
+        },
+        {
+          "satellite": 15,
+          "year": 2019,
+          "filename": "2019.nc",
+          "url": "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2019_v2-2-1.nc",
+          "size_bytes": 2479442,
+          "sha256": "156ef5702c443f77373b57fb00394cc108fa298c03e8a61e6bc5b182e1970291"
+        },
+        {
+          "satellite": 16,
+          "year": 2017,
+          "filename": "2017.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2017_v2-2-1.nc",
+          "size_bytes": 26392866,
+          "sha256": "b558e0345cab675691b2e08fdc261fa312a9eac30841c0a1d96496d815fcb751"
+        },
+        {
+          "satellite": 16,
+          "year": 2018,
+          "filename": "2018.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2018_v2-2-1.nc",
+          "size_bytes": 29123316,
+          "sha256": "b987a93c7fbd2b7cdbf2c574eee7292d4959cbbe0952817f33cb4d181698a930"
+        },
+        {
+          "satellite": 16,
+          "year": 2019,
+          "filename": "2019.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2019_v2-2-1.nc",
+          "size_bytes": 28039493,
+          "sha256": "e037b88d2375592b002553d5faa8160eac11c21947cc6366a10b4fc0009e0021"
+        },
+        {
+          "satellite": 16,
+          "year": 2020,
+          "filename": "2020.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2020_v2-2-1.nc",
+          "size_bytes": 29674517,
+          "sha256": "53a96f3c341484eb1107f0bada78a1b411a64d49fd07e65ab32a494cce38439e"
+        },
+        {
+          "satellite": 16,
+          "year": 2021,
+          "filename": "2021.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2021_v2-2-1.nc",
+          "size_bytes": 31736480,
+          "sha256": "f54ec5efbde711e2adffe62d05488f2a2b63b8b86b2c1e585f877bacaaba3f38"
+        },
+        {
+          "satellite": 16,
+          "year": 2022,
+          "filename": "2022.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2022_v2-2-1.nc",
+          "size_bytes": 33911208,
+          "sha256": "17ceaa1bd787de38579f7de8f91f2a26065eac2ff13398b8c9d85e3a52f673a3"
+        },
+        {
+          "satellite": 16,
+          "year": 2023,
+          "filename": "2023.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-1.nc",
+          "size_bytes": 33484822,
+          "sha256": "c25cde23fe3ecb1b6185ec823126cd0d68893461216d3f2ca687e1c08034af31"
+        },
+        {
+          "satellite": 16,
+          "year": 2024,
+          "filename": "2024.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2024_v2-2-1.nc",
+          "size_bytes": 33312055,
+          "sha256": "e9bdb405fd332c09f77f8daf319be198e239781d0dcd5bf36b5f0915b1d476be"
+        },
+        {
+          "satellite": 16,
+          "year": 2025,
+          "filename": "2025.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2025_v2-2-1.nc",
+          "size_bytes": 8597442,
+          "sha256": "037c3c511bf5c20e862a85353231f5ce98db7f55ea95590d4dd7ed8d244577c8"
+        },
+        {
+          "satellite": 17,
+          "year": 2018,
+          "filename": "2018.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes17/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g17_y2018_v2-2-1.nc",
+          "size_bytes": 11196514,
+          "sha256": "026c972b2109f319394ee672e85c9d6a3db3290b2ab854f7ad831af6a4462532"
+        },
+        {
+          "satellite": 17,
+          "year": 2019,
+          "filename": "2019.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes17/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g17_y2019_v2-2-1.nc",
+          "size_bytes": 19835613,
+          "sha256": "5e53b69d68894e57fa310816d45a9c9ef53ca2cfa5c91e7e2a12e1bdf109de47"
+        },
+        {
+          "satellite": 17,
+          "year": 2020,
+          "filename": "2020.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes17/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g17_y2020_v2-2-1.nc",
+          "size_bytes": 28929706,
+          "sha256": "933d66c97abe347dab52713b0043169ba3f32c9e5e0d8b90dfb8b42fcd4dd33b"
+        },
+        {
+          "satellite": 17,
+          "year": 2021,
+          "filename": "2021.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes17/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g17_y2021_v2-2-1.nc",
+          "size_bytes": 31207787,
+          "sha256": "37d09613ceef8f4821724afb3c638b639047d24a75fc56cf0a7f90c1dcdbfb99"
+        },
+        {
+          "satellite": 17,
+          "year": 2022,
+          "filename": "2022.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes17/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g17_y2022_v2-2-1.nc",
+          "size_bytes": 32703249,
+          "sha256": "102bda0d7bed6444a35bef79cbf380c4f26613bae2fe5202f210df7ec1b113f5"
+        },
+        {
+          "satellite": 18,
+          "year": 2022,
+          "filename": "2022.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2022_v2-2-1.nc",
+          "size_bytes": 16225169,
+          "sha256": "4a1ced320dabca835ebdba8727421ec22a2466fcea5ead028f4d21183486df3d"
+        },
+        {
+          "satellite": 18,
+          "year": 2023,
+          "filename": "2023.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-1.nc",
+          "size_bytes": 32945885,
+          "sha256": "7f3ef5e7fe9c9daba7f4e3002b86add0ac3b34e5e5a2b2ec9e6fda13d0523f14"
+        },
+        {
+          "satellite": 18,
+          "year": 2024,
+          "filename": "2024.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2024_v2-2-1.nc",
+          "size_bytes": 33679133,
+          "sha256": "2af30d9e3b315bc60a48e05f4fd61adc292c7f914962fb506c8f38ef9daa25bb"
+        },
+        {
+          "satellite": 18,
+          "year": 2025,
+          "filename": "2025.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2025_v2-2-1.nc",
+          "size_bytes": 33335396,
+          "sha256": "3ae55615bc290517b1b641259c260901006a61c8bc6c1ec9847e0fd335a329bf"
+        },
+        {
+          "satellite": 19,
+          "year": 2024,
+          "filename": "2024.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g19_y2024_v2-2-1.nc",
+          "size_bytes": 9168295,
+          "sha256": "9673caf1ad06ae59d571d73372e5b1195b02908dc422bea856ee702433e266fe"
+        },
+        {
+          "satellite": 19,
+          "year": 2025,
+          "filename": "2025.nc",
+          "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g19_y2025_v2-2-1.nc",
+          "size_bytes": 30719782,
+          "sha256": "f6b2f1d007eeb03d46746b27fa7b3d0a118b377d9e0fae7fa22e941d65f58823"
+        }
+      ]
+    }
+  }
+}

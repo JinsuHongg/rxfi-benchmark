@@ -2,6 +2,8 @@
 
 ## Purpose
 
+**RXFI background provenance:** the completed QR runs and results in this report use the frozen historical targets whose RXFI was calculated from NOAA `background_irrad`. They do not use the newly selected lower-50% 24-hour estimator. The lower-50% backgrounds have only been calculated at event level; forecast-window targets and model results have not yet been regenerated. See [the selected method and event-level results](lower50_background_rxfi.md).
+
 This controlled Project 1 comparison separates two questions: how predictably each continuous target can be learned from SDO observations, and how useful its predicted median score is for ranking conventional severe solar-flare windows. A target being easier to predict does not by itself imply that it is more useful for severe solar-event forecasting.
 
 ## Experimental controls

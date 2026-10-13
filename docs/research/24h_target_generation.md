@@ -6,7 +6,7 @@ This document defines four continuous Project-1 targets from the same frozen 24-
 
 ## Frozen sample splits
 
-`train.csv`, `validation.csv`, `test.csv`, and `leaky_validation.csv` under `/mnt/storage/surya/index_data` are immutable inputs. The generator reads them only and writes separate target files under `data/derived/`. Every output contains `original_row_index`, preserves source row order and timestamp exactly, and retains all source columns.
+`train.csv`, `validation.csv`, `test.csv`, and `leaky_validation.csv` under `/mnt/storage/surya/index_data` are immutable inputs. Their temporal membership follows the [NASA-IBM SuryaBench flare-forecasting dataset split on Hugging Face](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting/tree/main): hourly 24-hour rolling-window samples; train on February 15–December 31 and validation on January 15–31 in 2010–2019; leaky validation on January 1–14 and February 1–14 in 2010–2019; and test on all dates in 2020–2024. The repository's saved split audit agrees with those temporal rules and the dataset-card total of 128,328 rows. Source split CSVs are not included here, so exact row-level identity with the live Hugging Face files is not asserted. The generator reads the local split files only and writes separate target files under `data/derived/`. Every output contains `original_row_index`, preserves source row order and timestamp exactly, and retains all source columns.
 
 | Split | Source rows | Derived rows | SHA-256 unchanged | Row identity preserved |
 | --- | ---: | ---: | --- | --- |
@@ -29,7 +29,9 @@ All NOAA flare events whose peak time lies in this interval are eligible. An eve
 
 ## Event-level quantities
 
-For a NOAA flare event \(i\), valid peak flux is its finite, positive XRS-B `xrsb_irrad` value \(F_i\), in W/m2. Event-level RXFI reuses the shared frozen implementation from `scripts/data/inspect_noaa_xrs_flare_report.py`:
+**Background-version note:** the frozen target files described here were generated with the historical NOAA `background_irrad` event field as `B_i`. The project has since selected the lower-50% filtered 24-hour estimator for future RXFI target regeneration; those split-level target files have not yet been regenerated. The current lower-50% result is event-level only and is documented in [lower50_background_rxfi.md](lower50_background_rxfi.md). The equations below describe the committed historical target generation and must not be read as the new estimator's outputs.
+
+For a NOAA flare event \(i\), valid peak flux is its finite, positive XRS-B `xrsb_irrad` value \(F_i\), in W/m2. In the historical target generation, event-level RXFI reuses the shared implementation from `scripts/data/inspect_noaa_xrs_flare_report.py`:
 
 \[
 \mathrm{RXFI}_i = \frac{F_i - B_i}{B_i},

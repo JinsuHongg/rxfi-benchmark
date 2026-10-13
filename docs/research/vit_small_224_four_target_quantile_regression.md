@@ -1,5 +1,7 @@
 # Cluster-Ready Four-Target ViT-Small Quantile Regression
 
+The existing RXFI target files and QR runs documented here use the historical NOAA `background_irrad` baseline. They have not been regenerated with the selected lower-50% 24-hour background; these configurations and results therefore describe the earlier target version. The selected method and current event-level calculation are documented in [lower50_background_rxfi.md](lower50_background_rxfi.md).
+
 QR-1 through QR-4 use identical SuryaBench 13-channel 224x224 inputs, frozen membership, ViT-Small/16 (`pretrained=false`), q05/q50/q95 outputs, pinball loss, AdamW (`1e-4`, weight decay `0.01`), ten epochs, seed 0, and minimum validation pinball loss checkpoint selection. Only target, transform, experiment name, and output directory differ.
 
 | Run | Raw target | Transform | Inverse |

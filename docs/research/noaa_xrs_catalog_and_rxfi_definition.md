@@ -4,6 +4,8 @@
 
 This note documents the NOAA/NCEI **GOES Flare Report** selected for Project 1 as the canonical source of flare peak and background X-ray irradiances. It freezes the initial Relative X-ray Flux Increase (RXFI) construction only; it does not specify forecasting models, data splits, or later thesis projects.
 
+**Status:** the NOAA-`background_irrad` RXFI below is the historical definition used by the currently frozen forecast-window target files. The project has since selected the lower-50% filtered 24-hour XRS estimator for future target regeneration; see [lower50_background_rxfi.md](lower50_background_rxfi.md). NOAA's field remains useful for comparison and for interpreting existing labels.
+
 ## 2. NOAA data source
 
 - Product: NOAA/NCEI Level-2 GOES Flare Report (also called the **XRS Flare Report**; the underlying XRS Flare Summary product is `flsum`).
@@ -55,7 +57,7 @@ time,start_time,end_time,flare_id,xrsb_irrad,flare_class,xrsb_irrad_source,backg
 | `xrsb_irrad` | one-minute XRS-B peak irradiance | W/m2 | **Yes: F_peak** |
 | `flare_class` | class recorded at peak | class label | Recommended QA/context |
 | `xrsb_irrad_source` | GOES satellite that measured irradiance | GOES-1..19 label | Recommended provenance/transition QA |
-| `background_irrad` | background irradiance recorded at start | W/m2 | **Yes: F_background** |
+| `background_irrad` | background irradiance recorded at start | W/m2 | **Yes for historical NOAA-background RXFI; comparison field for lower-50% RXFI** |
 | `sequential_flare_num` | position in a flare sequence | 1 | Recommended; indicates potentially overlapping events |
 | `peak_saturated` | peak saturation indicator | 0/1 | Recommended QA; 1 is saturated |
 
@@ -65,7 +67,7 @@ time,start_time,end_time,flare_id,xrsb_irrad,flare_class,xrsb_irrad_source,backg
 
 NOAA's composite logic is the canonical deduplication/selection policy. Analyses must retain `xrsb_irrad_source` because selected satellite identity can change across the time series, especially at operational-primary transitions or when primary data are unavailable. The selection is event-level: the same flare report event supplies the peak and background fields from the selected source record. It should not be reconstructed by joining satellite-level products unless a later study explicitly requires that different product.
 
-## 6. Proposed frozen initial RXFI definition
+## 6. Historical NOAA-background RXFI definition
 
 For an event with valid positive values:
 
@@ -75,7 +77,7 @@ For an event with valid positive values:
 
 where `F_peak = xrsb_irrad` and `F_background = background_irrad`, both in W/m2 from the same selected NOAA flare-report event.
 
-This is dimensionless and is mathematically appropriate as a relative increase above the NOAA event-specific baseline. It is equivalent to `F_peak / F_background - 1`, so it is interpretable as fractional excess (for example, 4 means peak is five times the baseline). It is the frozen initial Project-1 definition, conditional on the eligibility rules below.
+This is dimensionless and is mathematically appropriate as a relative increase above the NOAA event-specific baseline. It is equivalent to `F_peak / F_background - 1`, so it is interpretable as fractional excess (for example, 4 means peak is five times the baseline). It is the historical Project-1 definition used by existing target artifacts, conditional on the eligibility rules below; it is no longer the selected background estimator for future target regeneration.
 
 | Alternative | Relationship | Reason not selected as canonical initial definition |
 | --- | --- | --- |
@@ -118,4 +120,4 @@ With no argument, the script downloads its default official 2024 yearly CSV. It 
 
 ## 10. Proposal-ready methodology wording
 
-> Project 1 will use NOAA/NCEI's science-quality Level-2 GOES Flare Report as the canonical event catalog for GOES XRS flare irradiance and timing. The composite report supplies one selected satellite record per flare event, prioritizing the operational primary GOES observation when matching observations satisfy NOAA's event-matching criteria. For each event, the relative X-ray flux increase will be defined from the one-minute XRS-B (0.1-0.8 nm) peak irradiance and NOAA-reported background irradiance recorded at flare start as \(\mathrm{RXFI}=(F_{\mathrm{peak}}-F_{\mathrm{background}})/F_{\mathrm{background}}\). Events lacking valid positive peak or background irradiance will be reported and excluded from calculations requiring RXFI; satellite source, saturation, and flare-sequence fields will be retained for quality control and sensitivity analyses.
+> Project 1 uses NOAA/NCEI's science-quality Level-2 GOES Flare Report as the canonical event catalog for GOES XRS flare irradiance and timing. The composite report supplies one selected satellite record per flare event, prioritizing the operational primary GOES observation when matching observations satisfy NOAA's event-matching criteria. For each event, the project estimates background from the lowest half of valid one-minute XRS-B (0.1–0.8 nm) measurements in the preceding 24-hour window after excluding measurements in other catalog flare intervals. RXFI is the fractional excess of peak irradiance above this estimate, \(\mathrm{RXFI}=(F_{\mathrm{peak}}-B_{50})/B_{50}\). Events lacking valid positive peak or background irradiance will be reported and excluded from calculations requiring RXFI; satellite source, saturation, and flare-sequence fields will be retained for quality control and sensitivity analyses. NOAA-reported `background_irrad` will be retained for comparison.

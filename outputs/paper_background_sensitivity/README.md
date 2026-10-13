@@ -1,8 +1,10 @@
 # Reproducing paper-based X-ray backgrounds
 
+This guide reproduces the paper-described full-mean estimate with and without its start-time upper cap. The selected project estimator is now the lower-50% adaptation; its method, command, and outputs are documented in [`outputs/background_lower50/README.md`](../background_lower50/README.md).
+
 ## Locked inputs and method
 
-The run uses NOAA/NCEI flare report release `sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv` (SHA-256 `351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea`) and the 43 satellite/year files listed in [`configs/paper_background_sensitivity.inputs.lock.json`](../../configs/paper_background_sensitivity.inputs.lock.json). The lock file itself is pinned in [`configs/paper_background_sensitivity.json`](../../configs/paper_background_sensitivity.json). XRS inputs are science-quality Level 2 `avg1m`, version `v2-2-1`, channel `xrsb_flux`; only `xrsb_flag == 0` measurements are valid. The method and project RXFI definition are described in [`docs/research/paper_based_background_xray_flux_method.md`](../../docs/research/paper_based_background_xray_flux_method.md).
+The run uses NOAA/NCEI flare report release `sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv` (SHA-256 `351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea`) and the 43 satellite/year files listed in [`configs/paper_background_sensitivity.inputs.lock.json`](../../configs/paper_background_sensitivity.inputs.lock.json). The lock file itself is pinned in [`configs/paper_background_sensitivity.json`](../../configs/paper_background_sensitivity.json). XRS inputs are science-quality Level 2 `avg1m`, version `v2-2-1`, channel `xrsb_flux`; only `xrsb_flag == 0` measurements are valid. The source paper procedure is described in [`docs/research/paper_based_background_xray_flux_method.md`](../../docs/research/paper_based_background_xray_flux_method.md); the selected lower-50% project method is defined in [`docs/research/lower50_background_rxfi.md`](../../docs/research/lower50_background_rxfi.md).
 
 For each event, the calculation uses same-satellite observations from `[start_time - 24 hours, start_time)` in UTC, excludes invalid measurements and other-flare intervals, then computes an arithmetic mean with and without the inclusive cap `xrsb_flux <= flux_at_exact_start_time`. The start value must be an exact valid observation on the event's source satellite. Project RXFI is `(peak_flux - background) / background`; NOAA's event-level `background_irrad` is retained for comparison.
 
@@ -15,7 +17,7 @@ Create or update the project environment from the repository's `environment.yml`
 From the repository root, run:
 
 ```bash
-python scripts/background/compute_paper_background_sensitivity.py --offline
+conda run -n rxfi-benchmark python scripts/background/compute_paper_background_sensitivity.py --offline
 ```
 
 The default catalog is `data/raw/noaa_paper_background/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv`; the XRS cache is under `data/raw/noaa_paper_background/xrs_l2/`. The runner accepts the old unversioned cache layout only when its bytes match the lock, and new downloads are stored under a product-version directory. Offline mode fails before publishing outputs if any required file is missing, has a different size or checksum, or cannot be read as the expected NetCDF schema.

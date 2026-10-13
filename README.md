@@ -18,13 +18,13 @@ For an eligible NOAA flare-report event,
 
 $F_{\mathrm{peak}}$ is the one-minute GOES XRS-B peak irradiance (`xrsb_irrad`) and $F_{\mathrm{background}}$ is the selected background estimate, both in W m$^{-2}$. Project RXFI is the fractional increase above background: an RXFI of 4 means the peak is five times the background. Missing, non-finite, or non-positive inputs are invalid.
 
-### Selected paper-based background
+### Selected project background: lower-50% 24-hour mean
 
-The selected event-level estimator follows Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. For flare start time $t_0$, it averages valid one-minute GOES XRS-B measurements from the same source satellite in the preceding UTC 24-hour window $[t_0-24\,\mathrm{h}, t_0)$. It excludes measurements with invalid quality, measurements within another flare's interval, and—when applying the paper's upper cap—measurements above the exact valid XRS-B measurement at $t_0$. The reproducibility calculation reports both the capped estimate and the uncapped estimate for sensitivity comparison.
+For flare start time $t_0$, the selected event-level background uses same-satellite GOES XRS-B `avg1m` observations in the preceding UTC interval $[t_0-24\,\mathrm{h},t_0)$. It retains finite positive measurements with `xrsb_flag == 0`, removes measurements within another catalog flare's inclusive start–end interval, then averages the lowest $\lceil N/2\rceil$ of the remaining $N$ measurements. This lower-50% mean is a project adaptation intended to reduce residual elevated flux after flare-interval masking. It does not apply a start-time upper cap and does not use `POST_EVENT`.
 
-The paper calls its peak-to-background ratio $F_{\mathrm{peak}}/B$ “relative increase.” This project uses the fractional-excess convention $(F_{\mathrm{peak}}-B)/B$, which is one less than that ratio. NOAA's catalog `background_irrad` is retained only as a comparison field in the new paper-based event analysis. Existing generated forecast-window targets still use NOAA `background_irrad`; the event-level calculation below does not regenerate those targets. See the [method note](docs/research/paper_based_background_xray_flux_method.md) and [capped/uncapped comparison](docs/research/paper_background_cap_sensitivity.md) for details and results.
+Project RXFI is the fractional excess $(F_{\mathrm{peak}}-B_{50})/B_{50}$; an RXFI of 4 means the peak is five times this background. The lower-50% procedure is distinct from the full arithmetic mean and optional start-time cap described by Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. NOAA's `background_irrad` remains a comparison field. Existing frozen forecast-window targets have not yet been regenerated: their RXFI values still use NOAA `background_irrad`. See the [selected lower-50% method and results](docs/research/lower50_background_rxfi.md), [paper procedure](docs/research/paper_based_background_xray_flux_method.md), and [paper capped/uncapped sensitivity analysis](docs/research/paper_background_cap_sensitivity.md).
 
-The reproducibility run preserves a historical calendar-year flare-interval lookup. Near New Year's, this can omit an interval that began in the preceding year but overlaps the 24-hour window; the limitation is described in the [method note](docs/research/paper_based_background_xray_flux_method.md).
+The event-level lower-50% calculation is reproducible using the project environment and pinned NOAA inputs; its run configuration and outputs are in [`outputs/background_lower50/`](outputs/background_lower50/). It preserves a legacy calendar-year flare-interval lookup: near New Year's, an interval that began in the preceding year but overlaps the 24-hour window can be omitted. This limitation is recorded in the [method note](docs/research/lower50_background_rxfi.md).
 
 The implemented 24-hour targets are `max_peak_flux`, `cumulative_peak_flux`, `max_rxfi`, and `cumulative_rxfi`. Maximum and cumulative forms distinguish the dominant eligible event from total activity in a forecast window.
 
@@ -56,7 +56,7 @@ flowchart LR
 
 ## Dataset and label construction
 
-For each immutable split timestamp $t$, the generator aggregates eligible flare peaks in $[t,t+24\ \mathrm{h})$. `max_peak_flux` and `cumulative_peak_flux` use valid positive XRS-B peaks; `max_rxfi` and `cumulative_rxfi` use valid event-level RXFI values. `max_flare_class` is the NOAA class of the maximum-peak event; a no-event window is `FQ`. Ties are resolved by earliest peak time, then stable event identifier.
+For each immutable split timestamp $t$, the generator aggregates eligible flare peaks in $[t,t+24\ \mathrm{h})$. `max_peak_flux` and `cumulative_peak_flux` use valid positive XRS-B peaks; `max_rxfi` and `cumulative_rxfi` use valid event-level RXFI values. The frozen target files currently use the historical NOAA `background_irrad` RXFI definition; the new lower-50% event-level results have not been propagated to those forecast-window labels. `max_flare_class` is the NOAA class of the maximum-peak event; a no-event window is `FQ`. Ties are resolved by earliest peak time, then stable event identifier.
 
 The corrected ordinal classifier uses this explicit fixed mapping:
 
@@ -162,14 +162,14 @@ Classification reports accuracy, balanced accuracy, macro-F1, class-wise precisi
 > [!NOTE]
 > This repository is under active research development. Benchmark definitions, preprocessing, and experimental settings may evolve.
 
-- **Implemented:** NOAA/XRS target construction, the frozen RXFI definition, ViT-Small classification and QR pipelines, and Project 2 channel-comparison configurations.
+- **Implemented:** NOAA/XRS target construction, reproducible lower-50% event-background/RXFI calculation, ViT-Small classification and QR pipelines, and Project 2 channel-comparison configurations. The frozen forecast-window RXFI targets still use the historical NOAA background and await regeneration.
 - **Documented results:** the controlled Project 1 four-target QR analysis is available in the [predictability and event-relevance report](docs/research/four_qr_target_predictability_and_event_relevance.md).
 - **Classification caution:** original Project 2 outputs used exact NOAA magnitude strings; the later six-band runs are historical. New runs use the five-class `FQ/A`, `B`, `C`, `M`, `X` mapping.
 - **TBD:** a fixed OCQR calibration/evaluation procedure is not implemented.
 
 ## Results
 
-The documented Project 1 QR comparison uses the same 27,980-row test cohort for all four targets. It separates learnability from severe-event relevance and does not establish a globally optimal physical target.
+The documented Project 1 QR comparison uses the same 27,980-row test cohort for all four targets. Its RXFI targets use the historical NOAA `background_irrad` baseline; they have not been retrained with the selected lower-50% background. The analysis separates learnability from severe-event relevance and does not establish a globally optimal physical target.
 
 | Target | Spearman | MAE / IQR | M+ AUPRC | X+ AUPRC |
 | --- | ---: | ---: | ---: | ---: |
@@ -186,8 +186,10 @@ Training records resolved configurations, source-split hashes, row-alignment che
 
 ## Documentation
 
+- [Selected lower-50% background method and event-level results](docs/research/lower50_background_rxfi.md)
 - [Paper-based 24-hour background method and source](docs/research/paper_based_background_xray_flux_method.md)
 - [Paper-based capped/uncapped background comparison](docs/research/paper_background_cap_sensitivity.md)
+- [Lower-50% calculation run guide and results](outputs/background_lower50/README.md)
 - [Background calculation run guide](outputs/paper_background_sensitivity/README.md)
 - [NOAA XRS catalog and RXFI definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md)
 - [Deterministic 24-hour target generation](docs/research/24h_target_generation.md)

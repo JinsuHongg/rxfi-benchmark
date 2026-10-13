@@ -1,5 +1,7 @@
 # Paper-Based 24-Hour Flare Background: Upper-Cap Comparison
 
+**Status:** this report records the paper-described full-mean method with and without its start-time upper cap. It is a historical sensitivity comparison, not the project's selected estimator. The selected project method is the lower-50% mean documented in [lower50_background_rxfi.md](lower50_background_rxfi.md); its event-level results are available separately.
+
 ## Scope and inputs
 
 This comparison applies the procedure in Hong et al., Section 2.1, to NOAA/NCEI science-quality GOES flare events with peak times from 2010-01-01 through 2025-12-31. The event catalog is the mission Flare Report release `sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv` (SHA-256 `351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea`). The measurement inputs are the satellite-specific science-quality XRS L2 `avg1m` NetCDF files, version `v2-2-1`, using `xrsb_flux` and `xrsb_flag`. The exact URLs, byte sizes, retrieval status, and SHA-256 for all 43 measurement files are recorded in [input_manifest.json](../../outputs/paper_background_sensitivity/input_manifest.json); the downloaded files are cached under the ignored `data/raw/noaa_paper_background/` directory.
@@ -45,6 +47,6 @@ The frozen row-level forecast split files are not present in this checkout (`/mn
 
 ## Interpretation
 
-The upper cap substantially lowers the estimated background and raises RXFI while removing about half of the valid 24-hour samples for a typical event. It also guarantees that the mean background does not exceed the start threshold, which eliminates negative RXFI in this cohort. That is a property of the filter and should not be interpreted as evidence that the uncapped estimates are erroneous: uncapped values retain elevated preflare activity and are useful for measuring sensitivity to the filter. The two variants should remain separately labeled in downstream analysis.
+The upper cap substantially lowers the estimated background and raises RXFI while removing about half of the valid 24-hour samples for a typical event. It also guarantees that the mean background does not exceed the start threshold, which eliminates negative RXFI in this cohort. That is a property of the filter and should not be interpreted as evidence that the uncapped estimates are erroneous: uncapped values retain elevated preflare activity and are useful for measuring sensitivity to the filter. Keep these two paper-method variants distinct from the selected lower-50% project estimator in downstream analysis.
 
 Source method: Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. Product details: NOAA/NCEI [GOES-R XRS L2 Data User's Guide](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES-R_XRS_L2_Data_Users_Guide.pdf).
