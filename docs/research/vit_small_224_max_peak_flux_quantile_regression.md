@@ -49,7 +49,7 @@ split,original_row_index,timestamp,target_name,target_raw,target_transformed,max
 Validate transforms without launching training:
 
 ```bash
-conda run -n rxfi-benchmark python scripts/train_vit_quantile_regression.py --config configs/vit_small_224_max_peak_flux_qr.yaml --validate-transforms
+conda run -n rxfi-benchmark python scripts/training/train_vit_quantile_regression.py --config configs/vit_small_224_max_peak_flux_qr.yaml --validate-transforms
 ```
 
 The same script serves all four target configs. A full run writes the resolved configuration, transform and experiment metadata, cohort report, training log, validation metrics, checkpoint metadata, prediction exports, and learning curve. Checkpoint files remain gitignored. The four-target cluster procedure is documented in [the experiment-family note](vit_small_224_four_target_quantile_regression.md).

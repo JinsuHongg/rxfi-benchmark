@@ -13,4 +13,4 @@ rxfi-benchmark QR predictions → standardized export → ordinal-cqr loader
 → conformal calibration → ordinal prediction sets → coverage / efficiency
 ```
 
-Use `python scripts/export_project3_predictions.py --all` and `python scripts/validate_project3_exports.py --all`. Begin proposal work with `max_peak_flux` and `cumulative_peak_flux`; the RXFI targets remain secondary and available.
+Use `python scripts/exports/project3/export_project3_predictions.py --all` and `python scripts/exports/project3/validate_project3_exports.py --all`. Begin proposal work with `max_peak_flux` and `cumulative_peak_flux`; the RXFI targets remain secondary and available.

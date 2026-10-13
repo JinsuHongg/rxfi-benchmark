@@ -104,7 +104,7 @@ These are recommended analysis rules, not NOAA filtering rules unless stated as 
 Run:
 
 ```bash
-python3 scripts/inspect_noaa_xrs_flare_report.py /path/to/sci_xrsf-l2-flrpt_geo_y2024_v1-0-1.csv
+python3 scripts/data/inspect_noaa_xrs_flare_report.py /path/to/sci_xrsf-l2-flrpt_geo_y2024_v1-0-1.csv
 ```
 
 With no argument, the script downloads its default official 2024 yearly CSV. It prints the RXFI-related schema, counts valid and invalid events, exact duplicate `(flare_id, time)` keys, saturated events, and distribution summaries/quantiles using the frozen formula. It intentionally has no ML functionality and uses only the Python standard library.

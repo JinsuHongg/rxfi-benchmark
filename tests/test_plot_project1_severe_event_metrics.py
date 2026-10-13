@@ -10,7 +10,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "plot_project1_severe_event_metrics.py"
+SCRIPT = ROOT / "scripts" / "visualization" / "plot_project1_severe_event_metrics.py"
 
 
 def load_module():

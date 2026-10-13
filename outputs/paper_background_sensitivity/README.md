@@ -15,7 +15,7 @@ Create or update the project environment from the repository's `environment.yml`
 From the repository root, run:
 
 ```bash
-python scripts/compute_paper_background_sensitivity.py --offline
+python scripts/background/compute_paper_background_sensitivity.py --offline
 ```
 
 The default catalog is `data/raw/noaa_paper_background/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv`; the XRS cache is under `data/raw/noaa_paper_background/xrs_l2/`. The runner accepts the old unversioned cache layout only when its bytes match the lock, and new downloads are stored under a product-version directory. Offline mode fails before publishing outputs if any required file is missing, has a different size or checksum, or cannot be read as the expected NetCDF schema.

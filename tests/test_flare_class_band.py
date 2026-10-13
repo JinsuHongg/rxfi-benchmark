@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 import pytest
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'training'))
 from train_vit_classifier import flare_class_to_band, class_mapping_for_representation
 
 @pytest.mark.parametrize('raw,expected', [('FQ','FQ'),('A1.0','A'),('B3.4','B'),('C9.9','C'),('M2.1','M'),('X1.7','X')])

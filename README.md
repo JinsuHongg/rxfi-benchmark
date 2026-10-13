@@ -90,7 +90,7 @@ rxfi-benchmark/
 ├── configs/          # YAML experiment configurations
 ├── data/             # local derived targets and raw caches (gitignored)
 ├── docs/research/    # specifications and research notes
-├── scripts/          # generation, training, analysis, and Slurm launchers
+├── scripts/          # topic-organized scripts; see scripts/README.md for the directory map
 ├── tests/            # focused implementation checks
 ├── environment.yml   # Conda environment
 └── LICENSE           # Apache-2.0 license
@@ -117,7 +117,7 @@ After activating the project environment, run this from the repository root:
 
 ```bash
 conda activate rxfi-benchmark
-python scripts/compute_paper_background_sensitivity.py --offline
+python scripts/background/compute_paper_background_sensitivity.py --offline
 ```
 
 Offline mode requires the pinned NOAA flare catalog and all required GOES XRS Level 2 files to be present in `data/raw/noaa_paper_background/`. Their catalog release, XRS product version, sizes, and SHA-256 checksums are pinned in [`configs/paper_background_sensitivity.json`](configs/paper_background_sensitivity.json) and its [input lock](configs/paper_background_sensitivity.inputs.lock.json). To allow the script to download missing locked inputs, omit `--offline`.
@@ -129,7 +129,7 @@ Each run writes `event_backgrounds.csv`, `summary.json`, `input_manifest.json`, 
 Generate targets from immutable splits and a local NOAA flare-report CSV:
 
 ```bash
-python scripts/generate_24h_targets.py \
+python scripts/data/generate_24h_targets.py \
   --data-dir /path/to/index_data \
   --noaa-csv /path/to/noaa_flare_report.csv \
   --derived-dir data/derived
@@ -138,7 +138,7 @@ python scripts/generate_24h_targets.py \
 Validate transforms without training:
 
 ```bash
-python scripts/train_vit_quantile_regression.py \
+python scripts/training/train_vit_quantile_regression.py \
   --config configs/vit_small_224_max_peak_flux_qr.yaml \
   --validate-transforms
 ```
@@ -146,11 +146,11 @@ python scripts/train_vit_quantile_regression.py \
 After the YAML paths resolve and a CUDA GPU is available, run a representative QR experiment:
 
 ```bash
-python scripts/train_vit_quantile_regression.py \
+python scripts/training/train_vit_quantile_regression.py \
   --config configs/vit_small_224_cumulative_peak_flux_qr.yaml
 ```
 
-The scripts require CUDA. Cluster launchers are at [scripts/run_all_qr_experiments.sh](scripts/run_all_qr_experiments.sh), [scripts/project2/run_project2_preliminary.sh](scripts/project2/run_project2_preliminary.sh), and [scripts/project2/slurm/](scripts/project2/slurm/).
+The scripts require CUDA. Cluster launchers are at [scripts/launchers/run_all_qr_experiments.sh](scripts/launchers/run_all_qr_experiments.sh), [scripts/launchers/project2/run_project2_preliminary.sh](scripts/launchers/project2/run_project2_preliminary.sh), and [scripts/launchers/project2/slurm/](scripts/launchers/project2/slurm/).
 
 ## Configuration and evaluation
 

@@ -29,7 +29,7 @@ All NOAA flare events whose peak time lies in this interval are eligible. An eve
 
 ## Event-level quantities
 
-For a NOAA flare event \(i\), valid peak flux is its finite, positive XRS-B `xrsb_irrad` value \(F_i\), in W/m2. Event-level RXFI reuses the shared frozen implementation from `scripts/inspect_noaa_xrs_flare_report.py`:
+For a NOAA flare event \(i\), valid peak flux is its finite, positive XRS-B `xrsb_irrad` value \(F_i\), in W/m2. Event-level RXFI reuses the shared frozen implementation from `scripts/data/inspect_noaa_xrs_flare_report.py`:
 
 \[
 \mathrm{RXFI}_i = \frac{F_i - B_i}{B_i},
@@ -70,7 +70,7 @@ The product is NOAA/NCEI XRS L2 `avg1m` (version `v2-2-1`). The field is `xrsb_f
 
 `max_flare_class` remains `FQ` for these windows. `cumulative_peak_flux` remains zero because it is a flare-event sum, and `max_rxfi`/`cumulative_rxfi` remain zero because RXFI is never synthesized from the 1-minute background series. A window with no valid 1-minute observation retains its row with `max_peak_flux` missing, not zero. The added provenance columns are `max_peak_flux_source`, `xrsb_1min_valid_count_24h`, and `xrsb_1min_coverage_fraction_24h`.
 
-The raw NetCDF files are cached under ignored `data/raw/noaa_xrs_avg1m/`; their URL pattern and version are retained in `scripts/refine_no_flare_max_peak_flux.py`. The script writes per-window QC, coverage summaries, prior-target backups, metadata, and [a two-panel no-flare/full-log distribution figure](../../outputs/no_flare_max_peak_flux_refinement/no_flare_max_flux_distributions.svg). Of 27,664 FQ windows, 27,559 (99.62%) receive a positive physical maximum; 105 train windows lack a valid observation and remain missing. The assigned FQ maxima have median \(2.93\times10^{-8}\) W/m2 and 99th percentile \(9.53\times10^{-7}\) W/m2.
+The raw NetCDF files are cached under ignored `data/raw/noaa_xrs_avg1m/`; their URL pattern and version are retained in `scripts/data/refine_no_flare_max_peak_flux.py`. The script writes per-window QC, coverage summaries, prior-target backups, metadata, and [a two-panel no-flare/full-log distribution figure](../../outputs/no_flare_max_peak_flux_refinement/no_flare_max_flux_distributions.svg). Of 27,664 FQ windows, 27,559 (99.62%) receive a positive physical maximum; 105 train windows lack a valid observation and remain missing. The assigned FQ maxima have median \(2.93\times10^{-8}\) W/m2 and 99th percentile \(9.53\times10^{-7}\) W/m2.
 
 ## Quality-control results
 

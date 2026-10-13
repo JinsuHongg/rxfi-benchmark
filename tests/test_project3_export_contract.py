@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+import sys
 
-from scripts.project3_export_contract import (
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.exports.project3.project3_export_contract import (
     forward_transform,
     inverse_transform,
     parse_ordinal_class,

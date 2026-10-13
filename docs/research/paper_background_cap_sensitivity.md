@@ -37,7 +37,7 @@ The uncapped background exceeds the catalog peak for 4,842 events, producing neg
 - [Input manifest](../../outputs/paper_background_sensitivity/input_manifest.json): NOAA release identifiers, URLs, sizes, retrieval indicators, and checksums.
 - [Run summary](../../outputs/paper_background_sensitivity/summary.json): cohort and computation counts.
 - [Statistical comparison](../../outputs/paper_background_sensitivity/analysis_summary.json): quantiles, paired differences, correlations, coverage, and NOAA-field comparison.
-- [Calculation script](../../scripts/compute_paper_background_sensitivity.py): verifies the pinned inputs and recreates results in a new fingerprinted run directory. Use [the run guide](../../outputs/paper_background_sensitivity/README.md) for offline/online commands and environment setup.
+- [Calculation script](../../scripts/background/compute_paper_background_sensitivity.py): verifies the pinned inputs and recreates results in a new fingerprinted run directory. Use [the run guide](../../outputs/paper_background_sensitivity/README.md) for offline/online commands and environment setup.
 
 The run guide documents one legacy boundary behavior retained to reproduce these frozen rows: flare intervals are selected by their UTC start year among the calendar years touched by the event window. An interval beginning in the prior year but overlapping a window can therefore be missed at New Year's. This is not specified by the paper and should be addressed only in an explicitly versioned future recalculation.
 

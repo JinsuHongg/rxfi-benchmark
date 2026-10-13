@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
+import sys
 
 import numpy as np
 import pytest
 
-from scripts.severe_event_metrics import (
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.analysis.severe_event_metrics import (
     binary_metrics,
     binary_metrics_from_counts,
     event_binary_labels,
@@ -69,7 +75,7 @@ def test_test_labels_do_not_influence_validation_threshold() -> None:
 
 
 def test_confusion_matrix_requires_verified_class_labels() -> None:
-    from scripts.evaluate_severe_event_binary_metrics import collapse_confusion_matrix
+    from scripts.analysis.evaluate_severe_event_binary_metrics import collapse_confusion_matrix
 
     matrix = np.asarray([[5, 1], [2, 3]])
     with pytest.raises(ValueError, match="labels"):
@@ -77,7 +83,7 @@ def test_confusion_matrix_requires_verified_class_labels() -> None:
 
 
 def test_physical_thresholds_are_limited_to_max_peak_flux() -> None:
-    from scripts.evaluate_severe_event_binary_metrics import physical_threshold_allowed
+    from scripts.analysis.evaluate_severe_event_binary_metrics import physical_threshold_allowed
 
     assert physical_threshold_allowed("max_peak_flux")
     assert not physical_threshold_allowed("cumulative_peak_flux")
