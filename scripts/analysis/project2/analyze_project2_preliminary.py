@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the final Project 2 comparison from completed ordinal6 and QR artifacts.
+"""Build the Project 2 comparison from new ordinal5 and QR artifacts.
 
 The original 310-class classifier outputs are intentionally excluded.  Classification
-metrics are reported both as saved (six encoded labels) and over observed test classes
-only, because the fixed A band has zero support in the current cohort.
+metrics use the merged five-class mapping. Historical ordinal6 artifacts remain in
+their original directories and are not rewritten by this analysis.
 """
 from __future__ import annotations
 
@@ -19,10 +19,11 @@ from scipy.stats import spearmanr
 from sklearn.metrics import average_precision_score, r2_score, roc_auc_score
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / "outputs" / "project2"
+RUNS = ROOT / "outputs" / "project2"
+OUT = ROOT / "outputs" / "project2_ordinal5"
 CHANNELS = ("hmi_m", "aia131", "aia193", "all13")
-CLASS_ORDER = ("FQ", "A", "B", "C", "M", "X")
-OBSERVED = ("FQ", "B", "C", "M", "X")
+CLASS_ORDER = ("FQ/A", "B", "C", "M", "X")
+OBSERVED = CLASS_ORDER
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -54,8 +55,8 @@ def band(value: str) -> str:
 
 
 def run_dir(channel: str, task: str) -> Path:
-    suffix = "max_flare_class_ordinal6" if task == "classification" else "cumulative_peak_flux_qr"
-    return OUT / f"vit_small_224_{channel}_{suffix}"
+    suffix = "max_flare_class_ordinal5" if task == "classification" else "cumulative_peak_flux_qr"
+    return RUNS / f"vit_small_224_{channel}_{suffix}"
 
 
 def metric_row(rows: list[dict[str, str]], split: str) -> dict[str, str]:
@@ -71,14 +72,14 @@ def classification() -> tuple[list[dict], dict[str, np.ndarray], list[dict], lis
         directory = run_dir(channel, "classification")
         mapping = json.loads((directory / "class_mapping.json").read_text())
         if mapping != {name: index for index, name in enumerate(CLASS_ORDER)}:
-            raise ValueError(f"{channel}: corrected ordinal6 mapping not found: {mapping}")
+            raise ValueError(f"{channel}: five-class mapping not found: {mapping}")
         per_class = read_csv(directory / "test_per_class_metrics.csv")
         by_class = {row["class"]: row for row in per_class}
         if tuple(by_class) != CLASS_ORDER:
             raise ValueError(f"{channel}: unexpected class order {tuple(by_class)}")
         supports = {name: int(by_class[name]["support"]) for name in CLASS_ORDER}
-        if supports["A"] != 0 or any(supports[name] == 0 for name in OBSERVED):
-            raise ValueError(f"{channel}: expected only A to have zero test support: {supports}")
+        if any(supports[name] == 0 for name in OBSERVED):
+            raise ValueError(f"{channel}: expected support for all five merged classes: {supports}")
         observed_f1 = float(np.mean([as_float(by_class[name]["f1"]) for name in OBSERVED]))
         observed_balanced = float(np.mean([as_float(by_class[name]["recall"]) for name in OBSERVED]))
         saved_test = metric_row(read_csv(directory / "summary_metrics.csv"), "test")
@@ -91,13 +92,13 @@ def classification() -> tuple[list[dict], dict[str, np.ndarray], list[dict], lis
             "balanced_accuracy_observed": observed_balanced,
             "macro_f1_observed": observed_f1,
             "balanced_accuracy_saved": as_float(saved_test["balanced_accuracy"]),
-            "macro_f1_saved_six_class": as_float(saved_test["macro_f1"]),
+            "macro_f1_saved_five_class": as_float(saved_test["macro_f1"]),
             "macro_average_classes": "+".join(OBSERVED),
             **{f"{name.lower()}_recall": as_float(by_class[name]["recall"]) for name in CLASS_ORDER},
             "best_epoch": int(checkpoint["best_validation_epoch"]),
-            "best_val_macro_f1_saved_six_class": as_float(checkpoint["best_validation_macro_f1"]),
+            "best_val_macro_f1_saved_five_class": as_float(checkpoint["best_validation_macro_f1"]),
             "final_epoch": int(final["epoch"]),
-            "final_val_macro_f1_saved_six_class": as_float(final["validation_macro_f1"]),
+            "final_val_macro_f1_saved_five_class": as_float(final["validation_macro_f1"]),
         })
         for row in per_class:
             per_class_rows.append({"input": channel, **row})
@@ -106,7 +107,7 @@ def classification() -> tuple[list[dict], dict[str, np.ndarray], list[dict], lis
         config = yaml.safe_load((directory / "resolved_config.yaml").read_text())
         smoke = json.loads((directory / "smoke_test.json").read_text())
         runtime_rows.append({
-            "task": "classification_ordinal6", "input": channel,
+            "task": "classification_ordinal5", "input": channel,
             "runtime_seconds_epoch_sum": sum(as_float(row["elapsed_seconds"]) for row in history),
             "runtime_hours_epoch_sum": sum(as_float(row["elapsed_seconds"]) for row in history) / 3600,
             "runtime_source": "training_log elapsed_seconds sum (excludes setup/evaluation)",
@@ -183,9 +184,9 @@ def plot_confusion(path: Path, matrices: dict[str, np.ndarray]) -> None:
     for ax, channel in zip(axes.flat, CHANNELS):
         matrix = matrices[channel]
         image = ax.imshow(matrix, cmap="Blues")
-        for i in range(6):
-            for j in range(6): ax.text(j, i, str(matrix[i, j]), ha="center", va="center", fontsize=7)
-        ax.set(title=channel, xlabel="Predicted class", ylabel="True class", xticks=range(6), yticks=range(6), xticklabels=CLASS_ORDER, yticklabels=CLASS_ORDER)
+        for i in range(len(CLASS_ORDER)):
+            for j in range(len(CLASS_ORDER)): ax.text(j, i, str(matrix[i, j]), ha="center", va="center", fontsize=7)
+        ax.set(title=channel, xlabel="Predicted class", ylabel="True class", xticks=range(len(CLASS_ORDER)), yticks=range(len(CLASS_ORDER)), xticklabels=CLASS_ORDER, yticklabels=CLASS_ORDER)
     fig.colorbar(image, ax=axes.ravel().tolist(), shrink=.8, label="Test samples")
     fig.savefig(path, dpi=180); plt.close(fig)
 
@@ -194,8 +195,8 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     cls, matrices, per_class, cls_runtime = classification()
     qr, qr_runtime = regression()
-    write_csv(OUT / "table_classification_ordinal6_test.csv", cls)
-    write_csv(OUT / "table_classification_ordinal6_per_class_test.csv", per_class)
+    write_csv(OUT / "table_classification_ordinal5_test.csv", cls)
+    write_csv(OUT / "table_classification_ordinal5_per_class_test.csv", per_class)
     write_csv(OUT / "table_qr_cumulative_peak_flux_test.csv", qr)
     integrated = []
     for c, q in zip(cls, qr):
@@ -206,11 +207,11 @@ def main() -> None:
     strongest = max(qr[:-1], key=lambda row: row["mplus_auprc"])
     write_csv(OUT / "table_qr_all13_delta_vs_strongest_single_channel.csv", [{"strongest_single_channel": strongest["input"], **{f"delta_{metric}": qr[-1][metric] - strongest[metric] for metric in ("spearman", "r2", "mae_iqr", "mplus_auprc", "mplus_auroc", "xplus_auprc", "xplus_auroc")}}])
     labels = list(CHANNELS)
-    grouped_bar(OUT / "figure_classification_ordinal6_comparison.png", labels, [[r["macro_f1_observed"] for r in cls], [r["balanced_accuracy_observed"] for r in cls]], ["Macro-F1 (observed)", "Balanced accuracy (observed)"], "Score")
-    grouped_bar(OUT / "figure_classification_ordinal6_rare_recall.png", labels, [[r["m_recall"] for r in cls], [r["x_recall"] for r in cls]], ["M recall", "X recall"], "Recall")
+    grouped_bar(OUT / "figure_classification_ordinal5_comparison.png", labels, [[r["macro_f1_observed"] for r in cls], [r["balanced_accuracy_observed"] for r in cls]], ["Macro-F1", "Balanced accuracy"], "Score")
+    grouped_bar(OUT / "figure_classification_ordinal5_rare_recall.png", labels, [[r["m_recall"] for r in cls], [r["x_recall"] for r in cls]], ["M recall", "X recall"], "Recall")
     grouped_bar(OUT / "figure_qr_learnability_comparison.png", labels, [[r["spearman"] for r in qr], [r["mae_iqr"] for r in qr]], ["Spearman", "MAE / IQR"], "Metric value")
     grouped_bar(OUT / "figure_qr_event_ranking_comparison.png", labels, [[r["mplus_auprc"] for r in qr], [r["xplus_auprc"] for r in qr]], ["M+ AUPRC", "X+ AUPRC"], "AUPRC", [qr[0]["mplus_prevalence"], qr[0]["xplus_prevalence"]])
-    plot_confusion(OUT / "figure_classification_ordinal6_confusion_matrices.png", matrices)
+    plot_confusion(OUT / "figure_classification_ordinal5_confusion_matrices.png", matrices)
     print(json.dumps({"status": "complete", "n_test": 27980, "classification_inputs": list(CHANNELS), "qr_inputs": list(CHANNELS), "old_310_class_outputs_used": False}, indent=2))
 
 

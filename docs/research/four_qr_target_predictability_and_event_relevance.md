@@ -30,7 +30,7 @@ Logged training-epoch time totals are about 7.06 h (QR-1), 7.05 h (QR-2), 5.15 h
 
 ## Artifacts
 
-The reproducible tables, figures, artifact manifest, cohort accounting, tail metrics, and convergence/runtime audit are under `outputs/four_qr_target_analysis/`. The main tables are `table_learnability_common_cohort.csv`, `table_learnability_full_cohort.csv`, `table_event_relevance.csv`, and `table_qr_diagnostics.csv`.
+The historical tables, figures, artifact manifest, cohort accounting, tail metrics, and convergence/runtime audit are under `outputs/legacy_224x224/four_qr_target_analysis/`. They were generated from the affected 224×224 inputs and are quarantined for provenance; do not reuse them as valid results.
 
 ## Next step
 

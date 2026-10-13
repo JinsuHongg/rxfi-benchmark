@@ -19,8 +19,8 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT = ROOT / "outputs" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv"
-DEFAULT_OUTPUT = ROOT / "outputs" / "severe_event_binary_metrics" / "figures"
+DEFAULT_INPUT = ROOT / "outputs" / "legacy_224x224" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv"
+DEFAULT_OUTPUT = ROOT / "outputs" / "legacy_224x224" / "severe_event_binary_metrics" / "figures"
 
 TARGET_ORDER = ["max_peak_flux", "cumulative_peak_flux", "max_rxfi", "cumulative_rxfi"]
 TARGET_LABELS = {

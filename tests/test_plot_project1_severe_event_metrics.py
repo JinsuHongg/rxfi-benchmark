@@ -26,7 +26,7 @@ def test_loads_exact_mplus_test_metrics_and_validation_frozen_metadata() -> None
     assert SCRIPT.exists(), "proposal plotting script is missing"
     module = load_module()
 
-    metrics, prevalence = module.load_event_metrics(ROOT / "outputs" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv", "M+")
+    metrics, prevalence = module.load_event_metrics(ROOT / "outputs" / "legacy_224x224" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv", "M+")
 
     assert metrics["target"].tolist() == [
         "max_peak_flux",
@@ -62,7 +62,7 @@ def test_rejects_metrics_without_saved_validation_threshold_provenance(tmp_path:
     """The figure must not claim validation-frozen thresholds without saved evidence."""
     assert SCRIPT.exists(), "proposal plotting script is missing"
     module = load_module()
-    source = ROOT / "outputs" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv"
+    source = ROOT / "outputs" / "legacy_224x224" / "severe_event_binary_metrics" / "project1_qr_test_summary.csv"
     incomplete = pd.read_csv(source).drop(columns=["selected_threshold"])
     incomplete_path = tmp_path / "incomplete_summary.csv"
     incomplete.to_csv(incomplete_path, index=False)

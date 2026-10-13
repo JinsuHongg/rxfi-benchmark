@@ -56,6 +56,21 @@ def test_broad_class_event_mapping_and_direct_class_conversion() -> None:
     assert event_binary_labels(classes, "X+").tolist() == [0, 0, 0, 0, 0, 1]
 
 
+def test_merged_low_class_remains_non_severe_for_mplus_and_xplus() -> None:
+    classes = ["FQ/A", "B", "C", "M", "X"]
+    assert event_binary_labels(classes, "M+").tolist() == [0, 0, 0, 1, 1]
+    assert event_binary_labels(classes, "X+").tolist() == [0, 0, 0, 0, 1]
+
+
+def test_five_class_confusion_matrix_collapses_to_severe_event_metrics() -> None:
+    from scripts.analysis.evaluate_severe_event_binary_metrics import collapse_confusion_matrix
+
+    labels = ["FQ/A", "B", "C", "M", "X"]
+    matrix = np.diag([10, 8, 7, 3, 2])
+    metrics = collapse_confusion_matrix(matrix, labels, labels, "M+")
+    assert (metrics["TP"], metrics["FP"], metrics["TN"], metrics["FN"]) == (5, 0, 25, 0)
+
+
 def test_validation_threshold_ties_use_positive_f1_after_tss() -> None:
     selected, curve = select_validation_threshold(
         np.asarray([1, 0, 1, 0]), np.asarray([0.9, 0.8, 0.7, 0.6])

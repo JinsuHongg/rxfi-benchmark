@@ -18,7 +18,7 @@ All four channel conditions have the same usable cohorts: 45,034 train, 2,422 va
 
 ## Corrected classification results
 
-The first classifier used 310 detailed NOAA magnitude strings as separate classes and is excluded from the ordinal-band comparison. The corrected runs use fixed `FQ/A/B/C/M/X` mapping. A has zero support in the current test cohort, so primary macro-F1 and balanced accuracy average only observed `FQ/B/C/M/X`; the saved six-class macro-F1, which includes zero-support A as F1=0, remains available for provenance.
+The first classifier used 310 detailed NOAA magnitude strings as separate classes and is excluded from the ordinal-band comparison. The historical corrected runs use six distinct classes `FQ=0, A=1, B=2, C=3, M=4, X=5`. A has zero support in the current test cohort, so primary macro-F1 and balanced accuracy average only observed `FQ/B/C/M/X`; the saved six-class macro-F1, which includes zero-support A as F1=0, remains available for provenance. New runs use the separate five-class `FQ/A=0, B=1, C=2, M=3, X=4` mapping and write to a separate output namespace.
 
 | Input | Accuracy | Observed macro-F1 | Observed balanced accuracy | M recall | X recall |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -54,4 +54,4 @@ This is one seed, ViT-Small only, 224x224 only, and a 24-hour horizon only. The 
 
 ## Artifacts
 
-The integrated tables and figures are written under `outputs/project2/`, including `table_project2_preliminary_summary.csv`, `table_classification_ordinal6_test.csv`, `table_qr_cumulative_peak_flux_test.csv`, and the four comparison figures. The original 310-class outputs remain audit evidence only.
+The historical integrated tables and figures are retained under `outputs/legacy_224x224/project2/`, including `table_project2_preliminary_summary.csv`, `table_classification_ordinal6_test.csv`, `table_qr_cumulative_peak_flux_test.csv`, and the four comparison figures. These results used the affected 224×224 inputs and are quarantined for provenance; they must not be reused as valid results. New model outputs use the normal `outputs/project2/` path after the input pipeline is corrected. The original 310-class outputs remain audit evidence only.

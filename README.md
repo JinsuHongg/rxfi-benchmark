@@ -36,7 +36,7 @@ The implemented 24-hour targets are `max_peak_flux`, `cumulative_peak_flux`, `ma
 | Event source | NOAA/NCEI Level-2 GOES XRS Flare Report |
 | Image input | SuryaBench 13-channel, 224$\times$224 SDO Zarr images |
 | Model family | Randomly initialized `vit_small_patch16_224` |
-| Classification target | NOAA-derived `max_flare_class`, ordinal `FQ/A/B/C/M/X` |
+| Classification target | NOAA-derived `max_flare_class`, five ordinal classes `FQ/A`, `B`, `C`, `M`, `X` |
 | Regression targets | Maximum/cumulative peak flux and maximum/cumulative RXFI |
 | Quantile regression | q05/q50/q95 with pinball loss |
 | Split policy | Frozen temporal train, validation, test, and diagnostic leaky-validation splits |
@@ -62,14 +62,13 @@ The corrected ordinal classifier uses this explicit fixed mapping:
 
 | Band | Index |
 | --- | ---: |
-| `FQ` | 0 |
-| `A` | 1 |
-| `B` | 2 |
-| `C` | 3 |
-| `M` | 4 |
-| `X` | 5 |
+| `FQ` or `A*` | 0 (`FQ/A`) |
+| `B*` | 1 |
+| `C*` | 2 |
+| `M*` | 3 |
+| `X*` | 4 |
 
-The implementation maps values such as `B3.4` and `M2.1` to their bands and rejects malformed labels. The currently audited usable cohorts contain no A-band examples, but A remains in the six-band vocabulary. The original exact-magnitude classifier is retained only for provenance; use the `_ordinal6` configurations for ordinal experiments.
+The raw NOAA class remains in `max_flare_class`; classifier label encoding merges `FQ` and all A-class magnitudes into the shared `FQ/A` category. Values such as `B3.4` and `M2.1` map to their broad bands, and malformed labels are rejected. New five-class experiments use the `_ordinal5` configurations; `scripts/launchers/project2/run_project2_preliminary.sh classification` and the Slurm preliminary array select these configurations. Previously completed `_ordinal6` results and their configs are retained as historical six-class experiments and are not rewritten by this mapping change.
 
 See the [target-generation specification](docs/research/24h_target_generation.md) and [NOAA XRS/RXFI definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md) for quality rules, no-flare handling, and catalog caveats.
 
@@ -165,7 +164,7 @@ Classification reports accuracy, balanced accuracy, macro-F1, class-wise precisi
 
 - **Implemented:** NOAA/XRS target construction, the frozen RXFI definition, ViT-Small classification and QR pipelines, and Project 2 channel-comparison configurations.
 - **Documented results:** the controlled Project 1 four-target QR analysis is available in the [predictability and event-relevance report](docs/research/four_qr_target_predictability_and_event_relevance.md).
-- **Classification caution:** original Project 2 outputs used exact NOAA magnitude strings; the [ordinal-label audit](docs/research/project2_classification_label_audit.md) documents the corrected six-band configurations.
+- **Classification caution:** original Project 2 outputs used exact NOAA magnitude strings; the later six-band runs are historical. New runs use the five-class `FQ/A`, `B`, `C`, `M`, `X` mapping.
 - **TBD:** a fixed OCQR calibration/evaluation procedure is not implemented.
 
 ## Results

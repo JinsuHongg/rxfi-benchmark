@@ -2,7 +2,7 @@
 
 ## Purpose and definitions
 
-This non-training evaluation adds binary M+/X+ metrics to completed saved forecasts without changing source predictions, checkpoints, targets, or frozen splits. The corrected broad mapping is `FQ=0, A=1, B=2, C=3, M=4, X=5`; M+ means M/X and X+ means X only.
+This non-training evaluation adds binary M+/X+ metrics to completed saved forecasts without changing source predictions, checkpoints, targets, or frozen splits. The saved Project 2 classification artifacts use the historical six-class mapping `FQ=0, A=1, B=2, C=3, M=4, X=5`; new classification runs use `FQ/A=0, B=1, C=2, M=3, X=4`. M+ means M/X and X+ means X only under either mapping.
 
 Reported decision metrics are TP, FP, TN, FN, positive precision, positive recall/POD, positive F1, negative F1, binary macro-F1, balanced accuracy, specificity, FPR, FNR, TSS, and HSS. POD and positive-class recall are numerically identical here and are retained as alternate solar-forecast labels, not separate evidence. TSS is `TP/(TP+FN)-FP/(FP+TN)`; HSS is `2(TP*TN-FN*FP)/((TP+FN)(FN+TN)+(TP+FP)(FP+TN))`.
 
@@ -12,11 +12,11 @@ Only `max_peak_flux` supports raw physical thresholds: M1 `1e-5 W/m2` and X1 `1e
 
 ## Inputs and artifact boundary
 
-Project 1 used `outputs/project3_exports/{max_peak_flux,cumulative_peak_flux,max_rxfi,cumulative_rxfi}/{validation,test,leaky_validation}.csv`. Project 2 QR used the four saved `outputs/project2/vit_small_224_*_cumulative_peak_flux_qr/predictions/*_predictions.csv` sets.
+The historical Project 1 inputs are retained in `outputs/legacy_224x224/project3_exports/{max_peak_flux,cumulative_peak_flux,max_rxfi,cumulative_rxfi}/{validation,test,leaky_validation}.csv`. Project 2 QR used the four saved `outputs/legacy_224x224/project2/vit_small_224_*_cumulative_peak_flux_qr/predictions/*_predictions.csv` sets. These model-derived artifacts were produced from the affected 224×224 inputs and are quarantined; the metrics below are retained for provenance only.
 
 Corrected classification used only the four `*_max_flare_class_ordinal6/test_confusion_matrix.csv` files. Each matrix row/column label was checked against its sibling `class_mapping.json` before M+/X+ collapse. No row predictions/probabilities/logits, validation matrix, or leaky-validation matrix were saved; therefore classification severe metrics are TEST-only and classification AUROC/AUPRC/non-test severe metrics are explicitly unavailable, never filled or approximated.
 
-New outputs are in [`outputs/severe_event_binary_metrics/`](../../outputs/severe_event_binary_metrics/): machine-readable summary tables, `artifact_availability.csv`, `physical_threshold_evaluation.csv`, and exact validation threshold sweeps.
+The historical output tables are retained in [`outputs/legacy_224x224/severe_event_binary_metrics/`](../../outputs/legacy_224x224/severe_event_binary_metrics/): machine-readable summary tables, `artifact_availability.csv`, `physical_threshold_evaluation.csv`, and exact validation threshold sweeps. New evaluations write to `outputs/severe_event_binary_metrics/` after valid replacement model outputs are available.
 
 ## TEST results
 

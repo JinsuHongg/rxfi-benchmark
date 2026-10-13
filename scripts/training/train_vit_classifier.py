@@ -45,7 +45,8 @@ SOURCE_HASHES = {
     "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e",
 }
 CLASS_PATTERN = re.compile(r"^(?:FQ|[ABCMX][0-9]+(?:\.[0-9]+)?)$")
-BAND_ORDER = ("FQ", "A", "B", "C", "M", "X")
+BAND_ORDER = ("FQ/A", "B", "C", "M", "X")
+LEGACY_BAND_ORDER = ("FQ", "A", "B", "C", "M", "X")
 
 def flare_class_to_band(value: str) -> str:
     if not isinstance(value, str) or not CLASS_PATTERN.fullmatch(value):
@@ -53,16 +54,28 @@ def flare_class_to_band(value: str) -> str:
     return "FQ" if value == "FQ" else value[0]
 
 def class_mapping_for_representation(representation: str) -> dict[str, int]:
-    if representation != "ordinal_band":
+    if representation == "ordinal_band":
+        return {label: index for index, label in enumerate(BAND_ORDER)}
+    if representation == "ordinal_band6":
+        return {label: index for index, label in enumerate(LEGACY_BAND_ORDER)}
+    else:
         raise ValueError(f"Unsupported fixed representation: {representation}")
-    return {label: index for index, label in enumerate(BAND_ORDER)}
+
+def validate_class_order(config: dict[str, Any], mapping: dict[str, int]) -> None:
+    configured = config.get("class_order")
+    if configured is not None and list(configured) != list(mapping):
+        raise ValueError(f"class_order {list(configured)!r} disagrees with encoded label order {list(mapping)!r}")
 
 def encoded_label(raw: str, config: dict[str, Any]) -> str:
     representation = config.get("target_representation", "exact_class")
     if representation == "exact_class":
         if not CLASS_PATTERN.fullmatch(raw): raise ValueError(f"Invalid NOAA flare class: {raw!r}")
         return raw
-    if representation == "ordinal_band": return flare_class_to_band(raw)
+    if representation in {"ordinal_band", "ordinal_band6"}:
+        band = flare_class_to_band(raw)
+        if representation == "ordinal_band" and band in {"FQ", "A"}:
+            return "FQ/A"
+        return band
     raise ValueError(f"Unsupported target_representation: {representation}")
 PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
 ACTIVE_PRECISION = "32"
@@ -319,14 +332,17 @@ def main() -> None:
         if getattr(args, name) is not None: config[name] = getattr(args, name)
     if config.get("precision") not in PRECISIONS: raise ValueError("precision must be 32, 16-mixed, or bf16-mixed")
     ACTIVE_PRECISION = config["precision"]
+    representation = config.get("target_representation", "exact_class")
+    fixed_mapping = class_mapping_for_representation(representation) if representation in {"ordinal_band", "ordinal_band6"} else None
+    if fixed_mapping is not None:
+        validate_class_order(config, fixed_mapping)
     output = Path(config["output_dir"]); output.mkdir(parents=True, exist_ok=True)
     (output / "checkpoints").mkdir(exist_ok=True)
     if not torch.cuda.is_available(): raise RuntimeError("CUDA GPU is required for this baseline")
     seed = int(config["seed"]); random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False; torch.backends.cudnn.deterministic = True
     rows, integrity = load_rows(config)
-    representation = config.get("target_representation", "exact_class")
-    mapping = class_mapping_for_representation(representation) if representation == "ordinal_band" else {label: index for index, label in enumerate(sorted({row[config["target_column"]] for split_rows in rows.values() for row in split_rows}, key=class_sort_key))}
+    mapping = fixed_mapping if fixed_mapping is not None else {label: index for index, label in enumerate(sorted({row[config["target_column"]] for split_rows in rows.values() for row in split_rows}, key=class_sort_key))}
     labels = list(mapping)
     records, availability = attach_zarr_indices(rows, config, mapping)
     class_counts = {split: dict(sorted(Counter(record.target for record in split_records).items(), key=lambda item: mapping[item[0]])) for split, split_records in records.items()}

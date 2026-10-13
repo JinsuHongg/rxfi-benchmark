@@ -16,7 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA_VERSION = "project3_prediction_export_v1"
+SCHEMA_VERSION_V1 = "project3_prediction_export_v1"
+SCHEMA_VERSION = "project3_prediction_export_v2"
 DATASET = "surya_bench_noaa_ncei_24h"
 SOURCE_COLUMNS = (
     "split", "original_row_index", "timestamp", "target_name", "target_raw",
@@ -29,8 +30,10 @@ EXPORT_COLUMNS = (
     "max_flare_class_raw", "ordinal_class", "ordinal_class_index", "q05", "q50",
     "q95", "q05_raw", "q50_raw", "q95_raw",
 )
-CLASS_ORDER = ("FQ", "A", "B", "C", "M", "X")
+CLASS_ORDER = ("FQ/A", "B", "C", "M", "X")
 CLASS_MAPPING = {name: index for index, name in enumerate(CLASS_ORDER)}
+LEGACY_CLASS_ORDER = ("FQ", "A", "B", "C", "M", "X")
+LEGACY_CLASS_MAPPING = {name: index for index, name in enumerate(LEGACY_CLASS_ORDER)}
 PHYSICAL_SPLITS = ("validation", "leaky_validation", "test")
 SPLIT_ROLE_MAPPING = {
     "train": {"logical_role": "predictive_model_fitting"},
@@ -54,15 +57,27 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def parse_ordinal_class(label: str) -> tuple[str, int]:
-    """Return a canonical broad band and fixed ordinal index for a NOAA label."""
+def parse_ordinal_class(label: str, schema_version: str = SCHEMA_VERSION) -> tuple[str, int]:
+    """Return a canonical band and index under the requested export schema."""
     normalized = str(label).strip().upper()
+    if schema_version == SCHEMA_VERSION_V1:
+        if normalized == "FQ":
+            return "FQ", LEGACY_CLASS_MAPPING["FQ"]
+        match = NOAA_LABEL.fullmatch(normalized)
+        if not match:
+            raise ValueError(f"Invalid NOAA flare label: {label!r}")
+        ordinal = match.group(1)
+        return ordinal, LEGACY_CLASS_MAPPING[ordinal]
+    if schema_version != SCHEMA_VERSION:
+        raise ValueError(f"Unsupported schema version: {schema_version!r}")
     if normalized == "FQ":
-        return "FQ", CLASS_MAPPING["FQ"]
+        return "FQ/A", CLASS_MAPPING["FQ/A"]
     match = NOAA_LABEL.fullmatch(normalized)
     if not match:
         raise ValueError(f"Invalid NOAA flare label: {label!r}")
     ordinal = match.group(1)
+    if ordinal == "A":
+        return "FQ/A", CLASS_MAPPING["FQ/A"]
     return ordinal, CLASS_MAPPING[ordinal]
 
 
@@ -230,8 +245,13 @@ def _close(actual: float, expected: float) -> bool:
 def validate_export_directory(export_dir: Path) -> dict[str, Any]:
     export_dir = Path(export_dir)
     metadata = read_json(export_dir / "metadata.json")
-    if metadata.get("schema_version") != SCHEMA_VERSION:
-        raise ValueError(f"Unsupported schema version: {metadata.get('schema_version')!r}")
+    schema_version = metadata.get("schema_version")
+    if schema_version not in {SCHEMA_VERSION_V1, SCHEMA_VERSION}:
+        raise ValueError(f"Unsupported schema version: {schema_version!r}")
+    expected_order = LEGACY_CLASS_ORDER if schema_version == SCHEMA_VERSION_V1 else CLASS_ORDER
+    expected_mapping = LEGACY_CLASS_MAPPING if schema_version == SCHEMA_VERSION_V1 else CLASS_MAPPING
+    if metadata.get("class_order") != list(expected_order) or metadata.get("class_mapping") != expected_mapping:
+        raise ValueError(f"class metadata does not match {schema_version}")
     transform = {"name": metadata.get("target_transform"), **metadata.get("target_transform_parameters", {})}
     transform = validate_transform(transform)
     roles = metadata.get("split_role_mapping")
@@ -262,7 +282,7 @@ def validate_export_directory(export_dir: Path) -> dict[str, Any]:
                 if key in local or key in seen:
                     raise ValueError(f"{context}: duplicate or cross-split row identity {key!r}")
                 local.add(key); seen.add(key)
-                ordinal, ordinal_index = parse_ordinal_class(row["max_flare_class_raw"])
+                ordinal, ordinal_index = parse_ordinal_class(row["max_flare_class_raw"], schema_version)
                 if row["max_flare_class"] != row["max_flare_class_raw"] or row["ordinal_class"] != ordinal or int(row["ordinal_class_index"]) != ordinal_index:
                     raise ValueError(f"{context}: invalid canonical class representation")
                 raw = _finite(row, "target_raw", context)

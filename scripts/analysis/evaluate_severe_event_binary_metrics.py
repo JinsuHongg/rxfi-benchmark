@@ -22,7 +22,12 @@ EVENTS = ("M+", "X+")
 METRIC_COLUMNS = ("n", "n_positive", "n_negative", "TP", "FP", "TN", "FN", "precision_positive", "recall_positive", "POD", "F1_positive", "F1_macro", "balanced_accuracy", "specificity", "FPR", "FNR", "TSS", "HSS", "AUROC", "AUPRC")
 P1 = {target: ROOT / "outputs" / "project3_exports" / target for target in ("max_peak_flux", "cumulative_peak_flux", "max_rxfi", "cumulative_rxfi")}
 P2_QR = {condition: ROOT / "outputs" / "project2" / f"vit_small_224_{condition}_cumulative_peak_flux_qr" / "predictions" for condition in ("hmi_m", "aia131", "aia193", "all13")}
-P2_CLASS = {condition: ROOT / "outputs" / "project2" / f"vit_small_224_{condition}_max_flare_class_ordinal6" for condition in ("hmi_m", "aia131", "aia193", "all13")}
+def classification_directory(condition: str) -> Path:
+    five_class = ROOT / "outputs" / "project2" / f"vit_small_224_{condition}_max_flare_class_ordinal5"
+    return five_class if five_class.is_dir() else ROOT / "outputs" / "project2" / f"vit_small_224_{condition}_max_flare_class_ordinal6"
+
+
+P2_CLASS = {condition: classification_directory(condition) for condition in ("hmi_m", "aia131", "aia193", "all13")}
 
 
 def physical_threshold_allowed(target: str) -> bool:
@@ -30,9 +35,10 @@ def physical_threshold_allowed(target: str) -> bool:
 
 
 def collapse_confusion_matrix(matrix: np.ndarray, row_labels: list[str], column_labels: list[str], event_definition: str) -> dict[str, float | int]:
-    expected = {"FQ", "A", "B", "C", "M", "X"}
-    if set(row_labels) != expected or set(column_labels) != expected or matrix.shape != (len(row_labels), len(column_labels)):
-        raise ValueError("confusion matrix labels must exactly match the verified six-class mapping")
+    supported = ({"FQ", "A", "B", "C", "M", "X"}, {"FQ/A", "B", "C", "M", "X"})
+    row_set, column_set = set(row_labels), set(column_labels)
+    if not any(row_set == labels for labels in supported) or not any(column_set == labels for labels in supported) or matrix.shape != (len(row_labels), len(column_labels)):
+        raise ValueError("confusion matrix labels must match a verified five- or six-class mapping")
     true_positive = event_binary_labels(row_labels, event_definition)
     pred_positive = event_binary_labels(column_labels, event_definition)
     tp = fp = tn = fn = 0
@@ -109,9 +115,10 @@ def evaluate_classification(rows: list[dict[str, Any]], manifest: list[dict[str,
         matrix = np.asarray([[int(row[label]) for label in column_labels] for row in matrix_rows], dtype=int)
         for event in EVENTS:
             rows.append({"split": "test", "input_condition": condition, "event_definition": event, **collapse_confusion_matrix(matrix, row_labels, column_labels, event), "AUROC": float("nan"), "AUPRC": float("nan"), "availability_note": "AUROC/AUPRC unavailable: no saved row-level probabilities or logits", "source_confusion_matrix": str((directory / "test_confusion_matrix.csv").relative_to(ROOT))})
-        manifest.append({"family": "project2_classification", "target": "max_flare_class_ordinal6", "input_condition": condition, "artifact_type": "corrected_classification_confusion_matrix", "split": "test", "availability": "available", "reason": "verified saved six-class confusion matrix"})
+        target = "max_flare_class_ordinal5" if "FQ/A" in mapping else "max_flare_class_ordinal6"
+        manifest.append({"family": "project2_classification", "target": target, "input_condition": condition, "artifact_type": "corrected_classification_confusion_matrix", "split": "test", "availability": "available", "reason": f"verified saved {len(mapping)}-class confusion matrix"})
         for split in ("validation", "leaky_validation"):
-            manifest.append({"family": "project2_classification", "target": "max_flare_class_ordinal6", "input_condition": condition, "artifact_type": "binary_severe_metrics", "split": split, "availability": "unavailable", "reason": "no saved row-level predictions or confusion matrix"})
+            manifest.append({"family": "project2_classification", "target": target, "input_condition": condition, "artifact_type": "binary_severe_metrics", "split": split, "availability": "unavailable", "reason": "no saved row-level predictions or confusion matrix"})
 
 
 def compact(rows: list[dict[str, Any]], destination: Path, family: str) -> None:

@@ -25,8 +25,8 @@ def event_binary_labels(classes: Iterable[str], event_definition: str) -> np.nda
         raise ValueError(f"Unsupported event definition: {event_definition!r}")
     broad: list[str] = []
     for value in classes:
-        if value == "FQ":
-            broad.append("FQ")
+        if value in {"FQ", "FQ/A"}:
+            broad.append("FQ/A")
         elif isinstance(value, str) and value and value[0] in {"A", "B", "C", "M", "X"}:
             broad.append(value[0])
         else:
