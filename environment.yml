@@ -18,3 +18,5 @@ dependencies:
       - torch==2.5.1+cu124
       - torchvision==0.20.1+cu124
       - zarr==2.18.7
+      - xarray==2026.4.0
+      - h5netcdf==1.8.1

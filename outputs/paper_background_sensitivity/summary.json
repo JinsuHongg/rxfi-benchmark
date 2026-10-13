@@ -1,0 +1,37 @@
+{
+  "catalog_file": "sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+  "catalog_sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+  "l2_product": "science-quality GOES XRS L2 avg1m",
+  "l2_version": "v2-2-1",
+  "cohort_peak_time_range_utc": [
+    "2010-01-01",
+    "2025-12-31"
+  ],
+  "catalog_rows": 81680,
+  "exact_duplicate_rows_removed": 7,
+  "deduplicated_catalog_rows": 81673,
+  "events_missing_time_or_invalid_timing": 0,
+  "events_missing_source": 0,
+  "events_missing_valid_peak": 0,
+  "cohort_events": 41723,
+  "source_satellite_counts": {
+    "14": 2371,
+    "15": 18221,
+    "13": 2143,
+    "16": 16052,
+    "17": 276,
+    "18": 2533,
+    "19": 127
+  },
+  "event_status_counts": {
+    "ok": 41723
+  },
+  "uncapped_background_valid": 41723,
+  "capped_background_valid": 41220,
+  "start_sample_valid": 41718,
+  "total_uncapped_retained_minutes": 51787308,
+  "total_capped_retained_minutes": 27358751,
+  "events_uncapped_rxfi_negative": 4842,
+  "failed_l2_file_count": 0,
+  "note": "RXFI columns use project fractional-excess convention (F_peak - B)/B; NOAA background_irrad is included only for comparison."
+}

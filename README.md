@@ -16,7 +16,15 @@ For an eligible NOAA flare-report event,
 \mathrm{RXFI} = \frac{F_{\mathrm{peak}} - F_{\mathrm{background}}}{F_{\mathrm{background}}}
 ```
 
-$F_{\mathrm{peak}}$ is the one-minute GOES XRS-B peak irradiance (`xrsb_irrad`) and $F_{\mathrm{background}}$ is NOAA's event-specific pre-flare background irradiance (`background_irrad`), both in W m$^{-2}$. RXFI is dimensionless; for example, RXFI = 4 means the peak is five times the recorded background. Missing, non-finite, or non-positive inputs are invalid for RXFI calculations.
+$F_{\mathrm{peak}}$ is the one-minute GOES XRS-B peak irradiance (`xrsb_irrad`) and $F_{\mathrm{background}}$ is the selected background estimate, both in W m$^{-2}$. Project RXFI is the fractional increase above background: an RXFI of 4 means the peak is five times the background. Missing, non-finite, or non-positive inputs are invalid.
+
+### Selected paper-based background
+
+The selected event-level estimator follows Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. For flare start time $t_0$, it averages valid one-minute GOES XRS-B measurements from the same source satellite in the preceding UTC 24-hour window $[t_0-24\,\mathrm{h}, t_0)$. It excludes measurements with invalid quality, measurements within another flare's interval, and—when applying the paper's upper cap—measurements above the exact valid XRS-B measurement at $t_0$. The reproducibility calculation reports both the capped estimate and the uncapped estimate for sensitivity comparison.
+
+The paper calls its peak-to-background ratio $F_{\mathrm{peak}}/B$ “relative increase.” This project uses the fractional-excess convention $(F_{\mathrm{peak}}-B)/B$, which is one less than that ratio. NOAA's catalog `background_irrad` is retained only as a comparison field in the new paper-based event analysis. Existing generated forecast-window targets still use NOAA `background_irrad`; the event-level calculation below does not regenerate those targets. See the [method note](docs/research/paper_based_background_xray_flux_method.md) and [capped/uncapped comparison](docs/research/paper_background_cap_sensitivity.md) for details and results.
+
+The reproducibility run preserves a historical calendar-year flare-interval lookup. Near New Year's, this can omit an interval that began in the preceding year but overlaps the 24-hour window; the limitation is described in the [method note](docs/research/paper_based_background_xray_flux_method.md).
 
 The implemented 24-hour targets are `max_peak_flux`, `cumulative_peak_flux`, `max_rxfi`, and `cumulative_rxfi`. Maximum and cumulative forms distinguish the dominant eligible event from total activity in a forecast window.
 
@@ -103,6 +111,21 @@ The repository does not distribute the SuryaBench Zarr store, frozen split CSVs,
 
 ## Quick start
 
+### Reproduce the paper-based background calculation
+
+After activating the project environment, run this from the repository root:
+
+```bash
+conda activate rxfi-benchmark
+python scripts/compute_paper_background_sensitivity.py --offline
+```
+
+Offline mode requires the pinned NOAA flare catalog and all required GOES XRS Level 2 files to be present in `data/raw/noaa_paper_background/`. Their catalog release, XRS product version, sizes, and SHA-256 checksums are pinned in [`configs/paper_background_sensitivity.json`](configs/paper_background_sensitivity.json) and its [input lock](configs/paper_background_sensitivity.inputs.lock.json). To allow the script to download missing locked inputs, omit `--offline`.
+
+Each run writes `event_backgrounds.csv`, `summary.json`, `input_manifest.json`, and `run_config.json` under `outputs/paper_background_sensitivity/runs/<fingerprint>/`. The fingerprint identifies the configuration and exact inputs; the frozen root-level reference files are left unchanged. This command calculates event-level backgrounds only. It does not aggregate forecast windows or regenerate derived targets. See the [full run guide](outputs/paper_background_sensitivity/README.md) for custom paths, checksum behavior, and overwrite options.
+
+### Generate forecast-window targets
+
 Generate targets from immutable splits and a local NOAA flare-report CSV:
 
 ```bash
@@ -164,6 +187,9 @@ Training records resolved configurations, source-split hashes, row-alignment che
 
 ## Documentation
 
+- [Paper-based 24-hour background method and source](docs/research/paper_based_background_xray_flux_method.md)
+- [Paper-based capped/uncapped background comparison](docs/research/paper_background_cap_sensitivity.md)
+- [Background calculation run guide](outputs/paper_background_sensitivity/README.md)
 - [NOAA XRS catalog and RXFI definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md)
 - [Deterministic 24-hour target generation](docs/research/24h_target_generation.md)
 - [Four-target ViT-Small quantile regression](docs/research/vit_small_224_four_target_quantile_regression.md)
