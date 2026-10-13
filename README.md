@@ -36,6 +36,12 @@ The background-relative targets now use the project's selected lower-50% backgro
 
 This lower-50% estimator is a project adaptation intended to reduce residual flare elevation after event-interval masking. It does not use NOAA `background_irrad`, does not apply the paper's start-time upper cap, and does not use `POST_EVENT`. The published paper's filtered 24-hour background procedure is summarized in [the method note](docs/research/paper_based_background_xray_flux_method.md); the selected project adaptation and its caveats are documented in [lower50_background_rxfi.md](docs/research/lower50_background_rxfi.md).
 
+### Background calculation example
+
+The example below shows the calculation for the 2011-09-22 X2.1 flare. Orange dots and shading mark other flare intervals excluded from the background calculation; teal dots show the lowest 50% of eligible samples, and the dashed line marks their mean (`B50`). The purple region marks the target flare interval.
+
+![X-ray flux and lower-50% background calculation for the 2011-09-22 X2.1 flare](outputs/background_lower50/figures/x2_1_20110922_background_calculation.png)
+
 No-event windows have zero for all four continuous targets and `FQ` for `max_flare_class`. **Negative event-level RXFI values do occur:** 261 of 41,723 catalog events in the 2010–2025 source period (0.63%) have a peak below `B50`; their calculated values remain in the event-level `event_backgrounds.csv`. For the split targets, these events are excluded from `max_rxfi` and `cumulative_rxfi`, but remain in the peak-flux targets. If a window has no non-negative RXFI events, both RXFI targets are zero. QC on the 128,328 generated windows found 0 negative `max_rxfi` values and 0 negative `cumulative_rxfi` values.
 
 The current split-specific files are `data/derived/{train,validation,test,leaky_validation}_targets.csv`. Target summaries, row-alignment checks, quality counts, and figures are in [`outputs/target_generation_24h/`](outputs/target_generation_24h/). Local target CSVs are ignored by Git because they are reproducible data products.
