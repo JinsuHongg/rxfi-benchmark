@@ -18,6 +18,14 @@ The project defines relative increase as fractional excess above background:
 
 The runner also retains the existing full-mean and start-capped mean columns as comparisons; the lower-half columns are the requested new estimator.
 
+## FQ regression targets
+
+For a 24-hour forecast window with no NOAA flare-catalog peak (`FQ`), the regression task uses the maximum valid science-quality XRS-B one-minute measurement in `[t,t+24 h)` as a single window-maximum pseudo-event. If that maximum occurs at time `a`, its background is calculated from `[a-24 h-5 min,a-5 min)` with the same-satellite, positive finite, `xrsb_flag == 0`, other-flare-masked, lower-50% procedure above. The project-selected five-minute offset is a buffer before the selected maximum, not a claim that NOAA universally detects flares after five minutes.
+
+The FQ pseudo-event's relative increase is `(F*_t - B50(a)) / B50(a)`. It contributes the same value to `max_peak_flux` and `cumulative_peak_flux`, and the same RXFI value to `max_rxfi` and `cumulative_rxfi` when RXFI is non-negative. Under the project's existing negative-RXFI exclusion rule, a negative pseudo-event RXFI is omitted and both RXFI targets are zero. If the forecast window contains no valid XRS-B sample, these regression targets are missing. The FQ classification and `flare_count_24h=0` remain unchanged; the pseudo-event is not a NOAA catalog event.
+
+This FQ rule is implemented in the target generator and the four local split target CSVs. Among 27,664 FQ windows, 27,559 have a valid XRS-B maximum; 105 have no valid window measurement. Of the windows with a maximum, 31 lack eligible background samples and therefore have missing RXFI targets. Of the remaining windows, 97 have a negative calculated RXFI and 10 have RXFI exactly zero; both produce zero for the two RXFI targets. The other 27,421 FQ windows have positive RXFI. Per-split QC and the checksummed XRS inputs are recorded in [`target_quality_control.csv`](../../outputs/target_generation_24h/target_quality_control.csv) and [`target_generation_metadata.json`](../../outputs/target_generation_24h/target_generation_metadata.json). See [the target-generation specification](24h_target_generation.md).
+
 The event-level result preserves negative RXFI values as calculated for provenance. The forecast-window target generator applies an additional target rule: events with RXFI below zero are excluded from `max_rxfi` and `cumulative_rxfi`, but remain eligible for peak-flux targets. If a window has no non-negative RXFI event, both RXFI targets are set to zero. The current 2010–2025 event table contains 261 such negative values.
 
 ## Relationship to the paper

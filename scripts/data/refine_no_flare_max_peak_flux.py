@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import shutil
+import sys
 import urllib.request
 from bisect import bisect_left
 from collections import Counter
@@ -24,6 +25,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from netCDF4 import Dataset, num2date
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+try:
+    from scripts.background.paper_background.noaa import primary_secondary_satellite_for
+except ModuleNotFoundError:
+    from paper_background.noaa import primary_secondary_satellite_for
+
 SPLITS = ("train", "validation", "test", "leaky_validation")
 SOURCE_HASHES = {
     "train": "2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865",
@@ -31,17 +41,6 @@ SOURCE_HASHES = {
     "test": "40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b",
     "leaky_validation": "03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e",
 }
-# NOAA XRS science-quality ReadMe Table 11. Entries are effective at UTC.
-PRIMARY_SCHEDULE = (
-    ("2010-01-01T00:00:00", 14, None), ("2010-09-01T00:00:00", 15, 14),
-    ("2012-10-23T16:00:00", 14, 15), ("2012-11-19T16:31:00", 15, 14),
-    ("2015-01-26T16:01:00", 13, 15), ("2015-05-21T18:00:00", 14, 13),
-    ("2015-06-09T16:25:00", 15, 14), ("2016-05-03T13:00:00", 13, 14),
-    ("2016-05-12T17:30:00", 14, 13), ("2016-05-16T17:00:00", 15, 13),
-    ("2017-02-07T00:00:00", 16, 15), ("2018-06-01T00:00:00", 17, 16),
-    ("2023-01-10T00:00:00", 18, 17),
-)
-
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -52,11 +51,7 @@ def parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
 
 def source_for(timestamp: datetime) -> tuple[int, int | None]:
-    selected = PRIMARY_SCHEDULE[0]
-    for entry in PRIMARY_SCHEDULE:
-        if timestamp >= parse_time(entry[0]): selected = entry
-        else: break
-    return selected[1], selected[2]
+    return primary_secondary_satellite_for(timestamp)
 
 def url_for(satellite: int, year: int) -> str:
     filename = f"sci_xrsf-l2-avg1m_g{satellite}_y{year}_v2-2-1.nc"

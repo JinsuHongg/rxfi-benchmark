@@ -16,6 +16,31 @@ LEGACY_BASE = "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/acc
 GOES_R_BASE = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/"
 SUPPORTED_SATELLITES = {13, 14, 15, 16, 17, 18, 19}
 
+# NOAA science-quality XRS primary/secondary schedule used by the FQ XRS
+# refinement and the 24-hour target generator (effective times are UTC).
+PRIMARY_SECONDARY_SCHEDULE = (
+    ("2010-01-01T00:00:00", 14, None), ("2010-09-01T00:00:00", 15, 14),
+    ("2012-10-23T16:00:00", 14, 15), ("2012-11-19T16:31:00", 15, 14),
+    ("2015-01-26T16:01:00", 13, 15), ("2015-05-21T18:00:00", 14, 13),
+    ("2015-06-09T16:25:00", 15, 14), ("2016-05-03T13:00:00", 13, 14),
+    ("2016-05-12T17:30:00", 14, 13), ("2016-05-16T17:00:00", 15, 13),
+    ("2017-02-07T00:00:00", 16, 15), ("2018-06-01T00:00:00", 17, 16),
+    ("2023-01-10T00:00:00", 18, 17),
+)
+
+
+def primary_secondary_satellite_for(timestamp: datetime) -> tuple[int, int | None]:
+    """Return the scheduled NOAA primary and secondary XRS satellites."""
+    timestamp = timestamp.replace(tzinfo=timezone.utc) if timestamp.tzinfo is None else timestamp.astimezone(timezone.utc)
+    selected = PRIMARY_SECONDARY_SCHEDULE[0]
+    for entry in PRIMARY_SECONDARY_SCHEDULE:
+        effective = datetime.fromisoformat(entry[0]).replace(tzinfo=timezone.utc)
+        if timestamp >= effective:
+            selected = entry
+        else:
+            break
+    return selected[1], selected[2]
+
 
 class InputDownloadError(RuntimeError):
     """Raised when a NOAA input cannot be retrieved and verified."""

@@ -32,7 +32,199 @@
     }
   ],
   "tie_break": "earliest peak time, then flare_id",
-  "no_flare_convention": "all continuous targets are 0; event identifiers are empty; max_flare_class is FQ",
+  "no_flare_convention": "FQ uses the maximum valid science-quality XRS-B one-minute sample in [t,t+24h) as one pseudo-event; max and cumulative flux targets equal that value; RXFI uses lower-50% background in [a-24h-5m,a-5m), with negative RXFI excluded; no valid XRS peak yields missing continuous targets",
+  "fq_rxfi_method": "lower-50% mean of eligible same-satellite XRS-B samples in [a-24h-5m,a-5m); negative values excluded to zero",
+  "fq_background_offset_seconds_before_maximum": 300,
+  "fq_background_window": "[a-24h-5m, a-5m)",
+  "xrs_cache_dir": "data/raw/noaa_paper_background",
+  "xrs_input_lock": "configs/paper_background_sensitivity.inputs.lock.json",
+  "xrs_input_lock_sha256": "e7be55716112b84380b7d6098c2f420812d264a7d6a920f8855ba536ebd85cee",
+  "xrs_inputs_used": [
+    {
+      "satellite": 13,
+      "year": 2015,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g13/2015.nc",
+      "sha256": "aa89a8e773292c565bf0c162be3021218e56db9911839a05bba68af981ed28fe",
+      "size_bytes": 3953839,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 14,
+      "year": 2010,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g14/2010.nc",
+      "sha256": "8889095d1094fa5d24e96e08747849e1d72186875ede79fe4eba820ba34e4d53",
+      "size_bytes": 2931368,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 14,
+      "year": 2012,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g14/2012.nc",
+      "sha256": "baeef67736e5e6addf1f3f438733ce2b52c20cefc2849662ff133c50c2b7c579",
+      "size_bytes": 596652,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 14,
+      "year": 2015,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g14/2015.nc",
+      "sha256": "e68c47d6b97a113cb80e7b886a5ee99448a4a2baa5c35746d6c6351eb5420764",
+      "size_bytes": 341802,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 14,
+      "year": 2016,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g14/2016.nc",
+      "sha256": "aff9cdd5d32484d6a71ee68de41383ff9a411a75bf31fb673c049d7b297ea8d5",
+      "size_bytes": 903476,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2010,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2010.nc",
+      "sha256": "94330758625903bdf20826085863c6e1b2ca68a9cf27eedba18336cf863ff6eb",
+      "size_bytes": 1691000,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2011,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2011.nc",
+      "sha256": "dabfe2a5fae0a6a114b35f8545093b07ce8ff9c14d18a4af6ccf25ac785e0e7d",
+      "size_bytes": 4037062,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2012,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2012.nc",
+      "sha256": "9c59038db6941d20fa44039884a7cdf7f63b6b5590a156ac594908e28a479dda",
+      "size_bytes": 3950431,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2013,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2013.nc",
+      "sha256": "8daf2065d8e6cb196aadc45e73ac29b764fd48c6db9ca6a2890eb50f5bfbfe75",
+      "size_bytes": 4049555,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2014,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2014.nc",
+      "sha256": "6b7919a26ca630544726d7ee5f48ddf872ecc55b5b15a660ced4f36b3ad28a5e",
+      "size_bytes": 4317485,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2015,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2015.nc",
+      "sha256": "a4b8006e12905a1381e405c49736147974eaa40679eebbe3f3e24abfeb687af3",
+      "size_bytes": 3824220,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2016,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2016.nc",
+      "sha256": "4de8e919a46d806b092c2161e839049d697cdc5e433624842e31db9f5c35a857",
+      "size_bytes": 3203507,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 15,
+      "year": 2017,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g15/2017.nc",
+      "sha256": "83297934083e9d2943ef7ec75bb0c7e5b91fa1b714ea038fc6790abbafc435b6",
+      "size_bytes": 2967777,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 16,
+      "year": 2017,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g16/2017.nc",
+      "sha256": "b558e0345cab675691b2e08fdc261fa312a9eac30841c0a1d96496d815fcb751",
+      "size_bytes": 26392866,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 16,
+      "year": 2018,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g16/2018.nc",
+      "sha256": "b987a93c7fbd2b7cdbf2c574eee7292d4959cbbe0952817f33cb4d181698a930",
+      "size_bytes": 29123316,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 16,
+      "year": 2019,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g16/2019.nc",
+      "sha256": "e037b88d2375592b002553d5faa8160eac11c21947cc6366a10b4fc0009e0021",
+      "size_bytes": 28039493,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 17,
+      "year": 2018,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g17/2018.nc",
+      "sha256": "026c972b2109f319394ee672e85c9d6a3db3290b2ab854f7ad831af6a4462532",
+      "size_bytes": 11196514,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 17,
+      "year": 2019,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g17/2019.nc",
+      "sha256": "5e53b69d68894e57fa310816d45a9c9ef53ca2cfa5c91e7e2a12e1bdf109de47",
+      "size_bytes": 19835613,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 17,
+      "year": 2020,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g17/2020.nc",
+      "sha256": "933d66c97abe347dab52713b0043169ba3f32c9e5e0d8b90dfb8b42fcd4dd33b",
+      "size_bytes": 28929706,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 17,
+      "year": 2021,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g17/2021.nc",
+      "sha256": "37d09613ceef8f4821724afb3c638b639047d24a75fc56cf0a7f90c1dcdbfb99",
+      "size_bytes": 31207787,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 17,
+      "year": 2022,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g17/2022.nc",
+      "sha256": "102bda0d7bed6444a35bef79cbf380c4f26613bae2fe5202f210df7ec1b113f5",
+      "size_bytes": 32703249,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 18,
+      "year": 2023,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g18/2023.nc",
+      "sha256": "7f3ef5e7fe9c9daba7f4e3002b86add0ac3b34e5e5a2b2ec9e6fda13d0523f14",
+      "size_bytes": 32945885,
+      "legacy_layout": true
+    },
+    {
+      "satellite": 18,
+      "year": 2024,
+      "path": "data/raw/noaa_paper_background/xrs_l2/g18/2024.nc",
+      "sha256": "2af30d9e3b315bc60a48e05f4fd61adc292c7f914962fb506c8f38ef9daa25bb",
+      "size_bytes": 33679133,
+      "legacy_layout": true
+    }
+  ],
   "noaa_input_quality_control": {
     "duplicate_event_keys_skipped": 0,
     "invalid_peak_records_skipped": 0

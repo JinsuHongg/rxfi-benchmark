@@ -56,7 +56,22 @@ Let `E_t` be the valid-peak events and `R_t` the events with valid, non-negative
 
 `max_flare_class` is the catalog class of the maximum-peak event. `flare_count_24h` counts valid-peak events. `max_peak_flare_id` and `max_rxfi_flare_id` identify their respective maximum events, which can differ. Ties are resolved by earliest peak time, then lexical event ID.
 
-If a window has no valid-peak events, all four continuous targets and `flare_count_24h` are zero, event IDs are empty, and `max_flare_class` is `FQ`. A valid peak with unavailable or negative RXFI still contributes to the two peak-flux targets, but not to the RXFI aggregates. If no event remains in `R_t`, both RXFI targets are zero and `max_rxfi_flare_id` is empty. The current event cohort had no missing lower-50% RXFI; 261 negative-RXFI events were excluded from RXFI aggregates. Since forecast windows overlap, per-split QC counts these exclusions once per window occurrence. By construction, the generated `max_rxfi` and `cumulative_rxfi` targets are non-negative.
+### FQ regression targets
+
+`FQ` means that the forecast window contains no valid NOAA flare-catalog peak. It does not mean that XRS-B measurements are zero. For regression, an FQ window is assigned one **window-maximum pseudo-event** from the science-quality XRS-B one-minute series:
+
+1. In `[t, t+24 h)`, select the largest finite, positive `xrsb_flux` measurement with `xrsb_flag == 0`. Let its timestamp be `a` and its flux be `F*_t`. If multiple samples tie, use the earliest timestamp.
+2. Estimate its background from `[a - 24 h - 5 min, a - 5 min)`, using the same-satellite XRS-B samples, quality filter, other-catalog-flare interval masking, and lower-50% mean defined above. The 5-minute offset is a project-selected buffer before the selected maximum; it is not asserted to be a universal NOAA detection delay.
+3. Calculate the pseudo-event's relative increase as `RXFI*_t = (F*_t - B50(a)) / B50(a)`.
+4. Treat this as a one-value event set, so `max_peak_flux = cumulative_peak_flux = F*_t` and, when `RXFI*_t` is non-negative, `max_rxfi = cumulative_rxfi = RXFI*_t`. The existing rule for negative RXFI is retained: a negative value is excluded from RXFI aggregation, leaving both RXFI targets at zero.
+
+If the prediction window has no valid XRS-B samples, its FQ flux and RXFI regression targets are missing rather than imputed as zero. If the peak flux exists but the preceding interval has no eligible samples for `B50`, the two flux targets remain defined and the two RXFI targets are missing. `flare_count_24h` remains zero, `max_flare_class` remains `FQ`, and catalog event IDs remain empty: the pseudo-event is not added to the NOAA event catalog or flare count.
+
+This definition intentionally gives FQ rows continuous regression targets while preserving FQ as a no-catalog-event classification label. For flare-containing windows, the flux targets aggregate NOAA catalog event peaks; for FQ windows, they represent the maximum observed XRS-B measurement as one pseudo-event. The cumulative and maximum values are equal for FQ by definition.
+
+**Implementation status:** the target generator applies this rule to the four local derived split files. The run preserves all 128,328 source rows and their order. Of 27,664 FQ windows, 27,559 have a valid window maximum and 105 have no valid XRS-B sample; 31 additional windows have a valid maximum but no eligible `B50` background samples, so their RXFI targets are missing. Among the remaining windows, 97 calculated RXFI values are negative and excluded, while 10 equal the background exactly; both cases yield zero RXFI targets. The other 27,421 FQ windows have positive RXFI. The run's `target_quality_control.csv` and `target_generation_metadata.json` record per-split counts, XRS input checksums, and target provenance.
+
+For catalog events, a valid peak with unavailable or negative RXFI still contributes to the two peak-flux targets, but not to the RXFI aggregates. If no event remains in `R_t`, both RXFI targets are zero and `max_rxfi_flare_id` is empty. The current event cohort had no missing lower-50% RXFI; 261 negative-RXFI events were excluded from RXFI aggregates. Since forecast windows overlap, per-split QC counts these exclusions once per window occurrence. By construction, the generated catalog-event `max_rxfi` and `cumulative_rxfi` targets are non-negative.
 
 ## Current generated artifacts and quality checks
 
@@ -91,4 +106,4 @@ python scripts/data/generate_24h_targets.py \
   --output-dir outputs/target_generation_24h
 ```
 
-Replace `<fingerprint>` with the directory created by the background calculation. Omit `--offline` from that calculation only if missing pinned inputs need to be downloaded. The target generator defaults to NOAA's `background_irrad` for historical reproduction; `--rxfi-method lower50` explicitly selects the current project method and requires the event-background table.
+Replace `<fingerprint>` with the directory created by the background calculation. Omit `--offline` from that calculation only if missing pinned inputs need to be downloaded. `--rxfi-method` selects how catalog-event RXFI is calculated; `lower50` explicitly selects the current project method and requires the event-background table. FQ pseudo-event RXFI always uses the lower-50% background defined above, regardless of this option.

@@ -15,21 +15,47 @@ import hashlib
 import json
 import math
 import statistics
+import sys
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
+
+import numpy as np
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 try:
     from inspect_noaa_xrs_flare_report import calculate_rxfi, finite_positive
 except ModuleNotFoundError:
     from scripts.data.inspect_noaa_xrs_flare_report import calculate_rxfi, finite_positive
 
+try:
+    from scripts.background.paper_background.calculation import (
+        mask_merged_flare_intervals,
+        merge_flare_intervals,
+        valid_measurement_mask,
+    )
+    from scripts.background.paper_background.noaa import (
+        find_cached_input,
+        primary_secondary_satellite_for,
+        read_l2_year,
+    )
+except ModuleNotFoundError:
+    from paper_background.calculation import mask_merged_flare_intervals, merge_flare_intervals, valid_measurement_mask
+    from paper_background.noaa import find_cached_input, primary_secondary_satellite_for, read_l2_year
+
 
 DEFAULT_DATA_DIR = Path("/mnt/storage/surya/index_data")
 DEFAULT_NOAA_CSV = Path("/tmp/rxfi-noaa/sci_xrsf-l2-flrpt_geo_s19950103_e20260913_v1-0-1.csv")
 DEFAULT_DERIVED_DIR = Path("data/derived")
 DEFAULT_OUTPUT_DIR = Path("outputs/target_generation_24h")
+DEFAULT_XRS_CACHE_DIR = Path("data/raw/noaa_paper_background")
+DEFAULT_XRS_INPUT_LOCK = Path("configs/paper_background_sensitivity.inputs.lock.json")
+XRS_WINDOW_SECONDS = 24 * 60 * 60
+FQ_BACKGROUND_OFFSET_SECONDS = 5 * 60
 SPLIT_FILES = {
     "train": "train.csv",
     "validation": "validation.csv",
@@ -46,6 +72,13 @@ TARGET_COLUMNS = (
     "cumulative_rxfi",
     "max_peak_flare_id",
     "max_rxfi_flare_id",
+    "max_peak_time_utc",
+    "max_peak_satellite",
+    "max_peak_flux_source",
+    "fq_background_flux",
+    "fq_background_valid_count",
+    "fq_background_masked_count",
+    "fq_rxfi_status",
 )
 SUMMARY_QUANTILES = (0.25, 0.50, 0.75, 0.90, 0.95, 0.99)
 
@@ -57,6 +90,147 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def utc_seconds(value: datetime) -> int:
+    """Convert a catalog/split timestamp, interpreted as UTC, to epoch seconds."""
+    aware = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+    return int(aware.timestamp())
+
+
+class XrsSeriesCache:
+    """Read checksum-pinned, science-quality XRS-B annual files on demand."""
+
+    def __init__(self, cache_dir: Path, lock_path: Path):
+        self.cache_dir = cache_dir
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        self.version = lock["xrs_l2"]["version"]
+        self.locked_files = {
+            (int(item["satellite"]), int(item["year"])): item
+            for item in lock["xrs_l2"]["files"]
+        }
+        self.series: dict[tuple[int, int], tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        self.loaded_inputs: dict[tuple[int, int], dict[str, Any]] = {}
+
+    def load(self, satellite: int, year: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        key = (satellite, year)
+        if key in self.series:
+            return self.series[key]
+        locked = self.locked_files.get(key)
+        if locked is None:
+            raise FileNotFoundError(f"XRS input lock has no entry for GOES-{satellite}/{year}")
+        path, record = find_cached_input(
+            self.cache_dir,
+            satellite,
+            year,
+            self.version,
+            expected_sha256=locked["sha256"],
+            expected_size=locked.get("size_bytes"),
+        )
+        seconds, flux, flags, _ = read_l2_year(path)
+        valid = valid_measurement_mask(flux, flags)
+        result = (seconds[valid], flux[valid], flags[valid])
+        self.series[key] = result
+        self.loaded_inputs[key] = {
+            "satellite": satellite,
+            "year": year,
+            "path": str(path),
+            "sha256": record["sha256"],
+            "size_bytes": record["size_bytes"],
+            "legacy_layout": record["legacy_layout"],
+        }
+        return result
+
+    def window(self, satellite: int, start: datetime, end: datetime) -> tuple[np.ndarray, np.ndarray]:
+        """Return finite positive, quality-zero samples in [start, end)."""
+        start_seconds, end_seconds = utc_seconds(start), utc_seconds(end)
+        last_included_year = datetime.fromtimestamp(end_seconds - 1, timezone.utc).year
+        pieces: list[tuple[np.ndarray, np.ndarray]] = []
+        for year in range(datetime.fromtimestamp(start_seconds, timezone.utc).year, last_included_year + 1):
+            seconds, flux, _ = self.load(satellite, year)
+            left = int(np.searchsorted(seconds, start_seconds, side="left"))
+            right = int(np.searchsorted(seconds, end_seconds, side="left"))
+            pieces.append((seconds[left:right], flux[left:right]))
+        if not pieces:
+            return np.empty(0, dtype=np.int64), np.empty(0, dtype=float)
+        return np.concatenate([part[0] for part in pieces]), np.concatenate([part[1] for part in pieces])
+
+
+def fq_window_target(
+    cache: XrsSeriesCache,
+    timestamp: datetime,
+    primary_satellite: int,
+    secondary_satellite: int | None,
+    merged_flare_intervals: tuple[np.ndarray, np.ndarray],
+) -> tuple[dict[str, Any], dict[str, int]]:
+    """Build one FQ regression target from its window maximum and local B50."""
+    window_end = timestamp + timedelta(hours=24)
+    seconds, flux = cache.window(primary_satellite, timestamp, window_end)
+    satellite = primary_satellite
+    if len(seconds) == 0 and secondary_satellite is not None:
+        try:
+            seconds, flux = cache.window(secondary_satellite, timestamp, window_end)
+            satellite = secondary_satellite
+        except FileNotFoundError:
+            # Some secondary-satellite annual files are not required by the
+            # pinned event-background cohort and therefore are absent locally.
+            # The refinement convention treats an unavailable fallback as a
+            # missing XRS window rather than silently substituting another source.
+            seconds, flux = np.empty(0, dtype=np.int64), np.empty(0, dtype=float)
+    if len(seconds) == 0:
+        return {
+            "max_peak_flux": None,
+            "cumulative_peak_flux": None,
+            "max_rxfi": None,
+            "cumulative_rxfi": None,
+            "max_peak_time_utc": "",
+            "max_peak_satellite": f"GOES-{satellite}",
+            "max_peak_flux_source": "missing_xrsb_1min",
+            "fq_background_flux": None,
+            "fq_background_valid_count": 0,
+            "fq_background_masked_count": 0,
+            "fq_rxfi_status": "missing_window_xrsb",
+        }, {"fq_xrs_missing": 1, "fq_negative_rxfi_excluded": 0, "fq_background_missing": 0}
+
+    max_index = int(np.argmax(flux))
+    max_seconds = int(seconds[max_index])
+    max_flux = float(format(float(flux[max_index]), ".12g"))
+    peak_time = datetime.fromtimestamp(max_seconds, timezone.utc)
+    background_end = peak_time - timedelta(seconds=FQ_BACKGROUND_OFFSET_SECONDS)
+    background_start = background_end - timedelta(seconds=XRS_WINDOW_SECONDS)
+    background_seconds, background_flux = cache.window(satellite, background_start, background_end)
+    masked = mask_merged_flare_intervals(background_seconds, merged_flare_intervals)
+    retained_values = background_flux[~masked]
+    retained_count = int(len(retained_values))
+    if retained_count == 0:
+        rxfi = None
+        rxfi_status = "missing_background"
+    else:
+        lower_count = int(math.ceil(retained_count * 0.5))
+        lower_values = np.partition(retained_values, lower_count - 1)[:lower_count]
+        background = float(format(float(np.mean(lower_values)), ".12g"))
+        rxfi = float(format((max_flux - background) / background, ".12g"))
+        if rxfi < 0:
+            rxfi, rxfi_status = 0.0, "negative_excluded"
+        else:
+            rxfi_status = "ok"
+    return {
+        "max_peak_flux": max_flux,
+        "cumulative_peak_flux": max_flux,
+        "max_rxfi": rxfi,
+        "cumulative_rxfi": rxfi,
+        "max_peak_time_utc": peak_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "max_peak_satellite": f"GOES-{satellite}",
+        "max_peak_flux_source": "xrsb_1min_fq_window_max",
+        "fq_background_flux": background if retained_count else None,
+        "fq_background_valid_count": retained_count,
+        "fq_background_masked_count": int(masked.sum()),
+        "fq_rxfi_status": rxfi_status,
+    }, {
+        "fq_xrs_missing": 0,
+        "fq_negative_rxfi_excluded": int(rxfi_status == "negative_excluded"),
+        "fq_background_missing": int(rxfi_status == "missing_background"),
+    }
 
 
 def percentile(sorted_values: list[float], probability: float) -> float:
@@ -100,14 +274,21 @@ def read_lower50_rxfi(path: Path) -> dict[tuple[str, str], tuple[float, float]]:
 def read_noaa_events(
     path: Path,
     lower50_rxfi: dict[tuple[str, str], tuple[float, float]] | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
+) -> tuple[list[dict[str, Any]], dict[str, int], list[tuple[int, int, str]]]:
     """Read NOAA records with a valid peak, retaining invalid-RXFI records for QC."""
     events: list[dict[str, Any]] = []
     seen_keys: set[tuple[str, str]] = set()
+    flare_intervals: list[tuple[int, int, str]] = []
     duplicate_keys = 0
     invalid_peak_records = 0
     with path.open(encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
+            start_text, end_text = row.get("start_time", ""), row.get("end_time", "")
+            if start_text and end_text:
+                start_time = datetime.fromisoformat(start_text)
+                end_time = datetime.fromisoformat(end_text)
+                if end_time >= start_time:
+                    flare_intervals.append((utc_seconds(start_time), utc_seconds(end_time), row.get("flare_id", "").strip()))
             peak_time = datetime.fromisoformat(row["time"])
             # One extra day permits full [t, t + 24h) coverage for 2024-12-31.
             if not (2010 <= peak_time.year <= 2025):
@@ -137,11 +318,12 @@ def read_noaa_events(
                     "peak": peak,
                     "flare_id": stable_key,
                     "flare_class": row.get("flare_class", "").strip(),
+                    "satellite": source,
                     "rxfi": rxfi,
                 }
             )
     events.sort(key=lambda event: (event["time"], event["flare_id"]))
-    return events, {"duplicate_event_keys_skipped": duplicate_keys, "invalid_peak_records_skipped": invalid_peak_records}
+    return events, {"duplicate_event_keys_skipped": duplicate_keys, "invalid_peak_records_skipped": invalid_peak_records}, flare_intervals
 
 
 def select_max(events: list[dict[str, Any]], value_name: str) -> dict[str, Any]:
@@ -172,6 +354,13 @@ def target_for_window(window: list[dict[str, Any]]) -> tuple[dict[str, Any], dic
             "cumulative_rxfi": 0.0,
             "max_peak_flare_id": "",
             "max_rxfi_flare_id": "",
+            "max_peak_time_utc": "",
+            "max_peak_satellite": "",
+            "max_peak_flux_source": "noaa_flare_report",
+            "fq_background_flux": None,
+            "fq_background_valid_count": 0,
+            "fq_background_masked_count": 0,
+            "fq_rxfi_status": "",
         }, quality
     max_peak = select_max(valid_peaks, "peak")
     quality["peak_ties"] = sum(event["peak"] == max_peak["peak"] for event in valid_peaks) - 1
@@ -193,6 +382,13 @@ def target_for_window(window: list[dict[str, Any]]) -> tuple[dict[str, Any], dic
         "cumulative_rxfi": cumulative_rxfi,
         "max_peak_flare_id": max_peak["flare_id"],
         "max_rxfi_flare_id": max_rxfi_id,
+        "max_peak_time_utc": max_peak["time"].strftime("%Y-%m-%d %H:%M:%S"),
+        "max_peak_satellite": max_peak["satellite"],
+        "max_peak_flux_source": "noaa_flare_report",
+        "fq_background_flux": None,
+        "fq_background_valid_count": 0,
+        "fq_background_masked_count": 0,
+        "fq_rxfi_status": "",
     }, quality
 
 
@@ -204,13 +400,15 @@ def write_csv(path: Path, columns: list[str], rows: Iterable[dict[str, Any]]) ->
         writer.writerows(rows)
 
 
-def describe(values: list[float]) -> dict[str, float | int]:
+def describe(values: list[float | None]) -> dict[str, float | int]:
     """Calculate requested continuous-target statistics, including zero counts."""
-    sorted_values = sorted(values)
+    sorted_values = sorted(value for value in values if value is not None and math.isfinite(value))
+    if not sorted_values:
+        return {"valid_count": 0, "zero_count": 0, "missing_invalid_count": len(values)}
     return {
         "valid_count": len(sorted_values),
         "zero_count": sum(value == 0 for value in sorted_values),
-        "missing_invalid_count": 0,
+        "missing_invalid_count": len(values) - len(sorted_values),
         "mean": statistics.fmean(sorted_values),
         "median": statistics.median(sorted_values),
         "std": statistics.stdev(sorted_values) if len(sorted_values) > 1 else 0.0,
@@ -237,10 +435,13 @@ def save_svg(path: Path, parts: list[str]) -> None:
     path.write_text("\n".join(parts + ["</svg>"]), encoding="utf-8")
 
 
-def distributions_svg(path: Path, targets: dict[str, list[float]]) -> None:
+def distributions_svg(path: Path, targets: dict[str, list[float | None]]) -> None:
     """Plot log10(1+x) histograms, retaining zero values in each distribution."""
     parts = svg_header("24-hour target distributions: log10(1 + target)")
     for index, (name, values) in enumerate(targets.items()):
+        values = [value for value in values if value is not None and math.isfinite(value)]
+        if not values:
+            continue
         col, row = index % 2, index // 2
         x0, y0, width, height = 70 + col * 450, 70 + row * 190, 330, 110
         transformed = [math.log10(1 + value) for value in values]
@@ -261,7 +462,7 @@ def distributions_svg(path: Path, targets: dict[str, list[float]]) -> None:
             f'<text x="{x0+width}" y="{y0+height+16}" text-anchor="end" class="small">{upper:.3g}</text>',
             f'<text x="{x0+width}" y="{y0-10}" text-anchor="end" class="small">zero n={sum(value == 0 for value in values):,}</text>',
         ])
-    parts.append('<text x="480" y="440" text-anchor="middle" class="small">All split rows are included; zero/no-flare windows occupy the leftmost bin.</text>')
+    parts.append('<text x="480" y="440" text-anchor="middle" class="small">All valid split targets are included; FQ rows use XRS-B window maxima.</text>')
     save_svg(path, parts)
 
 
@@ -282,7 +483,7 @@ def scatter_svg(path: Path, peak_values: list[float], rxfi_values: list[float]) 
         f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top+chart_height}" class="axis"/>',
         f'<text x="{left+chart_width/2}" y="{top+chart_height+36}" text-anchor="middle" class="label">log10(1 + max_peak_flux [W/m²])</text>',
         f'<text x="20" y="{top+chart_height/2}" transform="rotate(-90 20 {top+chart_height/2})" text-anchor="middle" class="label">log10(1 + max_rxfi)</text>',
-        f'<text x="{left}" y="{top+chart_height+55}" class="small">Zero/no-flare rows: {sum(value == 0 for value in peak_values):,}</text>',
+        f'<text x="{left}" y="{top+chart_height+55}" class="small">Valid target pairs plotted: {len(peak_values):,}; FQ rows use XRS-B window maxima.</text>',
         f'<text x="{left+chart_width}" y="{top+chart_height+55}" text-anchor="end" class="small">Deterministic every-{stride}th-row display sample; all rows are summarized in tables.</text>',
     ])
     save_svg(path, parts)
@@ -302,6 +503,8 @@ def main() -> int:
     parser.add_argument("--noaa-csv", type=Path, default=DEFAULT_NOAA_CSV)
     parser.add_argument("--rxfi-method", choices=("noaa", "lower50"), default="noaa")
     parser.add_argument("--lower50-backgrounds-csv", type=Path)
+    parser.add_argument("--xrs-cache-dir", type=Path, default=DEFAULT_XRS_CACHE_DIR)
+    parser.add_argument("--xrs-input-lock", type=Path, default=DEFAULT_XRS_INPUT_LOCK)
     parser.add_argument("--derived-dir", type=Path, default=DEFAULT_DERIVED_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
@@ -311,15 +514,19 @@ def main() -> int:
         raise SystemExit("--rxfi-method lower50 requires an existing --lower50-backgrounds-csv")
     if args.rxfi_method == "noaa" and args.lower50_backgrounds_csv is not None:
         raise SystemExit("--lower50-backgrounds-csv is only valid with --rxfi-method lower50")
+    if not args.xrs_input_lock.is_file():
+        raise SystemExit(f"XRS input lock not found: {args.xrs_input_lock}")
     verify_half_open_window()
     lower50_rxfi = read_lower50_rxfi(args.lower50_backgrounds_csv) if args.rxfi_method == "lower50" else None
-    events, noaa_qc = read_noaa_events(args.noaa_csv, lower50_rxfi)
+    events, noaa_qc, flare_intervals = read_noaa_events(args.noaa_csv, lower50_rxfi)
     event_times = [event["time"] for event in events]
+    merged_flare_intervals = merge_flare_intervals(flare_intervals)
+    xrs_cache = XrsSeriesCache(args.xrs_cache_dir, args.xrs_input_lock)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     summary_rows: list[dict[str, Any]] = []
     validation_rows: list[dict[str, Any]] = []
     quality_rows: list[dict[str, Any]] = []
-    figure_targets: dict[str, list[float]] = {name: [] for name in ("max_peak_flux", "cumulative_peak_flux", "max_rxfi", "cumulative_rxfi")}
+    figure_targets: dict[str, list[float | None]] = {name: [] for name in ("max_peak_flux", "cumulative_peak_flux", "max_rxfi", "cumulative_rxfi")}
     figure_peak: list[float] = []
     figure_rxfi: list[float] = []
 
@@ -333,12 +540,29 @@ def main() -> int:
         generated_rows: list[dict[str, Any]] = []
         class_matches = class_mismatches = no_flare = multi_flare = peak_rxfi_different = both_max_ids = 0
         invalid_rxfi_events = negative_rxfi_events = peak_ties = rxfi_ties = 0
+        fq_windows = fq_windows_with_xrs = fq_windows_missing_xrs = 0
+        fq_negative_rxfi_excluded = fq_background_missing = 0
+        fq_rxfi_positive = fq_rxfi_zero = fq_rxfi_missing = 0
         mismatch_examples: list[dict[str, str]] = []
         for row_index, source_row in enumerate(source_rows):
             timestamp = datetime.fromisoformat(source_row["timestamp"])
             lo = bisect.bisect_left(event_times, timestamp)
             hi = bisect.bisect_left(event_times, timestamp + timedelta(hours=24))
             target, quality = target_for_window(events[lo:hi])
+            if target["max_flare_class"] == "FQ":
+                fq_windows += 1
+                primary, secondary = primary_secondary_satellite_for(timestamp)
+                fq_target, fq_quality = fq_window_target(
+                    xrs_cache, timestamp, primary, secondary, merged_flare_intervals
+                )
+                target.update(fq_target)
+                fq_windows_with_xrs += int(fq_quality["fq_xrs_missing"] == 0)
+                fq_windows_missing_xrs += fq_quality["fq_xrs_missing"]
+                fq_negative_rxfi_excluded += fq_quality["fq_negative_rxfi_excluded"]
+                fq_background_missing += fq_quality["fq_background_missing"]
+                fq_rxfi_missing += int(target["max_rxfi"] is None)
+                fq_rxfi_zero += int(target["max_rxfi"] == 0)
+                fq_rxfi_positive += int(target["max_rxfi"] is not None and target["max_rxfi"] > 0)
             generated = dict(source_row)
             generated["original_row_index"] = row_index
             generated.update(target)
@@ -360,9 +584,10 @@ def main() -> int:
             peak_ties += quality["peak_ties"]
             rxfi_ties += quality["rxfi_ties"]
             for name in figure_targets:
-                figure_targets[name].append(float(target[name]))
-            figure_peak.append(float(target["max_peak_flux"]))
-            figure_rxfi.append(float(target["max_rxfi"]))
+                figure_targets[name].append(target[name])
+            if target["max_peak_flux"] is not None and target["max_rxfi"] is not None:
+                figure_peak.append(float(target["max_peak_flux"]))
+                figure_rxfi.append(float(target["max_rxfi"]))
         output_path = args.derived_dir / f"{split}_targets.csv"
         write_csv(output_path, source_columns + list(TARGET_COLUMNS), generated_rows)
         after = sha256(source_path)
@@ -376,9 +601,34 @@ def main() -> int:
         ):
             raise RuntimeError(f"Row identity validation failed: {output_path}")
         validation_rows.append({"split": split, "source_rows": len(source_rows), "derived_rows": len(output_rows), "class_matches": class_matches, "class_mismatches": class_mismatches, "class_match_percent": 100 * class_matches / len(source_rows), "mismatch_examples": json.dumps(mismatch_examples), "sha256_before": before, "sha256_after": after, "row_order_and_timestamp_preserved": True})
-        quality_rows.append({"split": split, "no_flare_windows": no_flare, "no_flare_percent": 100 * no_flare / len(source_rows), "multi_flare_windows": multi_flare, "multi_flare_percent": 100 * multi_flare / len(source_rows), "windows_with_both_max_ids": both_max_ids, "different_max_peak_and_rxfi_events": peak_rxfi_different, "different_max_peak_and_rxfi_percent_of_all_rows": 100 * peak_rxfi_different / len(source_rows), "different_max_peak_and_rxfi_percent_of_comparable_windows": 100 * peak_rxfi_different / both_max_ids if both_max_ids else 0.0, "events_invalid_rxfi_across_windows": invalid_rxfi_events, "events_excluded_negative_rxfi_across_windows": negative_rxfi_events, "peak_tie_candidates": peak_ties, "rxfi_tie_candidates": rxfi_ties})
+        quality_rows.append({
+            "split": split,
+            "no_flare_windows": no_flare,
+            "no_flare_percent": 100 * no_flare / len(source_rows),
+            "multi_flare_windows": multi_flare,
+            "multi_flare_percent": 100 * multi_flare / len(source_rows),
+            "windows_with_both_max_ids": both_max_ids,
+            "different_max_peak_and_rxfi_events": peak_rxfi_different,
+            "different_max_peak_and_rxfi_percent_of_all_rows": 100 * peak_rxfi_different / len(source_rows),
+            "different_max_peak_and_rxfi_percent_of_comparable_windows": 100 * peak_rxfi_different / both_max_ids if both_max_ids else 0.0,
+            "events_invalid_rxfi_across_windows": invalid_rxfi_events,
+            "events_excluded_negative_rxfi_across_windows": negative_rxfi_events,
+            "peak_tie_candidates": peak_ties,
+            "rxfi_tie_candidates": rxfi_ties,
+            "fq_windows": fq_windows,
+            "fq_windows_with_valid_xrs_max": fq_windows_with_xrs,
+            "fq_windows_missing_xrs_max": fq_windows_missing_xrs,
+            "fq_negative_rxfi_excluded": fq_negative_rxfi_excluded,
+            "fq_windows_missing_background": fq_background_missing,
+            "fq_rxfi_positive_count": fq_rxfi_positive,
+            "fq_rxfi_zero_count": fq_rxfi_zero,
+            "fq_rxfi_missing_count": fq_rxfi_missing,
+        })
         for target_name in figure_targets:
-            stats = describe([float(row[target_name]) for row in generated_rows])
+            stats = describe([
+                None if row[target_name] is None else float(row[target_name])
+                for row in generated_rows
+            ])
             summary_rows.append({"split": split, "target": target_name, **stats})
 
     write_csv(args.output_dir / "target_summary_by_split.csv", list(summary_rows[0]), summary_rows)
@@ -404,7 +654,14 @@ def main() -> int:
             for row in validation_rows
         ],
         "tie_break": "earliest peak time, then flare_id",
-        "no_flare_convention": "all continuous targets are 0; event identifiers are empty; max_flare_class is FQ",
+        "no_flare_convention": "FQ uses the maximum valid science-quality XRS-B one-minute sample in [t,t+24h) as one pseudo-event; max and cumulative flux targets equal that value; RXFI uses lower-50% background in [a-24h-5m,a-5m), with negative RXFI excluded; no valid XRS peak yields missing continuous targets",
+        "fq_rxfi_method": "lower-50% mean of eligible same-satellite XRS-B samples in [a-24h-5m,a-5m); negative values excluded to zero",
+        "fq_background_offset_seconds_before_maximum": FQ_BACKGROUND_OFFSET_SECONDS,
+        "fq_background_window": "[a-24h-5m, a-5m)",
+        "xrs_cache_dir": str(args.xrs_cache_dir),
+        "xrs_input_lock": str(args.xrs_input_lock),
+        "xrs_input_lock_sha256": sha256(args.xrs_input_lock),
+        "xrs_inputs_used": [xrs_cache.loaded_inputs[key] for key in sorted(xrs_cache.loaded_inputs)],
         "noaa_input_quality_control": noaa_qc,
     }
     (args.output_dir / "target_generation_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
