@@ -1,6 +1,6 @@
 # rxfi-benchmark
 
-This repository contains reproducible data definitions and target-generation code for 24-hour solar-flare forecasting windows. It combines frozen temporal splits from the [NASA-IBM SuryaBench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting) with NOAA/NCEI GOES X-ray flare reports and GOES XRS Level 2 measurements.
+This repository contains reproducible data definitions and target-generation code for 24-hour solar-flare forecasting windows. It combines frozen temporal splits from the [NASA-IBM SuryaBench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting) with the NOAA/NCEI [GOES XRS Flare Report CSV](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv) and [science-quality GOES XRS data](https://www.ncei.noaa.gov/products/goes-1-15/space-weather-instruments), which includes Level 2 one-minute averages.
 
 ## Data sources and temporal splits
 
@@ -15,7 +15,7 @@ The forecasting samples use the published SuryaBench split CSVs. The split membe
 
 The four split files contain 128,328 hourly timestamps in total. They are read as immutable inputs; generated files preserve each input row, column, timestamp, and row order. Their source and SHA-256 checksums are recorded in [`target_generation_metadata.json`](outputs/target_generation_24h/target_generation_metadata.json). The source split files and generated CSVs are local data products and are not included in Git.
 
-The NOAA/NCEI GOES XRS Flare Report supplies flare event times, start/end intervals, classes, and peak irradiance. Its `background_irrad` field is retained for comparison and is **not used** in the current RXFI targets. Those backgrounds are calculated separately from science-quality GOES XRS Level 2 `avg1m` XRS-B observations (`xrsb_flux`, `xrsb_flag`, and the catalog-selected satellite). See the [catalog and XRS field definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md) and the input lock at [`configs/paper_background_sensitivity.inputs.lock.json`](configs/paper_background_sensitivity.inputs.lock.json).
+The NOAA/NCEI GOES XRS Flare Report supplies flare event times, start/end intervals, classes, and peak irradiance. Its `background_irrad` field is retained for comparison and is **not used** in the current RXFI targets. Those backgrounds are calculated separately from science-quality GOES XRS Level 2 `avg1m` XRS-B observations (`xrsb_flux`, `xrsb_flag`, and the catalog-selected satellite). The example plot uses the [GOES-15 2011 Level 2 one-minute XRS file](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2011_v2-2-1.nc). Full input URLs and SHA-256 checksums are recorded in [`configs/paper_background_sensitivity.inputs.lock.json`](configs/paper_background_sensitivity.inputs.lock.json). See the [catalog and XRS field definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md) for details.
 
 ## Forecast-window targets
 
@@ -30,9 +30,9 @@ For every split timestamp `t`, events with catalog peak times in the half-open i
 
 The background-relative targets now use the project's selected lower-50% background. For each flare, event background `B50` is calculated from same-satellite, positive finite XRS-B `avg1m` samples in the 24 hours before flare start. Samples with `xrsb_flag != 0` and samples inside another catalog flare's start–end interval are removed. The arithmetic mean of the lowest `ceil(N/2)` remaining measurements is `B50`. RXFI is the fractional increase above that background:
 
-\[
+$$
 \mathrm{RXFI}_{50}=\frac{F_{\mathrm{peak}}-B_{50}}{B_{50}}.
-\]
+$$
 
 This lower-50% estimator is a project adaptation intended to reduce residual flare elevation after event-interval masking. It does not use NOAA `background_irrad`, does not apply the paper's start-time upper cap, and does not use `POST_EVENT`. The published paper's filtered 24-hour background procedure is summarized in [the method note](docs/research/paper_based_background_xray_flux_method.md); the selected project adaptation and its caveats are documented in [lower50_background_rxfi.md](docs/research/lower50_background_rxfi.md).
 
