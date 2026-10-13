@@ -1,107 +1,94 @@
-# Deterministic 24-Hour Flare Target Generation
+# Deterministic 24-hour Flare Target Generation
 
-## Purpose
+## Source splits and provenance
 
-This document defines four continuous Project-1 targets from the same frozen 24-hour forecasting windows. They express two complementary axes without selecting a downstream learning formulation: absolute versus background-relative magnitude, and maximum versus cumulative activity.
+The target generator reads the four published CSV files from the [NASA-IBM SuryaBench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting/tree/main). Their temporal membership follows the dataset's split policy: train covers February 15–December 31 in 2010–2019; validation covers January 15–31 in 2010–2019; leaky validation covers January 1–14 and February 1–14 in 2010–2019; test covers 2020–2024. The retrieved source files contain 128,328 rows, matching the documented split sizes.
 
-## Frozen sample splits
+| Split | Source rows | SHA-256 |
+| --- | ---: | --- |
+| Train | 74,760 | `2f3a40b2074ac8984593d53df4f81434ec91f34bb7629066252f3e0bcd8e37b7` |
+| Validation | 3,672 | `b4e29566e786c45693a5d78eef73c1f05f6e19fb87f6e2f255dbfa5b81cb256d` |
+| Test | 43,848 | `158901e21da5a87720b5db1200dbd4765b7ad7dc692157f9bf87f2e8eeefdf58` |
+| Leaky validation | 6,048 | `dfe13927a3afc0780831100e5810ae29f750acbe7e951338dada3ecef3da68a6` |
 
-`train.csv`, `validation.csv`, `test.csv`, and `leaky_validation.csv` under `/mnt/storage/surya/index_data` are immutable inputs. Their temporal membership follows the [NASA-IBM SuryaBench flare-forecasting dataset split on Hugging Face](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting/tree/main): hourly 24-hour rolling-window samples; train on February 15–December 31 and validation on January 15–31 in 2010–2019; leaky validation on January 1–14 and February 1–14 in 2010–2019; and test on all dates in 2020–2024. The repository's saved split audit agrees with those temporal rules and the dataset-card total of 128,328 rows. Source split CSVs are not included here, so exact row-level identity with the live Hugging Face files is not asserted. The generator reads the local split files only and writes separate target files under `data/derived/`. Every output contains `original_row_index`, preserves source row order and timestamp exactly, and retains all source columns.
+Checksums identify the exact retrieved files used by this run. The generator does not change its inputs; each target CSV preserves source columns, row order, and timestamps and appends `original_row_index` plus generated target columns. The source split files and derived targets are local, gitignored data products.
 
-| Split | Source rows | Derived rows | SHA-256 unchanged | Row identity preserved |
-| --- | ---: | ---: | --- | --- |
-| Train | 74,760 | 74,760 | Yes | Yes |
-| Validation | 3,672 | 3,672 | Yes | Yes |
-| Test | 43,848 | 43,848 | Yes | Yes |
-| Leaky validation | 6,048 | 6,048 | Yes | Yes |
+## Forecast window and event source
 
-The derived target files are intentionally gitignored because they are reproducible local data products (about 17 MB total), not source code or hand-maintained research artifacts.
-
-## Confirmed forecasting-window contract
-
-For every frozen sample timestamp \(t\), the confirmed dataset contract uses the half-open future window:
+For each sample timestamp (t), the forecast window is the half-open interval:
 
 \[
-[t, t + 24\ \mathrm{hours}).
+[t,t+24\ \mathrm{hours}).
 \]
 
-All NOAA flare events whose peak time lies in this interval are eligible. An event exactly at \(t+24\) is excluded; a built-in assertion verifies this `bisect_left` boundary behavior. Windows may cross day, month, and year boundaries. The 2025 NOAA data present in the mission file provide full 24-hour coverage for 2024-12-31 test timestamps.
+An event at exactly (t+24\) hours is excluded. The generator uses finite, positive NOAA/NCEI GOES XRS Flare Report `xrsb_irrad` peaks whose catalog peak time falls in the window. The source catalog is pinned in [`configs/background_lower50.json`](../../configs/background_lower50.json). The full event-level lower-50% background results are joined by catalog peak time and `flare_id`; the generator also checks that the event peak values agree.
 
-## Event-level quantities
+## Event background and RXFI
 
-**Background-version note:** the frozen target files described here were generated with the historical NOAA `background_irrad` event field as `B_i`. The project has since selected the lower-50% filtered 24-hour estimator for future RXFI target regeneration; those split-level target files have not yet been regenerated. The current lower-50% result is event-level only and is documented in [lower50_background_rxfi.md](lower50_background_rxfi.md). The equations below describe the committed historical target generation and must not be read as the new estimator's outputs.
-
-For a NOAA flare event \(i\), valid peak flux is its finite, positive XRS-B `xrsb_irrad` value \(F_i\), in W/m2. In the historical target generation, event-level RXFI reuses the shared implementation from `scripts/data/inspect_noaa_xrs_flare_report.py`:
+For an event starting at (t_0), the selected project background (B_{50}) is calculated from same-satellite GOES XRS Level 2 `avg1m` XRS-B measurements in the preceding 24-hour interval ([t_0-24\,\mathrm{h},t_0)). The event-level calculation keeps positive, finite samples with `xrsb_flag == 0`, removes samples within another catalog flare's inclusive start–end interval, sorts the remaining (N) samples by flux, and takes the arithmetic mean of the lowest \(\lceil N/2\rceil\):
 
 \[
-\mathrm{RXFI}_i = \frac{F_i - B_i}{B_i},
+B_{50}=\operatorname{mean}(\operatorname{lowest}_{\lceil N/2\rceil}(X_1,\ldots,X_N)).
 \]
 
-where \(B_i\) is NOAA `background_irrad`. Peak-flux aggregation accepts all events with valid \(F_i\); RXFI aggregation accepts only events with valid RXFI. The source CSV's `flare_id` is stored as the event identifier; if it is blank, the deterministic fallback key is `time|xrsb_irrad_source`.
+RXFI is the fractional increase above this background:
 
-## Sample-level targets
+\[
+\mathrm{RXFI}_{50}=\frac{F_{\mathrm{peak}}-B_{50}}{B_{50}}.
+\]
 
-For valid-peak events \(E_t\) in a sample window and valid-RXFI events \(R_t \subseteq E_t\), the generated fields are:
+This is a project adaptation of the background discussion in Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. It is not the paper's full arithmetic-mean estimator: it uses the lower half to reduce residual elevated measurements after other-flare masking, does not apply the paper's start-time upper cap, and does not use `POST_EVENT`. NOAA `background_irrad` is not used in the current split-level RXFI targets.
+
+The current background run contains 41,723 events from 2010-01-01 through 2025-12-31. All 41,723 have a valid lower-50% background and RXFI. The event-level table preserves negative RXFI values for provenance; 261 are negative because their peak flux is below the estimated background. For forecast-window target generation, those negative events are excluded from RXFI aggregation while remaining eligible for the peak-flux targets. See [lower50_background_rxfi.md](lower50_background_rxfi.md) for event-level calculation details and limitations.
+
+## Generated targets
+
+Let `E_t` be the valid-peak events and `R_t` the events with valid, non-negative RXFI in a forecast window:
 
 \[
 \begin{aligned}
-\texttt{max_peak_flux} &= \max_{i \in E_t} F_i, \\
-\texttt{cumulative_peak_flux} &= \sum_{i \in E_t} F_i, \\
-\texttt{max_rxfi} &= \max_{i \in R_t} \mathrm{RXFI}_i, \\
-\texttt{cumulative_rxfi} &= \sum_{i \in R_t} \mathrm{RXFI}_i.
+\texttt{max\_peak\_flux} &= \max_{i\in E_t} F_i, \\
+\texttt{cumulative\_peak\_flux} &= \sum_{i\in E_t} F_i, \\
+\texttt{max\_rxfi} &= \max_{i\in R_t} \mathrm{RXFI}_{50,i}, \\
+\texttt{cumulative\_rxfi} &= \sum_{i\in R_t} \mathrm{RXFI}_{50,i}.
 \end{aligned}
 \]
 
-`max_flare_class` is the NOAA `flare_class` of the event selected by `max_peak_flux`; it is categorical. All four aggregate quantities remain continuous and are not binned. `flare_count_24h` counts valid-peak events. `max_peak_flare_id` and `max_rxfi_flare_id` retain the selected identifiers independently because they can identify different events.
+`max_flare_class` is the catalog class of the maximum-peak event. `flare_count_24h` counts valid-peak events. `max_peak_flare_id` and `max_rxfi_flare_id` identify their respective maximum events, which can differ. Ties are resolved by earliest peak time, then lexical event ID.
 
-## No-flare and tie conventions
+If a window has no valid-peak events, all four continuous targets and `flare_count_24h` are zero, event IDs are empty, and `max_flare_class` is `FQ`. A valid peak with unavailable or negative RXFI still contributes to the two peak-flux targets, but not to the RXFI aggregates. If no event remains in `R_t`, both RXFI targets are zero and `max_rxfi_flare_id` is empty. The current event cohort had no missing lower-50% RXFI; 261 negative-RXFI events were excluded from RXFI aggregates. Since forecast windows overlap, per-split QC counts these exclusions once per window occurrence. By construction, the generated `max_rxfi` and `cumulative_rxfi` targets are non-negative.
 
-If a window has no valid-peak events, `flare_count_24h = 0`, both identifier fields are empty, and `max_flare_class = FQ`. `cumulative_peak_flux`, `max_rxfi`, and `cumulative_rxfi` remain zero. The exception for the continuous maximum is documented below. If a window has peak-flux events but none with valid RXFI, peak targets are still aggregated while both RXFI targets are zero and `max_rxfi_flare_id` is empty.
+## Current generated artifacts and quality checks
 
-Ties are not discarded. For maximum peak flux and maximum RXFI separately, the deterministic winner is the earliest peak time; remaining ties use lexical stable event ID order. The generator reports the number of tied candidate windows.
+Split-specific target files are in `data/derived/{train,validation,test,leaky_validation}_targets.csv`. Each has the same row count as its source split, and row order and timestamps were verified. Detailed summaries and QC are stored in `outputs/target_generation_24h/`:
 
-## No-flare continuous max-flux refinement
+- `target_generation_metadata.json`: catalog/background checksums, selected RXFI method, split counts, and source split checksums.
+- `target_summary_by_split.csv`: target distribution summaries by split.
+- `target_quality_control.csv`: no-flare and multi-flare windows, RXFI exclusions, and tie counts.
+- `target_validation_against_existing_labels.csv`: regenerated NOAA class versus the source `max_goes_class` label comparison.
+- Two SVG figures showing target distributions and the maximum-flux/RXFI relationship.
 
-`max_peak_flux` is now defined for every valid continuous window without changing the confirmed half-open window or event-based targets. For a window with one or more flare-summary events it remains the maximum NOAA flare-report `xrsb_irrad`. For an `FQ` window, it is instead the maximum valid NOAA/NCEI science-quality XRS 1-minute average:
+The regenerated NOAA class strings do not overwrite source labels. Agreement is 21.29% for train, 15.03% for validation, 80.54% for test, and 19.49% for leaky validation. Earlier-period differences are consistent with the documented distinction between historical labels and the current science-quality catalog; the comparison is a compatibility diagnostic, not a change to split membership.
 
-\[
-\texttt{max\_peak\_flux} = \max_{\tau \in [t,t+24\mathrm{h})}\mathrm{XRSB}_{1\mathrm{min}}(\tau).
-\]
+## Reproduction
 
-The product is NOAA/NCEI XRS L2 `avg1m` (version `v2-2-1`). The field is `xrsb_flux`, the primary 1–8 Å (0.1–0.8 nm) XRS-B irradiance in W/m2. Valid values are finite and positive with `xrsb_flag == 0`; fill values, nonpositive values, and every nonzero quality flag are excluded. NOAA's published primary/secondary XRS transition table determines the source at the sample timestamp (GOES-14/15/13/16/17/18 across this study); the configured secondary is queried only if the primary has no valid observations in the full window. Satellites are never averaged.
+Run from the repository root with the `rxfi-benchmark` Conda environment. Download the source splits from the Hugging Face dataset into `data/raw/surya_bench_splits/`. Ensure the checksum-pinned NOAA catalog and required XRS files are present in `data/raw/noaa_paper_background/`, then calculate event backgrounds:
 
-`max_flare_class` remains `FQ` for these windows. `cumulative_peak_flux` remains zero because it is a flare-event sum, and `max_rxfi`/`cumulative_rxfi` remain zero because RXFI is never synthesized from the 1-minute background series. A window with no valid 1-minute observation retains its row with `max_peak_flux` missing, not zero. The added provenance columns are `max_peak_flux_source`, `xrsb_1min_valid_count_24h`, and `xrsb_1min_coverage_fraction_24h`.
+```bash
+python scripts/background/compute_paper_background_sensitivity.py \
+  --config configs/background_lower50.json --offline
+```
 
-The raw NetCDF files are cached under ignored `data/raw/noaa_xrs_avg1m/`; their URL pattern and version are retained in `scripts/data/refine_no_flare_max_peak_flux.py`. The script writes per-window QC, coverage summaries, prior-target backups, metadata, and [a two-panel no-flare/full-log distribution figure](../../outputs/no_flare_max_peak_flux_refinement/no_flare_max_flux_distributions.svg). Of 27,664 FQ windows, 27,559 (99.62%) receive a positive physical maximum; 105 train windows lack a valid observation and remain missing. The assigned FQ maxima have median \(2.93\times10^{-8}\) W/m2 and 99th percentile \(9.53\times10^{-7}\) W/m2.
+Use the resulting `event_backgrounds.csv` path as input to target generation:
 
-## Quality-control results
+```bash
+python scripts/data/generate_24h_targets.py \
+  --data-dir data/raw/surya_bench_splits \
+  --noaa-csv data/raw/noaa_paper_background/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv \
+  --rxfi-method lower50 \
+  --lower50-backgrounds-csv outputs/background_lower50/runs/<fingerprint>/event_backgrounds.csv \
+  --derived-dir data/derived \
+  --output-dir outputs/target_generation_24h
+```
 
-The mission catalog produced 41,723 valid-peak events over the loaded 2010-2025 coverage. Its duplicate stable-key and invalid-peak counts are recorded in [target_generation_metadata.json](../../outputs/target_generation_24h/target_generation_metadata.json). Across sample windows, invalid-RXFI event occurrences were 48 in train and zero in the other three splits; these are retained for peak aggregation and excluded only from RXFI aggregation.
-
-| Split | No-flare windows | Multi-flare windows | Different peak/RXFI event, among comparable windows | Peak ties |
-| --- | ---: | ---: | ---: | ---: |
-| Train | 23.29% | 71.30% | 25.73% | 35 |
-| Validation | 17.10% | 77.72% | 23.82% | 0 |
-| Test | 19.03% | 76.38% | 25.68% | 40 |
-| Leaky validation | 21.13% | 72.24% | 26.33% | 0 |
-
-The exact numeric results, including complete target statistics, quality counts, and mismatch examples, are written to `outputs/target_generation_24h/`.
-
-## Validation against existing labels
-
-Exact `max_flare_class` string agreement with the existing `max_goes_class` labels is 21.29% (train), 15.03% (validation), 80.54% (test), and 19.49% (leaky validation). These comparisons are retained as validation results and do not overwrite the existing labels.
-
-The dominant mismatch pattern in the older splits is a science-quality NOAA class with a different numeric magnitude than the supplied historical label (for example, `B2.8` versus `B3.7`, or `B8.3` versus `C1.1`). This is consistent with the earlier documented calibration/version distinction between historical operational labels and NOAA's reprocessed science-quality catalog. Test mismatches include windows labelled `A1.0` in the source but with no valid NOAA flare-report event; the report's catalog threshold/coverage must be considered when interpreting those rows. The target-generation contract itself is confirmed; this comparison evaluates compatibility with the legacy labels, not split membership or event-window selection.
-
-## Target summaries and figures
-
-`target_summary_by_split.csv` reports valid count, zero count, mean, median, standard deviation, Q1/Q3, p90/p95/p99, and maximum for each target and split. The two proposal-oriented figures use `log10(1 + value)` only for display and retain zero/no-flare windows:
-
-- [Four target distributions](../../outputs/target_generation_24h/figure_24h_target_distributions.svg)
-- [Maximum peak flux versus maximum RXFI](../../outputs/target_generation_24h/figure_max_peak_flux_vs_max_rxfi.svg)
-
-## Project-1 interpretation and open questions
-
-The targets deliberately span two conceptual axes: `max_peak_flux`/`cumulative_peak_flux` measure absolute X-ray activity, whereas `max_rxfi`/`cumulative_rxfi` measure background-relative activity; maximum and cumulative forms distinguish a dominant event from total 24-hour activity. This generation work makes no superiority claim and does not select target bins, model architecture, or uncertainty-quantification design.
-
-Open questions for the next stage are restricted to downstream experimental design: whether to predict continuous or transformed targets, how to handle the documented legacy-label compatibility differences, and what validation-only target transformations—if any—are justified.
+Replace `<fingerprint>` with the directory created by the background calculation. Omit `--offline` from that calculation only if missing pinned inputs need to be downloaded. The target generator defaults to NOAA's `background_irrad` for historical reproduction; `--rxfi-method lower50` explicitly selects the current project method and requires the event-background table.

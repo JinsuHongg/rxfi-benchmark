@@ -1,8 +1,36 @@
 {
-  "noaa_csv": "/tmp/rxfi-noaa/sci_xrsf-l2-flrpt_geo_s19950103_e20260913_v1-0-1.csv",
+  "noaa_csv": "data/raw/noaa_paper_background/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv",
+  "noaa_csv_sha256": "351eda39efea3f5eb4d394b91956d1c08e7f63993c41d09d686e5ad2983cbbea",
+  "rxfi_method": "lower50",
+  "lower50_backgrounds_csv": "outputs/background_lower50/runs/a7e506fa45a732128ad3192cc023661000c6dab37f9633c320b21dab4ff1cb55/event_backgrounds.csv",
+  "lower50_backgrounds_csv_sha256": "9620f16ce4c4af5922e1c86de8a29f6ae94c65362ade05acccf46b823922edc9",
   "window": "[t, t + 24 hours)",
   "peak_event_eligibility": "finite positive xrsb_irrad",
-  "rxfi_event_eligibility": "frozen calculate_rxfi(xrsb_irrad, background_irrad) is valid",
+  "rxfi_event_eligibility": "finite lower-50% RXFI from event_backgrounds.csv matched by peak time and flare_id; negative RXFI events are excluded from max_rxfi and cumulative_rxfi",
+  "events_without_valid_rxfi": 0,
+  "events_excluded_negative_rxfi": 261,
+  "split_inputs": [
+    {
+      "split": "train",
+      "source_rows": 74760,
+      "sha256": "2f3a40b2074ac8984593d53df4f81434ec91f34bb7629066252f3e0bcd8e37b7"
+    },
+    {
+      "split": "validation",
+      "source_rows": 3672,
+      "sha256": "b4e29566e786c45693a5d78eef73c1f05f6e19fb87f6e2f255dbfa5b81cb256d"
+    },
+    {
+      "split": "test",
+      "source_rows": 43848,
+      "sha256": "158901e21da5a87720b5db1200dbd4765b7ad7dc692157f9bf87f2e8eeefdf58"
+    },
+    {
+      "split": "leaky_validation",
+      "source_rows": 6048,
+      "sha256": "dfe13927a3afc0780831100e5810ae29f750acbe7e951338dada3ecef3da68a6"
+    }
+  ],
   "tie_break": "earliest peak time, then flare_id",
   "no_flare_convention": "all continuous targets are 0; event identifiers are empty; max_flare_class is FQ",
   "noaa_input_quality_control": {

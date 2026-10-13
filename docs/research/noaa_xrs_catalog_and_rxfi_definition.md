@@ -2,9 +2,9 @@
 
 ## 1. Purpose
 
-This note documents the NOAA/NCEI **GOES Flare Report** selected for Project 1 as the canonical source of flare peak and background X-ray irradiances. It freezes the initial Relative X-ray Flux Increase (RXFI) construction only; it does not specify forecasting models, data splits, or later thesis projects.
+This note documents the NOAA/NCEI **GOES Flare Report** as the canonical source of flare timing, peak X-ray irradiance, and class. It records NOAA's `background_irrad` field and the project's historical RXFI construction; the current split-level targets use the lower-50% XRS estimator documented separately.
 
-**Status:** the NOAA-`background_irrad` RXFI below is the historical definition used by the currently frozen forecast-window target files. The project has since selected the lower-50% filtered 24-hour XRS estimator for future target regeneration; see [lower50_background_rxfi.md](lower50_background_rxfi.md). NOAA's field remains useful for comparison and for interpreting existing labels.
+**Status:** NOAA-`background_irrad` RXFI below is retained as a historical definition and comparison. The current split-level target files use the selected lower-50% filtered 24-hour XRS estimator; see [lower50_background_rxfi.md](lower50_background_rxfi.md) and [24h_target_generation.md](24h_target_generation.md).
 
 ## 2. NOAA data source
 

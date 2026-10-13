@@ -65,66 +65,66 @@
 <text x="850" y="196" text-anchor="end" class="small">0.000841</text>
 <text x="850" y="60" text-anchor="end" class="small">zero n=27,664</text>
 <rect x="70.0" y="260.0" width="12.2" height="110.0" class="bar"/>
-<rect x="83.2" y="344.8" width="12.2" height="25.2" class="bar"/>
-<rect x="96.4" y="328.0" width="12.2" height="42.0" class="bar"/>
-<rect x="109.6" y="315.9" width="12.2" height="54.1" class="bar"/>
-<rect x="122.8" y="317.1" width="12.2" height="52.9" class="bar"/>
-<rect x="136.0" y="320.1" width="12.2" height="49.9" class="bar"/>
-<rect x="149.2" y="327.8" width="12.2" height="42.2" class="bar"/>
-<rect x="162.4" y="336.8" width="12.2" height="33.2" class="bar"/>
-<rect x="175.6" y="343.0" width="12.2" height="27.0" class="bar"/>
-<rect x="188.8" y="350.6" width="12.2" height="19.4" class="bar"/>
-<rect x="202.0" y="354.1" width="12.2" height="15.9" class="bar"/>
-<rect x="215.2" y="358.0" width="12.2" height="12.0" class="bar"/>
-<rect x="228.4" y="361.0" width="12.2" height="9.0" class="bar"/>
-<rect x="241.6" y="365.3" width="12.2" height="4.7" class="bar"/>
-<rect x="254.8" y="366.5" width="12.2" height="3.5" class="bar"/>
-<rect x="268.0" y="367.0" width="12.2" height="3.0" class="bar"/>
-<rect x="281.2" y="368.4" width="12.2" height="1.6" class="bar"/>
-<rect x="294.4" y="368.8" width="12.2" height="1.2" class="bar"/>
-<rect x="307.6" y="369.4" width="12.2" height="0.6" class="bar"/>
-<rect x="320.8" y="369.8" width="12.2" height="0.2" class="bar"/>
+<rect x="83.2" y="358.5" width="12.2" height="11.5" class="bar"/>
+<rect x="96.4" y="345.7" width="12.2" height="24.3" class="bar"/>
+<rect x="109.6" y="330.2" width="12.2" height="39.8" class="bar"/>
+<rect x="122.8" y="322.3" width="12.2" height="47.7" class="bar"/>
+<rect x="136.0" y="320.9" width="12.2" height="49.1" class="bar"/>
+<rect x="149.2" y="326.7" width="12.2" height="43.3" class="bar"/>
+<rect x="162.4" y="331.5" width="12.2" height="38.5" class="bar"/>
+<rect x="175.6" y="337.0" width="12.2" height="33.0" class="bar"/>
+<rect x="188.8" y="345.8" width="12.2" height="24.2" class="bar"/>
+<rect x="202.0" y="347.9" width="12.2" height="22.1" class="bar"/>
+<rect x="215.2" y="352.4" width="12.2" height="17.6" class="bar"/>
+<rect x="228.4" y="359.3" width="12.2" height="10.7" class="bar"/>
+<rect x="241.6" y="359.9" width="12.2" height="10.1" class="bar"/>
+<rect x="254.8" y="364.5" width="12.2" height="5.5" class="bar"/>
+<rect x="268.0" y="365.4" width="12.2" height="4.6" class="bar"/>
+<rect x="281.2" y="366.0" width="12.2" height="4.0" class="bar"/>
+<rect x="294.4" y="367.5" width="12.2" height="2.5" class="bar"/>
+<rect x="307.6" y="368.5" width="12.2" height="1.5" class="bar"/>
+<rect x="320.8" y="369.0" width="12.2" height="1.0" class="bar"/>
 <rect x="334.0" y="369.8" width="12.2" height="0.2" class="bar"/>
-<rect x="347.2" y="370.0" width="12.2" height="0.0" class="bar"/>
-<rect x="360.4" y="369.9" width="12.2" height="0.1" class="bar"/>
+<rect x="347.2" y="369.7" width="12.2" height="0.3" class="bar"/>
+<rect x="360.4" y="369.7" width="12.2" height="0.3" class="bar"/>
 <rect x="373.6" y="370.0" width="12.2" height="0.0" class="bar"/>
 <rect x="386.8" y="369.9" width="12.2" height="0.1" class="bar"/>
 <line x1="70" y1="370" x2="400" y2="370" class="axis"/>
 <line x1="70" y1="260" x2="70" y2="370" class="axis"/>
 <text x="70" y="250" class="label">max_rxfi</text>
 <text x="70" y="386" class="small">0</text>
-<text x="400" y="386" text-anchor="end" class="small">3.3</text>
-<text x="400" y="250" text-anchor="end" class="small">zero n=27,707</text>
+<text x="400" y="386" text-anchor="end" class="small">3.31</text>
+<text x="400" y="250" text-anchor="end" class="small">zero n=27,689</text>
 <rect x="520.0" y="260.0" width="12.2" height="110.0" class="bar"/>
-<rect x="533.2" y="360.6" width="12.2" height="9.4" class="bar"/>
-<rect x="546.4" y="358.5" width="12.2" height="11.5" class="bar"/>
-<rect x="559.6" y="351.6" width="12.2" height="18.4" class="bar"/>
-<rect x="572.8" y="344.7" width="12.2" height="25.3" class="bar"/>
-<rect x="586.0" y="338.3" width="12.2" height="31.7" class="bar"/>
-<rect x="599.2" y="329.6" width="12.2" height="40.4" class="bar"/>
-<rect x="612.4" y="325.7" width="12.2" height="44.3" class="bar"/>
-<rect x="625.6" y="324.4" width="12.2" height="45.6" class="bar"/>
-<rect x="638.8" y="325.2" width="12.2" height="44.8" class="bar"/>
-<rect x="652.0" y="332.4" width="12.2" height="37.6" class="bar"/>
-<rect x="665.2" y="341.1" width="12.2" height="28.9" class="bar"/>
-<rect x="678.4" y="348.0" width="12.2" height="22.0" class="bar"/>
-<rect x="691.6" y="353.8" width="12.2" height="16.2" class="bar"/>
-<rect x="704.8" y="360.3" width="12.2" height="9.7" class="bar"/>
-<rect x="718.0" y="364.6" width="12.2" height="5.4" class="bar"/>
-<rect x="731.2" y="367.2" width="12.2" height="2.8" class="bar"/>
-<rect x="744.4" y="368.4" width="12.2" height="1.6" class="bar"/>
-<rect x="757.6" y="368.5" width="12.2" height="1.5" class="bar"/>
-<rect x="770.8" y="369.5" width="12.2" height="0.5" class="bar"/>
-<rect x="784.0" y="369.8" width="12.2" height="0.2" class="bar"/>
-<rect x="797.2" y="369.9" width="12.2" height="0.1" class="bar"/>
-<rect x="810.4" y="369.9" width="12.2" height="0.1" class="bar"/>
-<rect x="823.6" y="370.0" width="12.2" height="0.0" class="bar"/>
+<rect x="533.2" y="365.3" width="12.2" height="4.7" class="bar"/>
+<rect x="546.4" y="361.8" width="12.2" height="8.2" class="bar"/>
+<rect x="559.6" y="357.6" width="12.2" height="12.4" class="bar"/>
+<rect x="572.8" y="352.2" width="12.2" height="17.8" class="bar"/>
+<rect x="586.0" y="346.5" width="12.2" height="23.5" class="bar"/>
+<rect x="599.2" y="339.3" width="12.2" height="30.7" class="bar"/>
+<rect x="612.4" y="334.1" width="12.2" height="35.9" class="bar"/>
+<rect x="625.6" y="331.0" width="12.2" height="39.0" class="bar"/>
+<rect x="638.8" y="329.0" width="12.2" height="41.0" class="bar"/>
+<rect x="652.0" y="330.3" width="12.2" height="39.7" class="bar"/>
+<rect x="665.2" y="332.5" width="12.2" height="37.5" class="bar"/>
+<rect x="678.4" y="340.3" width="12.2" height="29.7" class="bar"/>
+<rect x="691.6" y="346.5" width="12.2" height="23.5" class="bar"/>
+<rect x="704.8" y="352.8" width="12.2" height="17.2" class="bar"/>
+<rect x="718.0" y="358.2" width="12.2" height="11.8" class="bar"/>
+<rect x="731.2" y="361.6" width="12.2" height="8.4" class="bar"/>
+<rect x="744.4" y="365.0" width="12.2" height="5.0" class="bar"/>
+<rect x="757.6" y="367.1" width="12.2" height="2.9" class="bar"/>
+<rect x="770.8" y="368.2" width="12.2" height="1.8" class="bar"/>
+<rect x="784.0" y="368.8" width="12.2" height="1.2" class="bar"/>
+<rect x="797.2" y="369.6" width="12.2" height="0.4" class="bar"/>
+<rect x="810.4" y="369.8" width="12.2" height="0.2" class="bar"/>
+<rect x="823.6" y="369.8" width="12.2" height="0.2" class="bar"/>
 <rect x="836.8" y="369.9" width="12.2" height="0.1" class="bar"/>
 <line x1="520" y1="370" x2="850" y2="370" class="axis"/>
 <line x1="520" y1="260" x2="520" y2="370" class="axis"/>
 <text x="520" y="250" class="label">cumulative_rxfi</text>
 <text x="520" y="386" class="small">0</text>
-<text x="850" y="386" text-anchor="end" class="small">3.31</text>
-<text x="850" y="250" text-anchor="end" class="small">zero n=27,707</text>
+<text x="850" y="386" text-anchor="end" class="small">3.36</text>
+<text x="850" y="250" text-anchor="end" class="small">zero n=27,689</text>
 <text x="480" y="440" text-anchor="middle" class="small">All split rows are included; zero/no-flare windows occupy the leftmost bin.</text>
 </svg>

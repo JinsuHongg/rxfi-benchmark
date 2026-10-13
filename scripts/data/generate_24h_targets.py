@@ -68,7 +68,39 @@ def percentile(sorted_values: list[float], probability: float) -> float:
     return sorted_values[lower] + (sorted_values[upper] - sorted_values[lower]) * (index - lower)
 
 
-def read_noaa_events(path: Path) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def normalized_event_time(value: str) -> str:
+    """Normalize source timestamps to the minute-resolution event key format."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def read_lower50_rxfi(path: Path) -> dict[tuple[str, str], tuple[float, float]]:
+    """Read event-level lower-50% RXFI keyed by catalog peak time and flare ID."""
+    results: dict[tuple[str, str], tuple[float, float]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            flare_id = row.get("flare_id", "").strip()
+            key = (normalized_event_time(row["time"]), flare_id)
+            if key in results:
+                raise ValueError(f"Duplicate lower-50% event key: {key}")
+            rxfi_text = row.get("rxfi_lower_fractional_excess", "").strip()
+            status = row.get("lower_status", "").strip()
+            peak_text = row.get("peak_flux_W_m2", "").strip()
+            background_text = row.get("background_lower_fraction_W_m2", "").strip()
+            if status != "ok" or not rxfi_text or not peak_text or not background_text:
+                continue
+            rxfi, peak, background = float(rxfi_text), float(peak_text), float(background_text)
+            if math.isfinite(rxfi) and math.isfinite(peak) and peak > 0 and math.isfinite(background) and background > 0:
+                calculated_rxfi = (peak - background) / background
+                if not math.isclose(rxfi, calculated_rxfi, rel_tol=1e-8, abs_tol=1e-10):
+                    raise ValueError(f"Stored lower-50% RXFI disagrees with its peak/background for {key}")
+                results[key] = (rxfi, peak)
+    return results
+
+
+def read_noaa_events(
+    path: Path,
+    lower50_rxfi: dict[tuple[str, str], tuple[float, float]] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Read NOAA records with a valid peak, retaining invalid-RXFI records for QC."""
     events: list[dict[str, Any]] = []
     seen_keys: set[tuple[str, str]] = set()
@@ -92,13 +124,20 @@ def read_noaa_events(path: Path) -> tuple[list[dict[str, Any]], dict[str, int]]:
                 duplicate_keys += 1
                 continue
             seen_keys.add(key)
+            if lower50_rxfi is None:
+                rxfi = calculate_rxfi(row.get("xrsb_irrad"), row.get("background_irrad"))
+            else:
+                match = lower50_rxfi.get((normalized_event_time(row["time"]), flare_id))
+                if match is not None and not math.isclose(peak, match[1], rel_tol=1e-12, abs_tol=0.0):
+                    raise ValueError(f"Lower-50% peak flux disagrees with NOAA catalog for {flare_id} at {row['time']}")
+                rxfi = match[0] if match is not None else None
             events.append(
                 {
                     "time": peak_time,
                     "peak": peak,
                     "flare_id": stable_key,
                     "flare_class": row.get("flare_class", "").strip(),
-                    "rxfi": calculate_rxfi(row.get("xrsb_irrad"), row.get("background_irrad")),
+                    "rxfi": rxfi,
                 }
             )
     events.sort(key=lambda event: (event["time"], event["flare_id"]))
@@ -113,10 +152,13 @@ def select_max(events: list[dict[str, Any]], value_name: str) -> dict[str, Any]:
 def target_for_window(window: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, int]]:
     """Aggregate one canonical window and return target values plus quality counts."""
     valid_peaks = window
-    valid_rxfi = [event for event in window if event["rxfi"] is not None]
+    valid_rxfi = [event for event in window if event["rxfi"] is not None and event["rxfi"] >= 0]
+    invalid_rxfi_events = sum(event["rxfi"] is None for event in window)
+    negative_rxfi_events = sum(event["rxfi"] is not None and event["rxfi"] < 0 for event in window)
     quality = {
         "events_with_valid_peak": len(valid_peaks),
-        "events_invalid_rxfi": len(valid_peaks) - len(valid_rxfi),
+        "events_invalid_rxfi": invalid_rxfi_events,
+        "events_excluded_negative_rxfi": negative_rxfi_events,
         "peak_ties": 0,
         "rxfi_ties": 0,
     }
@@ -258,13 +300,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--noaa-csv", type=Path, default=DEFAULT_NOAA_CSV)
+    parser.add_argument("--rxfi-method", choices=("noaa", "lower50"), default="noaa")
+    parser.add_argument("--lower50-backgrounds-csv", type=Path)
     parser.add_argument("--derived-dir", type=Path, default=DEFAULT_DERIVED_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     if not args.noaa_csv.is_file():
         raise SystemExit(f"NOAA CSV not found: {args.noaa_csv}")
+    if args.rxfi_method == "lower50" and (args.lower50_backgrounds_csv is None or not args.lower50_backgrounds_csv.is_file()):
+        raise SystemExit("--rxfi-method lower50 requires an existing --lower50-backgrounds-csv")
+    if args.rxfi_method == "noaa" and args.lower50_backgrounds_csv is not None:
+        raise SystemExit("--lower50-backgrounds-csv is only valid with --rxfi-method lower50")
     verify_half_open_window()
-    events, noaa_qc = read_noaa_events(args.noaa_csv)
+    lower50_rxfi = read_lower50_rxfi(args.lower50_backgrounds_csv) if args.rxfi_method == "lower50" else None
+    events, noaa_qc = read_noaa_events(args.noaa_csv, lower50_rxfi)
     event_times = [event["time"] for event in events]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     summary_rows: list[dict[str, Any]] = []
@@ -283,7 +332,7 @@ def main() -> int:
             source_rows = list(reader)
         generated_rows: list[dict[str, Any]] = []
         class_matches = class_mismatches = no_flare = multi_flare = peak_rxfi_different = both_max_ids = 0
-        invalid_rxfi_events = peak_ties = rxfi_ties = 0
+        invalid_rxfi_events = negative_rxfi_events = peak_ties = rxfi_ties = 0
         mismatch_examples: list[dict[str, str]] = []
         for row_index, source_row in enumerate(source_rows):
             timestamp = datetime.fromisoformat(source_row["timestamp"])
@@ -307,6 +356,7 @@ def main() -> int:
             both_max_ids += both_ids_present
             peak_rxfi_different += both_ids_present and target["max_peak_flare_id"] != target["max_rxfi_flare_id"]
             invalid_rxfi_events += quality["events_invalid_rxfi"]
+            negative_rxfi_events += quality["events_excluded_negative_rxfi"]
             peak_ties += quality["peak_ties"]
             rxfi_ties += quality["rxfi_ties"]
             for name in figure_targets:
@@ -326,7 +376,7 @@ def main() -> int:
         ):
             raise RuntimeError(f"Row identity validation failed: {output_path}")
         validation_rows.append({"split": split, "source_rows": len(source_rows), "derived_rows": len(output_rows), "class_matches": class_matches, "class_mismatches": class_mismatches, "class_match_percent": 100 * class_matches / len(source_rows), "mismatch_examples": json.dumps(mismatch_examples), "sha256_before": before, "sha256_after": after, "row_order_and_timestamp_preserved": True})
-        quality_rows.append({"split": split, "no_flare_windows": no_flare, "no_flare_percent": 100 * no_flare / len(source_rows), "multi_flare_windows": multi_flare, "multi_flare_percent": 100 * multi_flare / len(source_rows), "windows_with_both_max_ids": both_max_ids, "different_max_peak_and_rxfi_events": peak_rxfi_different, "different_max_peak_and_rxfi_percent_of_all_rows": 100 * peak_rxfi_different / len(source_rows), "different_max_peak_and_rxfi_percent_of_comparable_windows": 100 * peak_rxfi_different / both_max_ids if both_max_ids else 0.0, "events_invalid_rxfi_across_windows": invalid_rxfi_events, "peak_tie_candidates": peak_ties, "rxfi_tie_candidates": rxfi_ties})
+        quality_rows.append({"split": split, "no_flare_windows": no_flare, "no_flare_percent": 100 * no_flare / len(source_rows), "multi_flare_windows": multi_flare, "multi_flare_percent": 100 * multi_flare / len(source_rows), "windows_with_both_max_ids": both_max_ids, "different_max_peak_and_rxfi_events": peak_rxfi_different, "different_max_peak_and_rxfi_percent_of_all_rows": 100 * peak_rxfi_different / len(source_rows), "different_max_peak_and_rxfi_percent_of_comparable_windows": 100 * peak_rxfi_different / both_max_ids if both_max_ids else 0.0, "events_invalid_rxfi_across_windows": invalid_rxfi_events, "events_excluded_negative_rxfi_across_windows": negative_rxfi_events, "peak_tie_candidates": peak_ties, "rxfi_tie_candidates": rxfi_ties})
         for target_name in figure_targets:
             stats = describe([float(row[target_name]) for row in generated_rows])
             summary_rows.append({"split": split, "target": target_name, **stats})
@@ -336,9 +386,23 @@ def main() -> int:
     write_csv(args.output_dir / "target_quality_control.csv", list(quality_rows[0]), quality_rows)
     metadata = {
         "noaa_csv": str(args.noaa_csv),
+        "noaa_csv_sha256": sha256(args.noaa_csv),
+        "rxfi_method": args.rxfi_method,
+        "lower50_backgrounds_csv": str(args.lower50_backgrounds_csv) if args.lower50_backgrounds_csv else None,
+        "lower50_backgrounds_csv_sha256": sha256(args.lower50_backgrounds_csv) if args.lower50_backgrounds_csv else None,
         "window": "[t, t + 24 hours)",
         "peak_event_eligibility": "finite positive xrsb_irrad",
-        "rxfi_event_eligibility": "frozen calculate_rxfi(xrsb_irrad, background_irrad) is valid",
+        "rxfi_event_eligibility": (
+            "finite lower-50% RXFI from event_backgrounds.csv matched by peak time and flare_id; negative RXFI events are excluded from max_rxfi and cumulative_rxfi"
+            if args.rxfi_method == "lower50"
+            else "calculate_rxfi(xrsb_irrad, background_irrad) is finite and non-negative"
+        ),
+        "events_without_valid_rxfi": sum(event["rxfi"] is None for event in events),
+        "events_excluded_negative_rxfi": sum(event["rxfi"] is not None and event["rxfi"] < 0 for event in events),
+        "split_inputs": [
+            {"split": row["split"], "source_rows": row["source_rows"], "sha256": row["sha256_before"]}
+            for row in validation_rows
+        ],
         "tie_break": "earliest peak time, then flare_id",
         "no_flare_convention": "all continuous targets are 0; event identifiers are empty; max_flare_class is FQ",
         "noaa_input_quality_control": noaa_qc,

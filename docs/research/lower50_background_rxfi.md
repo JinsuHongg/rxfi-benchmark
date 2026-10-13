@@ -18,6 +18,8 @@ The project defines relative increase as fractional excess above background:
 
 The runner also retains the existing full-mean and start-capped mean columns as comparisons; the lower-half columns are the requested new estimator.
 
+The event-level result preserves negative RXFI values as calculated for provenance. The forecast-window target generator applies an additional target rule: events with RXFI below zero are excluded from `max_rxfi` and `cumulative_rxfi`, but remain eligible for peak-flux targets. If a window has no non-negative RXFI event, both RXFI targets are set to zero. The current 2010–2025 event table contains 261 such negative values.
+
 ## Relationship to the paper
 
 Hong et al., *Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*, describes a filtered 24-hour arithmetic mean and excludes low-quality points, measurements in other flare intervals, and measurements above the target event's start-time flux. The lower-50% mean is a **project adaptation** that further reduces the influence of residual elevated flux after catalog intervals are removed. It is not the estimator specified by that paper and should be evaluated as a separate method. Source: [NSF Public Access Repository paper](https://par.nsf.gov/servlets/purl/10435332), Section 2.1.
@@ -30,7 +32,7 @@ The calculation uses the pinned NOAA/NCEI science-quality flare report and GOES 
 
 The current offline run used all locked local inputs and produced 41,723 events from 2010-01-01 through 2025-12-31. All 41,723 events had an eligible `B_50` and RXFI. The median `B_50` was `6.767769e-7 W m^-2`; median RXFI was `1.42337` and the 90th percentile was `7.51969`. There were 3,022 M-class events (median RXFI `10.1785`) and 167 X-class events (median RXFI `105.233`).
 
-No event had an uncomputable lower-50% RXFI in this run. RXFI was negative for 261 events (0.63%): 2 A-class, 143 B-class, and 116 C-class events; no M/X-class event was negative. A negative value occurs when the catalog peak flux is below the estimated pre-event background, and is retained without clipping.
+No event had an uncomputable lower-50% RXFI in this run. RXFI was negative for 261 events (0.63%): 2 A-class, 143 B-class, and 116 C-class events; no M/X-class event was negative. A negative value occurs when the catalog peak flux is below the estimated pre-event background. These event-level values remain in the background result table, while target aggregation excludes them as described above.
 
 Across 41,721 events with a positive NOAA catalog `background_irrad`, the median ratio `B_50 / B_NOAA` was `0.8348`; 30,799 project estimates were below the catalog value and 10,922 above it. This comparison is descriptive: the two background values use different estimators.
 
