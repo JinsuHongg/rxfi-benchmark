@@ -1,4 +1,9 @@
-# Deterministic 24-hour Flare Target Generation
+# Legacy: Catalog-based 24-hour Flare Target Generation
+
+> **Status:** This document describes the existing legacy generator and its
+> catalog-based split targets. The approved research targets are now defined
+> from XRS-only data in [xrs_only_target_definitions.md](xrs_only_target_definitions.md).
+> The XRS-only targets have not yet been implemented or regenerated.
 
 ## Source splits and provenance
 
@@ -25,7 +30,7 @@ An event at exactly (t+24\) hours is excluded. The generator uses finite, positi
 
 ## Event background and RXFI
 
-For an event starting at (t_0), the selected project background (B_{50}) is calculated from same-satellite GOES XRS Level 2 `avg1m` XRS-B measurements in the preceding 24-hour interval ([t_0-24\,\mathrm{h},t_0)). The event-level calculation keeps positive, finite samples with `xrsb_flag == 0`, removes samples within another catalog flare's inclusive start–end interval, sorts the remaining (N) samples by flux, and takes the arithmetic mean of the lowest \(\lceil N/2\rceil\):
+For an event with catalog start time \(t_{\mathrm{start}}\), the revised project background \(B_{50}\) is calculated from same-satellite GOES XRS Level 2 `avg1m` XRS-B measurements in \([t_{\mathrm{start}}-48\,\mathrm{h},t_{\mathrm{start}}-24\,\mathrm{h})\). The event-level calculation keeps positive, finite samples with `xrsb_flag == 0`, removes samples within another catalog flare's inclusive start–end interval, sorts the remaining (N) samples by flux, and takes the arithmetic mean of the lowest \(\lceil N/2\rceil\):
 
 \[
 B_{50}=\operatorname{mean}(\operatorname{lowest}_{\lceil N/2\rceil}(X_1,\ldots,X_N)).
@@ -38,6 +43,8 @@ RXFI is the fractional increase above this background:
 \]
 
 This is a project adaptation of the background discussion in Hong et al., [*Beyond Traditional Flare Forecasting: A Data-driven Labeling Approach for High-fidelity Predictions*](https://par.nsf.gov/servlets/purl/10435332), Section 2.1. It is not the paper's full arithmetic-mean estimator: it uses the lower half to reduce residual elevated measurements after other-flare masking, does not apply the paper's start-time upper cap, and does not use `POST_EVENT`. NOAA `background_irrad` is not used in the current split-level RXFI targets.
+
+**Implementation status:** the revised interval above is a documentation/method-definition change. The current generator, event-background table, and split target CSVs still use the previous interval \([t_{\mathrm{start}}-24\,\mathrm{h},t_{\mathrm{start}})\); the event backgrounds and targets must be regenerated before they can be described as outputs of the revised definition. The FQ pseudo-event rule remains separately anchored to its in-window maximum and has not been changed here.
 
 The current background run contains 41,723 events from 2010-01-01 through 2025-12-31. All 41,723 have a valid lower-50% background and RXFI. The event-level table preserves negative RXFI values for provenance; 261 are negative because their peak flux is below the estimated background. For forecast-window target generation, those negative events are excluded from RXFI aggregation while remaining eligible for the peak-flux targets. See [lower50_background_rxfi.md](lower50_background_rxfi.md) for event-level calculation details and limitations.
 

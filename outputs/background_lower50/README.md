@@ -1,6 +1,6 @@
 # Lower-50% background results
 
-These outputs are calculated from the checksum-pinned NOAA/NCEI flare report and GOES XRS Level 2 `avg1m` inputs using [`configs/background_lower50.json`](../../configs/background_lower50.json). The method averages the lowest half of valid, non-flare measurements in the 24 hours before each event start and calculates project RXFI as `(peak_flux - background) / background`.
+These saved outputs are the prior-window run calculated from checksum-pinned NOAA/NCEI flare report and GOES XRS Level 2 `avg1m` inputs using [`configs/background_lower50.json`](../../configs/background_lower50.json). They average the lowest half of valid, non-flare measurements in `[t_start - 24 h, t_start)` and calculate project RXFI as `(peak_flux - background) / background`. The revised project definition is `[t_start - 48 h, t_start - 24 h)`; these outputs have not yet been recalculated with that interval.
 
 ## Current run
 

@@ -17,7 +17,23 @@ The four split files contain 128,328 hourly timestamps in total. They are read a
 
 The NOAA/NCEI GOES XRS Flare Report supplies flare event times, start/end intervals, classes, and peak irradiance. Its `background_irrad` field is retained for comparison and is **not used** in the current RXFI targets. Those backgrounds are calculated separately from science-quality GOES XRS Level 2 `avg1m` XRS-B observations (`xrsb_flux`, `xrsb_flag`, and the catalog-selected satellite). The example plot uses the [GOES-15 2011 Level 2 one-minute XRS file](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2011_v2-2-1.nc). Full input URLs and SHA-256 checksums are recorded in [`configs/paper_background_sensitivity.inputs.lock.json`](configs/paper_background_sensitivity.inputs.lock.json). See the [catalog and XRS field definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md) for details.
 
-## Forecast-window targets
+## New XRS-only research targets
+
+The approved research direction defines four continuous targets directly from
+science-quality, one-minute GOES XRS Level 2 XRS-B measurements. For a forecast
+start `s`, the prediction interval is `[s, s + 24 h)` and the fixed background
+is the mean of the lower 50% of valid samples in `[s - 48 h, s - 24 h)`.
+The targets are `max_xflux`, `fluence`, `max_background_deviation`, and
+`total_background_deviation`. Deviation targets are signed and are not clipped
+at zero. Fluence and total deviation use the discrete one-minute sum multiplied
+by 60 seconds. NOAA flare catalog data will be reserved for operational-skill
+evaluation on the test set, not used to generate these targets.
+
+This is the approved definition; implementation and split-file regeneration
+are pending. See [the XRS-only target specification](docs/research/xrs_only_target_definitions.md)
+for formulas, units, and unresolved coverage/satellite policies.
+
+## Legacy catalog-based forecast-window targets
 
 For every split timestamp `t`, events with catalog peak times in the half-open interval `[t, t + 24 h)` contribute to the four continuous targets:
 
@@ -28,7 +44,7 @@ For every split timestamp `t`, events with catalog peak times in the half-open i
 | `max_rxfi` | Largest event RXFI in the window |
 | `cumulative_rxfi` | Sum of event RXFIs in the window |
 
-The background-relative targets now use the project's selected lower-50% background. For each flare, event background `B50` is calculated from same-satellite, positive finite XRS-B `avg1m` samples in the 24 hours before flare start. Samples with `xrsb_flag != 0` and samples inside another catalog flare's start–end interval are removed. The arithmetic mean of the lowest `ceil(N/2)` remaining measurements is `B50`. RXFI is the fractional increase above that background:
+The revised project definition places each catalog event's 24-hour background window one day before its start: `[t_start - 48 h, t_start - 24 h)`. It uses same-satellite, positive finite XRS-B `avg1m` samples, removes `xrsb_flag != 0` and samples inside another catalog flare's start–end interval, and averages the lowest `ceil(N/2)` remaining measurements as `B50`. RXFI is the fractional increase above that background:
 
 $$
 \mathrm{RXFI}_{50}=\frac{F_{\mathrm{peak}}-B_{50}}{B_{50}}.
@@ -36,13 +52,15 @@ $$
 
 This lower-50% estimator is a project adaptation intended to reduce residual flare elevation after event-interval masking. It does not use NOAA `background_irrad`, does not apply the paper's start-time upper cap, and does not use `POST_EVENT`. The published paper's filtered 24-hour background procedure is summarized in [the method note](docs/research/paper_based_background_xray_flux_method.md); the selected project adaptation and its caveats are documented in [lower50_background_rxfi.md](docs/research/lower50_background_rxfi.md).
 
+**Recalculation status:** the current event-background script, saved event table, split target CSVs, and example figure still use the previous interval `[t_start - 24 h, t_start)`. They have not yet been regenerated using the revised definition above. The separate FQ pseudo-event background remains peak-anchored as documented below.
+
 ### Background calculation example
 
 The example below shows the calculation for the 2011-09-22 X2.1 flare. Orange dots and shading mark other flare intervals excluded from the background calculation; teal dots show the lowest 50% of eligible samples, and the dashed line marks their mean (`B50`). The purple region marks the target flare interval.
 
 ![X-ray flux and lower-50% background calculation for the 2011-09-22 X2.1 flare](outputs/background_lower50/figures/x2_1_20110922_background_calculation.png)
 
-The FQ regression targets now use one pseudo-event per no-catalog-peak window: the maximum valid science-quality XRS-B one-minute flux in `[t,t+24 h)`. Its background is the lower-50% mean from `[a−24 h−5 min, a−5 min)`, where `a` is the time of the window maximum; its relative increase is `(F_peak - B50) / B50`. Thus, for FQ, `max_peak_flux = cumulative_peak_flux`, and `max_rxfi = cumulative_rxfi`. Negative RXFI is excluded under the existing rule and yields zero for both RXFI targets. If the maximum or its background cannot be calculated, the corresponding targets are missing rather than imputed as zero. The five-minute offset is a project-selected buffer, not a universal NOAA detection delay. This rule is implemented in the [target generator](scripts/data/generate_24h_targets.py) and documented in the [target-generation specification](docs/research/24h_target_generation.md) and [background method note](docs/research/lower50_background_rxfi.md).
+The legacy FQ regression targets use one pseudo-event per no-catalog-peak window: the maximum valid science-quality XRS-B one-minute flux in `[t,t+24 h)`. Its background is the lower-50% mean from `[a−24 h−5 min, a−5 min)`, where `a` is the time of the window maximum; its relative increase is `(F_peak - B50) / B50`. Thus, for FQ, `max_peak_flux = cumulative_peak_flux`, and `max_rxfi = cumulative_rxfi`. Negative RXFI is excluded under the legacy rule and yields zero for both RXFI targets. If the maximum or its background cannot be calculated, the corresponding targets are missing rather than imputed as zero. The five-minute offset is a project-selected buffer, not a universal NOAA detection delay. This rule is implemented in the [legacy target generator](scripts/data/generate_24h_targets.py) and documented in the [target-generation specification](docs/research/24h_target_generation.md) and [background method note](docs/research/lower50_background_rxfi.md).
 
 **Negative event-level RXFI values do occur:** 261 of 41,723 catalog events in the 2010–2025 source period (0.63%) have a peak below `B50`; their calculated values remain in the event-level `event_backgrounds.csv`. For catalog-event targets, these events are excluded from `max_rxfi` and `cumulative_rxfi`, but remain in the peak-flux targets. If a window has no non-negative RXFI events, both RXFI targets are zero. QC on the 128,328 existing generated windows found 0 negative `max_rxfi` values and 0 negative `cumulative_rxfi` values.
 
@@ -103,6 +121,7 @@ rxfi-benchmark/
 ## Data documentation
 
 - [NOAA XRS catalog fields and RXFI definition](docs/research/noaa_xrs_catalog_and_rxfi_definition.md)
+- [Approved XRS-only regression target definitions](docs/research/xrs_only_target_definitions.md)
 - [Selected lower-50% background method and event results](docs/research/lower50_background_rxfi.md)
 - [Paper-based 24-hour background procedure](docs/research/paper_based_background_xray_flux_method.md)
 - [Deterministic 24-hour target generation](docs/research/24h_target_generation.md)

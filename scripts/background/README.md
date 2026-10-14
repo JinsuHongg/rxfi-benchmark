@@ -1,6 +1,6 @@
 # Background calculations
 
-Calculates event-level GOES XRS-B background irradiance from the preceding 24 hours using the paper-based method or the project's lower-50% adaptation. The runner uses checksum-pinned NOAA flare catalog and Level 2 XRS inputs; the paper-method configuration reports capped and uncapped estimates.
+The revised project definition calculates event-level GOES XRS-B background irradiance from `[t_start - 48 h, t_start - 24 h)` using the lower-50% adaptation. The paper-based method retains its own preceding-24-hour interval and its capped/uncapped variants. The current runner and saved outputs have not yet been updated from the previous project interval `[t_start - 24 h, t_start)`; all calculations use checksum-pinned NOAA flare catalog and Level 2 XRS inputs.
 
 For the project-adapted lower-50% estimator and its RXFI outputs, use `configs/background_lower50.json`. This keeps only the lowest half of eligible pre-event flux samples after quality filtering and other-flare masking. Run it in the project environment from the repository root:
 

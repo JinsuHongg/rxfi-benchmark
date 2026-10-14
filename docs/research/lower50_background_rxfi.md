@@ -2,7 +2,13 @@
 
 ## Decision and interpretation
 
-This project variant estimates each event's background from the 24 hours immediately before its catalog start time. It retains positive, finite GOES XRS-B `avg1m` samples with science-quality flag `xrsb_flag == 0`, then removes samples within the catalog start-to-end interval of another flare. From the remaining `N` measurements, it sorts flux from low to high and averages the lowest \(\lceil 0.5N\rceil\) observations:
+For a catalog event with start time \(t_{\mathrm{start}}\), the revised project definition estimates background from the 24-hour interval one day before the event:
+
+\[
+[t_{\mathrm{start}}-48\,\mathrm{h},\;t_{\mathrm{start}}-24\,\mathrm{h}).
+\]
+
+It retains positive, finite GOES XRS-B `avg1m` samples with science-quality flag `xrsb_flag == 0`, then removes samples within the catalog start-to-end interval of another flare. From the remaining `N` measurements, it sorts flux from low to high and averages the lowest \(\lceil 0.5N\rceil\) observations:
 
 \[
 B_{50} = \operatorname{mean}\left(\operatorname{lowest}_{\lceil N/2\rceil}(X_1,\ldots,X_N)\right).
@@ -18,9 +24,11 @@ The project defines relative increase as fractional excess above background:
 
 The runner also retains the existing full-mean and start-capped mean columns as comparisons; the lower-half columns are the requested new estimator.
 
+**Implementation status:** this is the revised definition recorded on 2026-10-14. The existing calculation script, saved event-background table, split targets, summary statistics, and example figure were generated with the previous interval \([t_{\mathrm{start}}-24\,\mathrm{h},t_{\mathrm{start}})\). They have not yet been recalculated with the revised interval, so the historical results below do not describe the revised definition.
+
 ## FQ regression targets
 
-For a 24-hour forecast window with no NOAA flare-catalog peak (`FQ`), the regression task uses the maximum valid science-quality XRS-B one-minute measurement in `[t,t+24 h)` as a single window-maximum pseudo-event. If that maximum occurs at time `a`, its background is calculated from `[a-24 h-5 min,a-5 min)` with the same-satellite, positive finite, `xrsb_flag == 0`, other-flare-masked, lower-50% procedure above. The project-selected five-minute offset is a buffer before the selected maximum, not a claim that NOAA universally detects flares after five minutes.
+The existing FQ regression rule is separate from the catalog-event start-time definition: it uses the maximum valid science-quality XRS-B one-minute measurement in `[t,t+24 h)` as a window-maximum pseudo-event. If that maximum occurs at time `a`, its current background interval is `[a-24 h-5 min,a-5 min)`. This peak-anchored FQ interval has not yet been revised or recalculated to match the new catalog-event interval. The project-selected five-minute offset is a buffer before the selected maximum, not a claim that NOAA universally detects flares after five minutes.
 
 The FQ pseudo-event's relative increase is `(F*_t - B50(a)) / B50(a)`. It contributes the same value to `max_peak_flux` and `cumulative_peak_flux`, and the same RXFI value to `max_rxfi` and `cumulative_rxfi` when RXFI is non-negative. Under the project's existing negative-RXFI exclusion rule, a negative pseudo-event RXFI is omitted and both RXFI targets are zero. If the forecast window contains no valid XRS-B sample, these regression targets are missing. The FQ classification and `flare_count_24h=0` remain unchanged; the pseudo-event is not a NOAA catalog event.
 
@@ -38,7 +46,7 @@ The calculation uses the pinned NOAA/NCEI science-quality flare report and GOES 
 
 ## Recalculation result
 
-The current offline run used all locked local inputs and produced 41,723 events from 2010-01-01 through 2025-12-31. All 41,723 events had an eligible `B_50` and RXFI. The median `B_50` was `6.767769e-7 W m^-2`; median RXFI was `1.42337` and the 90th percentile was `7.51969`. There were 3,022 M-class events (median RXFI `10.1785`) and 167 X-class events (median RXFI `105.233`).
+The previous-window offline run used all locked local inputs and produced 41,723 events from 2010-01-01 through 2025-12-31. All 41,723 events had an eligible `B_50` and RXFI. The median `B_50` was `6.767769e-7 W m^-2`; median RXFI was `1.42337` and the 90th percentile was `7.51969`. There were 3,022 M-class events (median RXFI `10.1785`) and 167 X-class events (median RXFI `105.233`). These statistics describe the old interval, not the revised one.
 
 No event had an uncomputable lower-50% RXFI in this run. RXFI was negative for 261 events (0.63%): 2 A-class, 143 B-class, and 116 C-class events; no M/X-class event was negative. A negative value occurs when the catalog peak flux is below the estimated pre-event background. These event-level values remain in the background result table, while target aggregation excludes them as described above.
 
