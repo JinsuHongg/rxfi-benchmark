@@ -3,9 +3,9 @@ output_dir: outputs/vit_small_224_max_flare_class
 
 # SuryaBench supplies only images, timestamps, and frozen membership. NOAA-derived
 # `max_flare_class` in these files is the sole supervised target.
-zarr_path: /scratch/users/jhong36/data/surya-bench-224.zarr
+zarr_path: /scratch/users/jhong36/surya-bench-224-v2.zarr
 source_split_dir: /scratch/users/jhong36/data
-derived_target_dir: data/derived
+derived_target_dir: /scratch/users/jhong36/data/surya_index
 target_column: max_flare_class
 
 image_size: 224
@@ -24,7 +24,8 @@ channel_order:
   - hmi_by
   - hmi_bz
   - hmi_v
-normalization: per_sample_per_channel_zscore
+normalization: signed_log1p_train_channel_zscore
+normalization_stats_path: outputs/input_normalization_stats/train_channel_stats.json
 
 model_name: vit_small_patch16_224
 patch_size: 16

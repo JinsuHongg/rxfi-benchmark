@@ -36,6 +36,11 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 import timm
 
+try:
+    from input_normalization import DEFAULT_STATS_PATH, NORMALIZATION_NAME, channel_names_from_array, load_channel_stats, normalize_image
+except ModuleNotFoundError:
+    from scripts.training.input_normalization import DEFAULT_STATS_PATH, NORMALIZATION_NAME, channel_names_from_array, load_channel_stats, normalize_image
+
 
 SPLITS = ("train", "validation", "test", "leaky_validation")
 SOURCE_HASHES = {
@@ -169,7 +174,7 @@ def attach_zarr_indices(rows: dict[str, list[dict[str, str]]], config: dict[str,
             continue
         group = zarr.open_group(str(group_path), mode="r")
         images, times = group["images"], group["time"]
-        actual_order = list(images.attrs["channel_names"])
+        actual_order = channel_names_from_array(images)
         if channel_order is None:
             channel_order = actual_order
         if actual_order != channel_order or actual_order != config["channel_order"]:
@@ -210,8 +215,9 @@ def attach_zarr_indices(rows: dict[str, list[dict[str, str]]], config: dict[str,
 
 
 class SuryaDataset(Dataset[tuple[torch.Tensor, int]]):
-    def __init__(self, records: list[Record], zarr_path: str, channel_indices: list[int]) -> None:
+    def __init__(self, records: list[Record], zarr_path: str, channel_indices: list[int], channel_mean: np.ndarray, channel_std: np.ndarray) -> None:
         self.records, self.zarr_path, self.channel_indices = records, Path(zarr_path), channel_indices
+        self.channel_mean, self.channel_std = channel_mean, channel_std
         self.arrays: dict[int, Any] = {}
 
     def __len__(self) -> int:
@@ -224,11 +230,7 @@ class SuryaDataset(Dataset[tuple[torch.Tensor, int]]):
         image = np.asarray(self.arrays[record.year][record.zarr_index], dtype=np.float32)
         if image.shape != (13, 224, 224) or not np.isfinite(image).all():
             raise RuntimeError(f"Unreadable/non-finite image: split={record.split} timestamp={record.timestamp}")
-        image = image[self.channel_indices]
-        # Training-only, per-image/channel normalization avoids leakage and applies to each selected actual channel.
-        mean = image.mean(axis=(1, 2), keepdims=True)
-        std = image.std(axis=(1, 2), keepdims=True)
-        image = (image - mean) / np.maximum(std, 1e-6)
+        image = normalize_image(image, self.channel_indices, self.channel_mean, self.channel_std)
         return torch.from_numpy(image), record.target_index
 
 
@@ -328,6 +330,9 @@ def main() -> None:
     parser.add_argument("--smoke-only", action="store_true"); parser.add_argument("--batch-size", type=int); parser.add_argument("--precision", choices=sorted(PRECISIONS)); parser.add_argument("--num-workers", type=int); parser.add_argument("--gradient-accumulation-steps", type=int)
     args = parser.parse_args()
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
+    if config.get("normalization") != NORMALIZATION_NAME:
+        raise ValueError(f"normalization must be {NORMALIZATION_NAME!r}")
+    config.setdefault("normalization_stats_path", str(DEFAULT_STATS_PATH))
     for name in ("batch_size", "precision", "num_workers", "gradient_accumulation_steps"):
         if getattr(args, name) is not None: config[name] = getattr(args, name)
     if config.get("precision") not in PRECISIONS: raise ValueError("precision must be 32, 16-mixed, or bf16-mixed")
@@ -345,14 +350,21 @@ def main() -> None:
     mapping = fixed_mapping if fixed_mapping is not None else {label: index for index, label in enumerate(sorted({row[config["target_column"]] for split_rows in rows.values() for row in split_rows}, key=class_sort_key))}
     labels = list(mapping)
     records, availability = attach_zarr_indices(rows, config, mapping)
+    stats_path = Path(config["normalization_stats_path"])
+    channel_mean, channel_std, stats_metadata = load_channel_stats(
+        stats_path,
+        availability["canonical_channel_order"],
+        config["zarr_path"],
+        Path(config["derived_target_dir"]) / "train_targets.csv",
+    )
     class_counts = {split: dict(sorted(Counter(record.target for record in split_records).items(), key=lambda item: mapping[item[0]])) for split, split_records in records.items()}
-    metadata = {"config": config, "class_mapping": mapping, "class_counts": class_counts, "integrity": integrity, "image_availability": availability, "legacy_label_used_as_target": False, "created_utc": datetime.now(timezone.utc).isoformat()}
+    metadata = {"config": config, "class_mapping": mapping, "class_counts": class_counts, "integrity": integrity, "image_availability": availability, "input_normalization": {"name": NORMALIZATION_NAME, "stats_path": str(stats_path), "stats_source": stats_metadata["source"]}, "legacy_label_used_as_target": False, "created_utc": datetime.now(timezone.utc).isoformat()}
     (output / "resolved_config.yaml").write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     (output / "class_mapping.json").write_text(json.dumps(mapping, indent=2) + "\n", encoding="utf-8")
     (output / "dataset_integrity.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     write_csv(output / "missing_or_unreadable_images.csv", availability["missing_or_unreadable"])
     write_csv(output / "class_distribution.csv", [{"split": split, "class": label, "count": count} for split, counts in class_counts.items() for label, count in counts.items()])
-    datasets = {split: SuryaDataset(split_records, config["zarr_path"], availability["selected_channel_indices"]) for split, split_records in records.items()}
+    datasets = {split: SuryaDataset(split_records, config["zarr_path"], availability["selected_channel_indices"], channel_mean, channel_std) for split, split_records in records.items()}
     loaders = {split: make_loader(dataset, config, shuffle=(split == "train")) for split, dataset in datasets.items()}
     device = torch.device("cuda")
     model = timm.create_model(config["model_name"], pretrained=bool(config["pretrained"]), in_chans=int(config["in_chans"]), num_classes=len(labels)).to(device)

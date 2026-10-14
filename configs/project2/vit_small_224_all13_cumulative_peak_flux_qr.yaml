@@ -1,8 +1,8 @@
 experiment_name: project2_vit_small_224_all13_cumulative_peak_flux_qr
 output_dir: outputs/project2/vit_small_224_all13_cumulative_peak_flux_qr
-zarr_path: /scratch/users/jhong36/data/surya-bench-224.zarr
+zarr_path: /scratch/users/jhong36/surya-bench-224-v2.zarr
 source_split_dir: /scratch/users/jhong36/data
-derived_target_dir: /scratch/users/jhong36/rxfi/data/derived
+derived_target_dir: /scratch/users/jhong36/data/surya_index
 target_column: cumulative_peak_flux
 target_transform: {name: log10_1p_scaled, scale: 1.0e-8}
 image_size: 224
@@ -10,7 +10,8 @@ in_chans: 13
 channels: 13
 channel_order: [aia94, aia131, aia171, aia193, aia211, aia304, aia335, aia1600, hmi_m, hmi_bx, hmi_by, hmi_bz, hmi_v]
 selected_channels: [aia94, aia131, aia171, aia193, aia211, aia304, aia335, aia1600, hmi_m, hmi_bx, hmi_by, hmi_bz, hmi_v]
-normalization: per_sample_per_channel_zscore
+normalization: signed_log1p_train_channel_zscore
+normalization_stats_path: outputs/input_normalization_stats/train_channel_stats.json
 model_name: vit_small_patch16_224
 patch_size: 16
 pretrained: false

@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml, zarr
 import sys
 ROOT=Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "scripts" / "training"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import train_vit_classifier as classifier
 configs=sorted((ROOT/'configs/project2').glob('*.yaml'))
@@ -25,5 +26,5 @@ for p in configs:
   records, _ = classifier.attach_zarr_indices(rows, c, {label:i for i,label in enumerate(labels)})
   condition = "all13" if len(c["selected_channels"]) == 13 else c["selected_channels"][0]; usable_keys[condition] = {split:{record.timestamp for record in records[split]} for split in rows}; cohorts[condition] = {split:{"total_split_rows":len(rows[split]),"target_valid_rows":len(rows[split]),"selected_channel_image_available_rows":len(records[split]),"image_target_usable_rows":len(records[split])} for split in rows}
 common_usable_cohort = {split: len(set.intersection(*(usable_keys[name][split] for name in usable_keys))) for split in ("train", "validation", "test", "leaky_validation")}
-out={"canonical_channel_order":actual,"canonical_indices":{x:i for i,x in enumerate(actual)},"configurations":seen,"normalization":"per_sample_per_channel_zscore after selected-channel slicing","cohort_availability":cohorts,"common_usable_cohort":common_usable_cohort}
+out={"canonical_channel_order":actual,"canonical_indices":{x:i for i,x in enumerate(actual)},"configurations":seen,"normalization":"signed_log1p then training-split per-channel zscore","cohort_availability":cohorts,"common_usable_cohort":common_usable_cohort}
 (ROOT/"outputs/project2_channel_audit.json").write_text(json.dumps(out,indent=2)+"\n"); print(json.dumps(out,indent=2))
