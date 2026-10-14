@@ -2,42 +2,40 @@
 
 ## Status and scope
 
-This document records the approved research definition for a new set of four
-continuous targets. The target values will be calculated from science-quality,
-one-minute GOES XRS Level 2 XRS-B observations only. The NOAA flare catalog is
-not an input to this target-generation procedure; it remains available for
-separate operational-skill evaluation on the test set.
+This document records the approved research definition and reproducible
+implementation for four continuous targets. Values are generated only from
+science-quality, one-minute GOES XRS Level 2 XRS-B observations. NOAA flare
+catalog data is not used to make these targets; it remains available for
+operational-skill evaluation on the held-out test set.
 
-This is a target specification, not an implementation or a claim about the
-currently saved split CSVs. Existing split targets and their generator use the
-legacy catalog-based definitions described in
-[24h_target_generation.md](24h_target_generation.md). The new targets have not
-yet been generated.
+The generator is [`scripts/data/generate_xrs_only_targets.py`](../../scripts/data/generate_xrs_only_targets.py).
+It writes the four split CSVs to `data/derived/` and archives previous
+catalog-based files in `data/derived/legacy_catalog_targets/` before replacing
+them. Run metadata and per-window coverage are stored under
+`outputs/xrs_only_target_generation/runs/<run_id>/`. Catalog-based definitions
+remain documented as legacy in [24h_target_generation.md](24h_target_generation.md).
 
-## Windows and quality filtering
+## Windows, background, and quality filtering
 
-For a forecast-window start time `s`, the prediction window is the half-open
-interval `[s, s + 24 h)`. Let `F_i` denote an eligible one-minute XRS-B flux
-sample in that interval. At minimum, eligible measurements must be finite,
-positive, and have `xrsb_flag == 0`.
+For a forecast-window start `s`, the prediction window is the half-open
+interval `[s, s + 24 h)`. Let `F_i` denote eligible one-minute XRS-B samples in
+that interval. A measurement is eligible if its flux is finite and positive
+and `xrsb_flag == 0`.
 
-The background is fixed for the whole prediction window. It is computed from
-the preceding, non-overlapping 24-hour reference interval
-`[s - 48 h, s - 24 h)`, using the mean of the lower 50% of eligible XRS-B
-measurements. If the sorted eligible reference samples are
+The background is fixed for the whole prediction window. It is the mean of the
+lower 50% of eligible samples in the 24-hour interval immediately preceding
+the forecast window, `[s - 24 h, s)`. If the sorted samples are
 `R_(1) <= ... <= R_(N)`, then
 
 \[
 B_s = \frac{1}{\lceil N/2\rceil}\sum_{j=1}^{\lceil N/2\rceil} R_{(j)}.
 \]
 
-The reference interval is based on forecast-window start `s`, not on a flare
-catalog start time. No flare intervals are masked because the catalog is not
-used to construct these targets.
+This interval is based on forecast start `s`, not a flare start time. No flare
+intervals are masked because the catalog is not used to construct these
+targets.
 
 ## Four targets
-
-For the eligible prediction-window samples `F_i`, define:
 
 | Target | Definition | Units |
 | --- | --- | --- |
@@ -46,57 +44,60 @@ For the eligible prediction-window samples `F_i`, define:
 | `max_background_deviation` | `max_i (F_i - B_s)` | W m^-2 |
 | `total_background_deviation` | `60 s * sum_i (F_i - B_s)` | J m^-2 |
 
-The sums are over the one-minute measurements in `[s, s + 24 h)`. The 60-second
-factor treats each one-minute average as representing one minute of exposure,
-so the resulting fluence is a cadence-weighted discrete approximation to a
-time integral. A bare sample sum may also be reported as an intermediate
-quantity, but it is cadence-dependent and does not have fluence units.
+The sums use eligible one-minute samples in `[s, s + 24 h)`. The 60-second
+factor treats each one-minute average as one minute of exposure, making the
+result a cadence-weighted discrete approximation to a time integral.
 
-Background deviation is signed. Negative sample-level deviations and negative
-window targets are retained; values below background are part of the measured
-signal and are not clipped to zero.
+Missing samples are not interpolated. Targets use available valid observations,
+and the QC CSV records sample counts and coverage fractions for both windows.
+No minimum coverage threshold is applied, and partial-window sums are not
+scaled to 24 hours. Targets that depend on an empty sample set are left
+missing. Background deviation is signed: negative sample deviations and
+negative window targets are retained and never clipped to zero.
 
-The name `max_background_deviation` describes the largest signed difference
-from the fixed background. It is not a fractional increase. The distinct
-fractional-excess definition would be `(F - B_s) / B_s`; that RXFI-style ratio
-is not one of the four new targets.
+`max_background_deviation` is the largest signed difference from the fixed
+background, not a fractional increase. The distinct fractional-excess formula
+`(F - B_s) / B_s` is not one of these four targets.
 
-## Relationship between targets
+## Satellite selection and source links
 
-With one fixed background `B_s` and a complete 24-hour series of 1,440
-one-minute bins, the two background-deviation targets are algebraically
-related to flux targets:
+The generator follows the primary/secondary GOES schedule in NOAA/NCEI's
+[GOES Flare Report ReadMe, Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
+For every minute, a valid scheduled primary sample is preferred. If it is
+unavailable or fails quality filtering, a valid sample from that minute on the
+scheduled secondary is used. The generator never uses flare-catalog satellite
+IDs to choose the XRS series. If both are unavailable, the minute remains
+missing and is not interpolated.
 
-\[
-\texttt{max\_background\_deviation} = \texttt{max\_xflux} - B_s,
-\]
+NOAA/NCEI's direct annual file layout depends on the GOES generation:
 
-\[
-\texttt{total\_background\_deviation} = \texttt{fluence} - 86{,}400\,B_s.
-\]
+| Satellites | Official directory and direct-file pattern | Examples |
+| --- | --- | --- |
+| GOES-8–15 | [NCEI science/XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/) — `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-15, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc) (primary); [GOES-14, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc) (secondary) |
+| GOES-16–19 | [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/) — `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-16, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-1.nc) (primary); [GOES-18, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-1.nc) (secondary) |
 
-Therefore, the four targets provide different views of flux and baseline
-context, but are not four statistically independent quantities. These
-identities require complete, uniformly sampled coverage; the final missing
-data policy may change how they are computed for incomplete windows.
+The data product version is pinned to `v2-2-1`. Run metadata records every
+annual file's exact URL, local cache path, byte size, SHA-256, and valid-sample
+count, together with the NOAA schedule source and table.
 
-## Decisions still open before implementation
+## Reproducible generation
 
-- **Coverage and missing minutes:** define an acceptable coverage threshold
-  and whether short gaps are interpolated, left missing, or otherwise handled.
-  Summing only available samples without adjustment would make fluence depend
-  on data gaps.
-- **Satellite selection and transitions:** define which GOES satellite is used
-  when multiple satellites overlap, and how handovers or unavailable channels
-  are handled without relying on catalog-selected satellite IDs.
-- **Output columns and regeneration:** implement the XRS-only generator, choose
-  versioned output locations/names, regenerate split targets, and validate
-  provenance before treating them as current data products.
+From the repository root, using the project environment:
 
-## Provenance and evaluation role of the catalog
+```bash
+conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py
+```
 
-Input observations are NOAA/NCEI science-quality GOES XRS Level 2 one-minute
-XRS-B measurements. The catalog remains useful for identifying observed flare
-events when evaluating operational performance (for example, event detection
-or M/X-class skill) on held-out test data. It does not define the four
-regression values above.
+The script downloads the frozen split indexes from the SuryaBench Hugging Face
+dataset and missing NOAA annual files. It records the resolved Hugging Face
+commit, all four split-file URLs and checksums, NOAA URLs and checksums, target
+definitions, and satellite schedule in its run metadata. Pass
+`--revision <40-character-commit-sha> --offline` to regenerate from cached
+inputs only. Per-window QC contains valid counts, coverage fractions,
+primary/secondary counts, the background estimate, and target availability.
+
+## Role of the flare catalog
+
+The NOAA flare catalog is not an input to the four regression targets. It can
+be used separately to identify observed events when evaluating operational
+performance, such as event detection or M/X-class skill, on held-out test data.

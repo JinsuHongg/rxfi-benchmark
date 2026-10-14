@@ -1,9 +1,28 @@
 # Data preparation
 
-Scripts for constructing or inspecting legacy catalog-derived labels and XRS-based no-flare targets.
+Scripts for creating and inspecting regression targets from the frozen temporal
+splits and NOAA GOES XRS measurements.
 
-- `generate_24h_targets.py` (**legacy**): builds the existing four catalog-based 24-hour peak-flux/RXFI targets from frozen splits, the NOAA flare report, and checksum-pinned science-quality XRS-B measurements. For FQ windows it finds the in-window XRS maximum and computes its lower-50% background over the 24 hours ending five minutes before that maximum; max and cumulative targets are equal. It does not yet generate the approved XRS-only targets.
-- `inspect_noaa_xrs_flare_report.py`: inspects flare-report fields and the historical event-level NOAA `background_irrad`/RXFI values used by the existing frozen target files. The selected lower-50% background calculation is in [`../background/README.md`](../background/README.md).
-- `refine_no_flare_max_peak_flux.py`: fills no-flare-window maximum flux from quality-filtered GOES XRS 1-minute data and writes coverage/QC outputs.
+- `generate_xrs_only_targets.py`: reproducibly downloads the four SuryaBench split indexes and NOAA/NCEI science-quality GOES XRS Level 2 one-minute XRS-B files, then adds `max_xflux`, `fluence`, `max_background_deviation`, and `total_background_deviation`. It uses `[s,s+24h)` for prediction and the lower-50% mean from the immediately preceding interval `[s-24h,s)` as background. Valid primary samples are preferred minute-by-minute, with the scheduled secondary satellite as fallback. Missing samples are not interpolated; per-window coverage and primary/secondary counts are recorded. Existing catalog-based `*_targets.csv` files are backed up once to `data/derived/legacy_catalog_targets/` before replacement. Run metadata records exact source URLs and SHA-256 hashes.
+- `generate_24h_targets.py` (**legacy**): builds the catalog-based peak-flux/RXFI targets from frozen splits, the NOAA flare report, and checksum-pinned XRS-B measurements. For FQ windows it finds the in-window XRS maximum and calculates lower-50% background over the 24 hours ending five minutes before that maximum.
+- `inspect_noaa_xrs_flare_report.py`: inspects flare-report fields and historical NOAA `background_irrad`/RXFI values. The selected event-background calculation is in [`../background/README.md`](../background/README.md).
+- `refine_no_flare_max_peak_flux.py`: fills no-flare-window maximum flux from quality-filtered GOES XRS one-minute data and writes coverage/QC outputs.
 
-Run from the repository root; see the [legacy target generation notes](../../docs/research/24h_target_generation.md) for input and output contracts. The approved new definition is in [xrs_only_target_definitions.md](../../docs/research/xrs_only_target_definitions.md).
+Run the new generator from the repository root with the project environment:
+
+```bash
+conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py
+```
+
+Use `--revision <40-character-commit-sha> --offline` to reproduce from cached
+inputs only. NOAA's direct annual file layout is generation-specific:
+
+- GOES-8–15: [NCEI legacy XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/), with `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc`.
+- GOES-16–19: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), with `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc`.
+
+The primary/secondary schedule comes from [NOAA's GOES Flare Report ReadMe,
+Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
+Run metadata contains each exact annual file URL and SHA-256. See the
+[XRS-only target definition](../../docs/research/xrs_only_target_definitions.md)
+for formulas, sources, and QC fields. Legacy generation is described in the
+[legacy target-generation notes](../../docs/research/24h_target_generation.md).

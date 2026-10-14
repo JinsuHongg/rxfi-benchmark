@@ -22,16 +22,37 @@ The NOAA/NCEI GOES XRS Flare Report supplies flare event times, start/end interv
 The approved research direction defines four continuous targets directly from
 science-quality, one-minute GOES XRS Level 2 XRS-B measurements. For a forecast
 start `s`, the prediction interval is `[s, s + 24 h)` and the fixed background
-is the mean of the lower 50% of valid samples in `[s - 48 h, s - 24 h)`.
+is the mean of the lower 50% of valid samples in `[s - 24 h, s)`.
 The targets are `max_xflux`, `fluence`, `max_background_deviation`, and
 `total_background_deviation`. Deviation targets are signed and are not clipped
-at zero. Fluence and total deviation use the discrete one-minute sum multiplied
-by 60 seconds. NOAA flare catalog data will be reserved for operational-skill
-evaluation on the test set, not used to generate these targets.
+at zero. Only the background interval changed in the current definition:
+`max_xflux` and `fluence` do not use a background and remain unchanged, while
+the deviation targets use the lower-50% mean over `[s - 24 h, s)`. Fluence and
+total deviation use the discrete one-minute sum multiplied by 60 seconds. NOAA
+flare catalog data will be reserved for operational-skill evaluation on the
+test set, not used to generate these targets.
 
-This is the approved definition; implementation and split-file regeneration
-are pending. See [the XRS-only target specification](docs/research/xrs_only_target_definitions.md)
-for formulas, units, and unresolved coverage/satellite policies.
+The reproducible generator is [`scripts/data/generate_xrs_only_targets.py`](scripts/data/generate_xrs_only_targets.py).
+It downloads the four frozen SuryaBench split indexes and NOAA annual XRS files,
+then writes the new targets to `data/derived/{train,validation,leaky_validation,test}_targets.csv`.
+Previous catalog-based files are retained in
+`data/derived/legacy_catalog_targets/`. Missing measurements are not
+interpolated; valid-sample coverage and source satellite counts are recorded
+per window. The exact input URLs and SHA-256 checksums are recorded in each
+run's `target_generation_metadata.json`.
+
+The NOAA primary/secondary satellite schedule follows
+[the GOES Flare Report ReadMe, Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
+For each minute, the scheduled primary is used when its measurement passes
+quality filtering; the scheduled secondary fills that minute only if the
+primary sample is unavailable. NOAA's direct annual file links use these
+official layouts:
+
+- GOES-8–15: [NCEI archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/), `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` (example: scheduled primary [GOES-15 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc) and secondary [GOES-14 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc)).
+- GOES-16–19: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` (example: scheduled primary [GOES-16 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-1.nc) and secondary [GOES-18 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-1.nc)).
+
+See [the XRS-only target specification](docs/research/xrs_only_target_definitions.md)
+for formulas, satellite policy, and missing-data handling.
 
 ## Legacy catalog-based forecast-window targets
 
@@ -54,11 +75,13 @@ This lower-50% estimator is a project adaptation intended to reduce residual fla
 
 **Recalculation status:** the current event-background script, saved event table, split target CSVs, and example figure still use the previous interval `[t_start - 24 h, t_start)`. They have not yet been regenerated using the revised definition above. The separate FQ pseudo-event background remains peak-anchored as documented below.
 
+<!--
 ### Background calculation example
 
 The example below shows the calculation for the 2011-09-22 X2.1 flare. Orange dots and shading mark other flare intervals excluded from the background calculation; teal dots show the lowest 50% of eligible samples, and the dashed line marks their mean (`B50`). The purple region marks the target flare interval.
 
 ![X-ray flux and lower-50% background calculation for the 2011-09-22 X2.1 flare](outputs/background_lower50/figures/x2_1_20110922_background_calculation.png)
+-->
 
 The legacy FQ regression targets use one pseudo-event per no-catalog-peak window: the maximum valid science-quality XRS-B one-minute flux in `[t,t+24 h)`. Its background is the lower-50% mean from `[a−24 h−5 min, a−5 min)`, where `a` is the time of the window maximum; its relative increase is `(F_peak - B50) / B50`. Thus, for FQ, `max_peak_flux = cumulative_peak_flux`, and `max_rxfi = cumulative_rxfi`. Negative RXFI is excluded under the legacy rule and yields zero for both RXFI targets. If the maximum or its background cannot be calculated, the corresponding targets are missing rather than imputed as zero. The five-minute offset is a project-selected buffer, not a universal NOAA detection delay. This rule is implemented in the [legacy target generator](scripts/data/generate_24h_targets.py) and documented in the [target-generation specification](docs/research/24h_target_generation.md) and [background method note](docs/research/lower50_background_rxfi.md).
 
@@ -74,6 +97,25 @@ Create and activate the project environment:
 conda env create -f environment.yml
 conda activate rxfi-benchmark
 ```
+
+Generate or regenerate the XRS-only targets and coverage QC:
+
+```bash
+conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py
+```
+
+The generator resolves and records the Hugging Face dataset commit. For a
+strict offline rerun, use the same commit SHA recorded in metadata and retain
+all cached input files:
+
+```bash
+conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py \
+  --revision <40-character-commit-sha> --offline
+```
+
+See [scripts/data/README.md](scripts/data/README.md) for the exact data source
+layouts and [the XRS-only target definition](docs/research/xrs_only_target_definitions.md)
+for method details.
 
 Download the four source split files from the dataset repository into the local raw-data directory:
 
