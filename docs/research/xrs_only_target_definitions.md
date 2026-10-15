@@ -4,16 +4,18 @@
 
 This document records the approved research definition and reproducible
 implementation for four continuous targets. Values are generated only from
-science-quality, one-minute GOES XRS Level 2 XRS-B observations. NOAA flare
-catalog data is not used to make these targets; it remains available for
-operational-skill evaluation on the held-out test set.
+science-quality, one-minute GOES XRS Level 2 XRS-B observations. The
+supplementary `max_old_rxfi` label is generated separately from NOAA flare
+catalog events; it does not change these four XRS-only target definitions.
 
 The generator is [`scripts/data/generate_xrs_only_targets.py`](../../scripts/data/generate_xrs_only_targets.py).
 It writes the four split CSVs to `data/derived/` and archives previous
 catalog-based files in `data/derived/legacy_catalog_targets/` before replacing
 them. Run metadata and per-window coverage are stored under
-`outputs/xrs_only_target_generation/runs/<run_id>/`. Catalog-based definitions
-remain documented as legacy in [24h_target_generation.md](24h_target_generation.md).
+`outputs/xrs_only_target_generation/runs/<run_id>/`. Catalog-based labels and
+the supplementary `max_old_rxfi` target are documented separately in
+[24h_target_generation.md](24h_target_generation.md) and
+[old_rxfi_split_targets.md](old_rxfi_split_targets.md).
 
 ## Windows, background, and quality filtering
 
@@ -98,6 +100,8 @@ primary/secondary counts, the background estimate, and target availability.
 
 ## Role of the flare catalog
 
-The NOAA flare catalog is not an input to the four regression targets. It can
-be used separately to identify observed events when evaluating operational
-performance, such as event detection or M/X-class skill, on held-out test data.
+The NOAA flare catalog is not an input to these four XRS-only regression
+targets. A separately defined `max_old_rxfi` label uses event-level legacy
+RXFI for target comparison; its construction and split outputs are specified
+in [old_rxfi_split_targets.md](old_rxfi_split_targets.md). Catalog events may
+also support operational-skill evaluation on held-out test data.

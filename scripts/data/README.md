@@ -4,6 +4,7 @@ Scripts for creating and inspecting regression targets from the frozen temporal
 splits and NOAA GOES XRS measurements.
 
 - `generate_xrs_only_targets.py`: reproducibly downloads the four SuryaBench split indexes and NOAA/NCEI science-quality GOES XRS Level 2 one-minute XRS-B files, then adds `max_xflux`, `fluence`, `max_background_deviation`, and `total_background_deviation`. It uses `[s,s+24h)` for prediction and the lower-50% mean from the immediately preceding interval `[s-24h,s)` as background. Valid primary samples are preferred minute-by-minute, with the scheduled secondary satellite as fallback. Missing samples are not interpolated; per-window coverage and primary/secondary counts are recorded. Existing catalog-based `*_targets.csv` files are backed up once to `data/derived/legacy_catalog_targets/` before replacement. Run metadata records exact source URLs and SHA-256 hashes.
+- `add_old_max_rxfi_targets.py`: reads the enriched NOAA catalog copy produced by `scripts/background/add_old_background_rxfi_to_catalog.py` and adds `max_old_rxfi` to separate copies of the four XRS-only target splits. Window membership uses catalog `start_time` in `[t,t+24h)`. Windows without a catalog event or without valid old RXFI remain missing, not zero. Per-split counts, source hashes, and the aggregation rule are recorded.
 - `generate_24h_targets.py` (**legacy**): builds the catalog-based peak-flux/RXFI targets from frozen splits, the NOAA flare report, and checksum-pinned XRS-B measurements. For FQ windows it finds the in-window XRS maximum and calculates lower-50% background over the 24 hours ending five minutes before that maximum.
 - `inspect_noaa_xrs_flare_report.py`: inspects flare-report fields and historical NOAA `background_irrad`/RXFI values. The selected event-background calculation is in [`../background/README.md`](../background/README.md).
 - `refine_no_flare_max_peak_flux.py`: fills no-flare-window maximum flux from quality-filtered GOES XRS one-minute data and writes coverage/QC outputs.
@@ -13,6 +14,20 @@ Run the new generator from the repository root with the project environment:
 ```bash
 conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py
 ```
+
+After generating the event-level old background and RXFI catalog copy, add the
+supplementary maximum old-RXFI target without replacing the XRS-only files:
+
+```bash
+conda run -n rxfi-benchmark python scripts/data/add_old_max_rxfi_targets.py
+```
+
+The default inputs are `data/derived/noaa_flare_catalog_old_background_rxfi.csv`
+and `data/derived/{train,validation,leaky_validation,test}_targets.csv`. The
+augmented copies, quality-control table, and metadata are written to
+`data/derived/old_rxfi_targets/`. Use `--overwrite` to regenerate existing
+outputs. The event-level method and label semantics are specified in
+[`../../docs/research/old_rxfi_split_targets.md`](../../docs/research/old_rxfi_split_targets.md).
 
 Use `--revision <40-character-commit-sha> --offline` to reproduce from cached
 inputs only. NOAA's direct annual file layout is generation-specific:

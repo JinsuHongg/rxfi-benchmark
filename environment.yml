@@ -5,6 +5,10 @@ dependencies:
   - python=3.11.16
   - pip=26.2.1
   - pytest=9.0.2
+  - basedpyright
+  - loguru
+  - nodejs>=22
+  - ruff
   - pip:
       # CUDA-enabled wheels and their pinned CUDA 12.4 runtime dependencies.
       - --extra-index-url https://download.pytorch.org/whl/cu124

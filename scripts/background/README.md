@@ -10,6 +10,25 @@ conda run -n rxfi-benchmark python scripts/background/compute_paper_background_s
 
 The method, output columns, and interpretation are documented in [`docs/research/lower50_background_rxfi.md`](../../docs/research/lower50_background_rxfi.md). The result is written under `outputs/background_lower50/runs/`.
 
+## Original start-capped catalog RXFI
+
+The historical event-level RXFI is the ratio `xrsb_irrad / background`, not
+the fractional excess `(xrsb_irrad - background) / background`. Its
+start-capped background is the mean of finite, positive, quality-zero XRS-B
+samples in `[start_time - 24 h, start_time)` that are outside other flare
+intervals and no greater than the exact start-time XRS-B value on the catalog
+satellite. Recreate a copied catalog with these fields using:
+
+```bash
+conda run -n rxfi-benchmark python scripts/background/add_old_background_rxfi_to_catalog.py
+```
+
+By default, the script processes catalog events with start years 2010–2025,
+preserves every source catalog row, and writes
+`data/derived/noaa_flare_catalog_old_background_rxfi.csv` plus a provenance
+manifest. The subsequent split-level maximum target is documented in
+[`docs/research/old_rxfi_split_targets.md`](../../docs/research/old_rxfi_split_targets.md).
+
 - `compute_paper_background_sensitivity.py`: command-line entry point for a reproducible calculation. From the repository root: `python scripts/background/compute_paper_background_sensitivity.py --offline`.
 - `plot_capped_background_example.py`: recreates the June 14, 2010 example figure from the pinned GOES XRS and flare catalog files. Run `python scripts/background/plot_capped_background_example.py`; it writes PNG and SVG to `outputs/paper_background_sensitivity/figures/` and verifies the displayed counts and uncapped mean against the saved event result.
 - `plot_missing_x_class_backgrounds.py`: plots all X-class flares whose capped background is unavailable, with the previous 24 hours, flare start cap, and flare-time XRS-B curve. Run `python scripts/background/plot_missing_x_class_backgrounds.py`; it writes PNG and SVG to `outputs/paper_background_sensitivity/figures/` and checks plotted candidate counts against the saved event results.
