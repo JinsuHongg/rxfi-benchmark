@@ -1,75 +1,97 @@
-# XRS-only 24-hour regression targets
+# XRS-only regression target experiment
 
-## Status and scope
+## Scope and status
 
-This document records the approved research definition and reproducible
-implementation for four continuous targets. Values are generated only from
-science-quality, one-minute GOES XRS Level 2 XRS-B observations. The
-supplementary `max_old_rxfi` label is generated separately from NOAA flare
-catalog events; it does not change these four XRS-only target definitions.
+This document defines the ten target conditions in the current regression
+target experiment. Targets are calculated from science-quality, one-minute
+GOES XRS Level 2 XRS-B observations. The NOAA flare catalog is not used to
+construct these targets. It may be used separately to define flare outcomes
+for operational-skill evaluation.
 
-The generator is [`scripts/data/generate_xrs_only_targets.py`](../../scripts/data/generate_xrs_only_targets.py).
-It writes the four split CSVs to `data/derived/` and archives previous
-catalog-based files in `data/derived/legacy_catalog_targets/` before replacing
-them. Run metadata and per-window coverage are stored under
-`outputs/xrs_only_target_generation/runs/<run_id>/`. Catalog-based labels and
-the supplementary `max_old_rxfi` target are documented separately in
-[24h_target_generation.md](24h_target_generation.md) and
-[old_rxfi_split_targets.md](old_rxfi_split_targets.md).
+The reproducible generator is
+[`scripts/data/generate_regression_targets.py`](../../scripts/data/generate_regression_targets.py),
+and its frozen settings are in
+[`configs/regression_target_experiment.json`](../../configs/regression_target_experiment.json).
+The script writes `train.csv`, `validation.csv`, `leaky_validation.csv`, and
+`test.csv` to `data/derived/`. Per-window coverage and source/output
+provenance are recorded in
+`outputs/regression_target_experiment/runs/<run_id>/`.
 
-## Windows, background, and quality filtering
+## Prediction window, background, and valid samples
 
-For a forecast-window start `s`, the prediction window is the half-open
-interval `[s, s + 24 h)`. Let `F_i` denote eligible one-minute XRS-B samples in
-that interval. A measurement is eligible if its flux is finite and positive
-and `xrsb_flag == 0`.
+For a forecast start time `s`, the prediction window is the half-open interval
+`[s, s + 24 h)`. An eligible sample has finite, positive XRS-B flux and
+`xrsb_flag == 0`. Scheduled primary GOES observations are preferred; a valid
+secondary-satellite observation is used when the primary sample is missing or
+fails the quality rule.
 
-The background is fixed for the whole prediction window. It is the mean of the
-lower 50% of eligible samples in the 24-hour interval immediately preceding
-the forecast window, `[s - 24 h, s)`. If the sorted samples are
-`R_(1) <= ... <= R_(N)`, then
+Each background is fixed over the prediction window and is calculated from
+the immediately preceding interval `[s - W, s)`, where `W` is 2 or 24 hours.
+If the background window has at least one eligible sample, let `N` be its
+sample count. For lower-tail percentage `q` equal to 10 or 50, sort those
+samples as `R_(1) <= ... <= R_(N)` and average the lowest
+`k = max(1, ceil(q N / 100))` samples. With no eligible background samples,
+the background is undefined:
 
 \[
-B_s = \frac{1}{\lceil N/2\rceil}\sum_{j=1}^{\lceil N/2\rceil} R_{(j)}.
+B_{W,q}(s) = \frac{1}{k} \sum_{j=1}^{k} R_{(j)}.
 \]
 
-This interval is based on forecast start `s`, not a flare start time. No flare
-intervals are masked because the catalog is not used to construct these
-targets.
+The four background conditions are `2h_q10`, `2h_q50`, `24h_q10`, and
+`24h_q50`. These intervals are anchored to the forecast start `s`, not to a
+flare start. No flare intervals are masked.
 
-## Four targets
+### Coverage and missing observations
 
-| Target | Definition | Units |
+Coverage is the fraction of expected one-minute bins with eligible XRS-B
+samples. The prediction-window coverage is `n_prediction / 1440`; background
+coverage is `n_background / 120` for 2 hours and `n_background / 1440` for 24
+hours. A coverage value of 0.9 therefore means 90% of the expected minute
+samples are valid.
+
+Missing samples are not interpolated. There is no minimum coverage threshold:
+all available eligible samples are used when at least one is present, even
+when coverage is below 90%. A target that requires a window with no eligible
+samples is missing. Partial-window sums are not rescaled to the full 24-hour
+duration. The QC file records valid sample counts, coverage fractions, and
+primary/secondary counts for the prediction and background windows.
+
+## Target conditions
+
+The two background-independent targets are:
+
+| Target | Definition | Units / scale |
 | --- | --- | --- |
 | `max_xflux` | `max_i F_i` | W m^-2 |
-| `fluence` | `60 s * sum_i F_i` | J m^-2 |
-| `max_background_deviation` | `max_i (F_i - B_s)` | W m^-2 |
-| `total_background_deviation` | `60 s * sum_i (F_i - B_s)` | J m^-2 |
+| `fluence` | `sum_i F_i` | Unscaled one-minute sample sum |
 
-The sums use eligible one-minute samples in `[s, s + 24 h)`. The 60-second
-factor treats each one-minute average as one minute of exposure, making the
-result a cadence-weighted discrete approximation to a time integral.
+For each of the four background conditions, the experiment adds two signed
+deviation targets:
 
-Missing samples are not interpolated. Targets use available valid observations,
-and the QC CSV records sample counts and coverage fractions for both windows.
-No minimum coverage threshold is applied, and partial-window sums are not
-scaled to 24 hours. Targets that depend on an empty sample set are left
-missing. Background deviation is signed: negative sample deviations and
-negative window targets are retained and never clipped to zero.
+| Target family | Definition for each `W,q` condition | Units / scale |
+| --- | --- | --- |
+| `max_background_deviation` | `max_i (F_i - B_(W,q)(s))` | W m^-2 |
+| `total_background_deviation` | `sum_i (F_i - B_(W,q)(s))` | Unscaled one-minute sample sum |
 
-`max_background_deviation` is the largest signed difference from the fixed
-background, not a fractional increase. The distinct fractional-excess formula
-`(F - B_s) / B_s` is not one of these four targets.
+Here, `F_i` are eligible samples in `[s, s + 24 h)`. The deviation targets
+are emitted with the condition suffix, for example
+`max_background_deviation_2h_q10` and
+`total_background_deviation_24h_q50`. Together with `max_xflux` and `fluence`,
+these make ten target columns.
 
-## Satellite selection and source links
+The sums are stored without multiplying by 60 seconds. `fluence` and
+`total_background_deviation` are therefore unscaled sample sums, not SI time
+integrals in J m^-2. This scale convention preserves the numerical target
+defined for the experiment. Negative deviations and negative total deviations
+are retained; they are not clipped to zero.
+
+## Data sources and satellite selection
 
 The generator follows the primary/secondary GOES schedule in NOAA/NCEI's
 [GOES Flare Report ReadMe, Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
-For every minute, a valid scheduled primary sample is preferred. If it is
-unavailable or fails quality filtering, a valid sample from that minute on the
-scheduled secondary is used. The generator never uses flare-catalog satellite
-IDs to choose the XRS series. If both are unavailable, the minute remains
-missing and is not interpolated.
+For each minute, it uses a valid scheduled primary sample when available;
+otherwise it uses a valid sample from the scheduled secondary satellite. The
+flare-catalog satellite field is not used to select the XRS series.
 
 NOAA/NCEI's direct annual file layout depends on the GOES generation:
 
@@ -78,30 +100,38 @@ NOAA/NCEI's direct annual file layout depends on the GOES generation:
 | GOES-8–15 | [NCEI science/XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/) — `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-15, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc) (primary); [GOES-14, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc) (secondary) |
 | GOES-16–19 | [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/) — `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-16, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-1.nc) (primary); [GOES-18, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-1.nc) (secondary) |
 
-The data product version is pinned to `v2-2-1`. Run metadata records every
-annual file's exact URL, local cache path, byte size, SHA-256, and valid-sample
-count, together with the NOAA schedule source and table.
+The data product version is pinned to `v2-2-1`. Run metadata records the
+resolved Hugging Face revision, source URLs and SHA-256 hashes, target file
+hashes, and the NOAA schedule source.
 
-## Reproducible generation
+## Reproducing target generation
 
-From the repository root, using the project environment:
+From the repository root, use the project environment:
 
 ```bash
-conda run -n rxfi-benchmark python scripts/data/generate_xrs_only_targets.py
+conda run -n rxfi-benchmark python -m scripts.data.generate_regression_targets
 ```
 
-The script downloads the frozen split indexes from the SuryaBench Hugging Face
-dataset and missing NOAA annual files. It records the resolved Hugging Face
-commit, all four split-file URLs and checksums, NOAA URLs and checksums, target
-definitions, and satellite schedule in its run metadata. Pass
-`--revision <40-character-commit-sha> --offline` to regenerate from cached
-inputs only. Per-window QC contains valid counts, coverage fractions,
-primary/secondary counts, the background estimate, and target availability.
+The generator reads the frozen SuryaBench temporal split indexes, downloads
+missing NOAA inputs, and uses the settings in
+[`regression_target_experiment.json`](../../configs/regression_target_experiment.json).
+For a cache-only reproduction, provide a full Hugging Face commit SHA and add
+`--offline`:
 
-## Role of the flare catalog
+```bash
+conda run -n rxfi-benchmark python -m scripts.data.generate_regression_targets \
+  --revision <40-character-commit-sha> --offline
+```
 
-The NOAA flare catalog is not an input to these four XRS-only regression
-targets. A separately defined `max_old_rxfi` label uses event-level legacy
-RXFI for target comparison; its construction and split outputs are specified
-in [old_rxfi_split_targets.md](old_rxfi_split_targets.md). Catalog events may
-also support operational-skill evaluation on held-out test data.
+The script refuses to overwrite existing split CSVs unless `--overwrite` is
+provided. See [`scripts/data/README.md`](../../scripts/data/README.md) for
+details.
+
+## Relationship to catalog-based RXFI
+
+The historical `max_old_rxfi` target is generated separately from NOAA flare
+catalog events and does not change the ten XRS-only target conditions. Its
+construction is documented in
+[`old_rxfi_split_targets.md`](old_rxfi_split_targets.md). The comparison of
+that label with `max_background_deviation` is reported in
+[`old_rxfi_vs_background_deviation.md`](old_rxfi_vs_background_deviation.md).
