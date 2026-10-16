@@ -1,0 +1,38 @@
+{
+  "analysis": "exploratory paired comparison of legacy old RXFI and XRS-only max background deviation",
+  "old_rxfi_target": "maximum finite catalog old_rxfi among events whose start_time is in [t,t+24h)",
+  "background_deviation_target": "max_i(F_i-B_s), with B_s the lower-50% mean over [t-24h,t)",
+  "paired_cohort": "both target values are finite; missing labels are never imputed",
+  "deviation_histogram_cohort": "all rows with finite max_background_deviation; stacked by max_goes_class letter, preserving FQ",
+  "old_rxfi_histogram_cohort": "all rows with positive finite max_old_rxfi; stacked by max_goes_class letter, preserving FQ",
+  "reference_categories": {
+    "old_rxfi": "<1, =1, >1",
+    "background_deviation": "<0, =0, >0"
+  },
+  "uncertainty": "95% percentile interval from contiguous date-block bootstrap; descriptive, not a significance test",
+  "block_days": 7,
+  "bootstrap_replicates": 200,
+  "random_seed": 20261015,
+  "deviation_plot_transform": "sign(D) * log10(1 + abs(D) / D0); D is max_background_deviation in W m^-2",
+  "deviation_plot_scale_D0_w_m2": 1e-06,
+  "histogram_count_axis": "linear; deviation and old RXFI distributions stacked by max_goes_class",
+  "inputs": {
+    "data/derived/train_targets.csv": "fd5cbf0976ddb788a9430f3fb4c2e70835d6ee44ecd18f7bf7e0c4774585c080",
+    "data/derived/old_rxfi_targets/train_targets.csv": "1f7d0591670b467fb84c745c900d3ea5630cdd1deb4bb6cb05015fd2ebe85d2f",
+    "data/derived/validation_targets.csv": "2d77a0f2e7b075c4205dc369f47960b7ebc58a50826b0d6c51d662fcacdd0f5d",
+    "data/derived/old_rxfi_targets/validation_targets.csv": "22cbcbaba071ddd5b94dccb8e049be5ad4a094d6f91a824fd9556bfb16b8dd98",
+    "data/derived/leaky_validation_targets.csv": "4d690051ddf3a3f1c39f58aefe97c3a2f197b9341d9d4e374440f97e0f143e76",
+    "data/derived/old_rxfi_targets/leaky_validation_targets.csv": "1cb61c7df8eaf95d42f7349399217ff2d93742c16a1d3073bc950107d49b6962",
+    "data/derived/test_targets.csv": "d24b72f1f469d8ef79910de40bd991eb93047b0d120a3803d21700279b42f75d",
+    "data/derived/old_rxfi_targets/test_targets.csv": "265b3399b54c3eaf2b9b7179f9a56f8475b918825ac93bbc48c44354430afb0c"
+  },
+  "figures": [
+    "outputs/old_rxfi_background_deviation_comparison/figures/old_rxfi_vs_background_deviation.svg",
+    "outputs/old_rxfi_background_deviation_comparison/figures/old_rxfi_vs_background_deviation.png"
+  ],
+  "documentation_figures": [
+    "docs/research/assets/old_rxfi_vs_background_deviation.svg",
+    "docs/research/assets/old_rxfi_vs_background_deviation.png"
+  ],
+  "note": "The test split was inspected descriptively in this audit; any target choice informed by these results is no longer independent of the existing test cohort and needs a future independent evaluation."
+}

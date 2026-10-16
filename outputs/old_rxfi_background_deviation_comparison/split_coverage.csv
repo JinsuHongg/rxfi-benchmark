@@ -1,0 +1,5 @@
+split,windows,valid_max_background_deviation,valid_max_old_rxfi,paired_valid,deviation_only,old_rxfi_only,both_missing,no_catalog_flare,no_valid_old_rxfi,old_rxfi_ok
+train,74760,74510,57293,57223,17287,70,180,17413,54,57293
+validation,3672,3664,3045,3037,627,8,0,627,0,3045
+leaky_validation,6048,6042,4756,4750,1292,6,0,1282,10,4756
+test,43848,43848,35491,35491,8357,0,0,8349,8,35491

@@ -6,6 +6,8 @@ This document defines a supplementary catalog-based target for comparing the
 historical RXFI ratio with the four XRS-only targets. It does not change the
 XRS-only target definitions in
 [`xrs_only_target_definitions.md`](xrs_only_target_definitions.md).
+The completed comparison with `max_background_deviation` is documented in
+[`old_rxfi_vs_background_deviation.md`](old_rxfi_vs_background_deviation.md).
 
 The event-level values come from the copied NOAA catalog
 `data/derived/noaa_flare_catalog_old_background_rxfi.csv`. The source catalog
