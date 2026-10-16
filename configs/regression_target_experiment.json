@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "prediction_window_hours": 24,
+  "background_conditions": [
+    {"id": "2h_q10", "window_hours": 2, "lower_percent": 10},
+    {"id": "2h_q50", "window_hours": 2, "lower_percent": 50},
+    {"id": "24h_q10", "window_hours": 24, "lower_percent": 10},
+    {"id": "24h_q50", "window_hours": 24, "lower_percent": 50}
+  ],
+  "sample_sum_scale_seconds": 1,
+  "valid_sample_rule": "finite positive XRS-B flux, xrsb_flag == 0"
+}
