@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "normalization": "signed_log1p_train_channel_zscore",
+  "transform": {
+    "name": "signed_log1p",
+    "formula": "sign(x) * ln(1 + abs(x))",
+    "log_base": "e"
+  },
+  "statistic": "population_mean_and_std",
+  "std_ddof": 0,
+  "channel_names": [
+    "aia94",
+    "aia131",
+    "aia171",
+    "aia193",
+    "aia211",
+    "aia304",
+    "aia335",
+    "aia1600",
+    "hmi_m",
+    "hmi_bx",
+    "hmi_by",
+    "hmi_bz",
+    "hmi_v"
+  ],
+  "mean": [
+    0.49464041982023665,
+    1.2980433938389864,
+    3.8922146620343505,
+    4.11102150998763,
+    3.0018234697469133,
+    2.7566545563629434,
+    1.16329935118966,
+    2.6579033433645654,
+    -0.001850184016181593,
+    0.032587822260231235,
+    0.0013730045769080885,
+    -0.0014125590484410301,
+    -0.050894477450506154
+  ],
+  "std": [
+    0.3368692291218783,
+    0.7576533035252437,
+    1.5939236547523732,
+    1.558482123994228,
+    1.3937987312182107,
+    1.3505928861893244,
+    0.5851782403060654,
+    1.6447154311613832,
+    1.0104761522585288,
+    1.731275699458038,
+    1.717426762180996,
+    0.9790757138852063,
+    5.094574333917243
+  ],
+  "count_pixels_per_channel": 3553614848,
+  "source": {
+    "split": "train",
+    "index_csv": "/scratch/users/jhong36/data/surya_index/train.csv",
+    "index_csv_sha256": "9c3bac4cfe4a9e290f889cc75697dcc1295f928fe58f18d6b6e0e265e11b11bc",
+    "zarr_path": "/scratch/users/jhong36/surya-bench-224-interarea.zarr",
+    "training_samples": 70823,
+    "training_rows": 74760,
+    "missing_training_rows": 3937,
+    "missing_training_examples": [
+      "2010-05-13 00:00:00",
+      "2010-05-18 20:00:00",
+      "2010-05-18 21:00:00",
+      "2010-05-18 22:00:00",
+      "2010-05-18 23:00:00"
+    ]
+  },
+  "created_utc": "2026-10-16T22:53:40.214959+00:00"
+}
