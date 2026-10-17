@@ -59,8 +59,10 @@ outputs. The event-level method and label semantics are specified in
 Use `--revision <40-character-commit-sha> --offline` to reproduce from cached
 inputs only. NOAA's direct annual file layout is generation-specific:
 
-- GOES-8–15: [NCEI legacy XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/), with `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc`.
-- GOES-16–19: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), with `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc`.
+- GOES-8–15: [NCEI legacy XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/), using `v2-2-1` annual files.
+- GOES-16 and GOES-18: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), using `v2-2-2` annual files.
+- GOES-17 and GOES-19: the same GOES-R archive, using `v2-2-1` annual files.
+- The generator selects the version per satellite and records it in run metadata because NOAA may publish versions on different schedules.
 
 The primary/secondary schedule comes from [NOAA's GOES Flare Report ReadMe,
 Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).

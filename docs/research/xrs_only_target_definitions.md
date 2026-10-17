@@ -97,12 +97,15 @@ NOAA/NCEI's direct annual file layout depends on the GOES generation:
 
 | Satellites | Official directory and direct-file pattern | Examples |
 | --- | --- | --- |
-| GOES-8–15 | [NCEI science/XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/) — `goes{N}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-15, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc) (primary); [GOES-14, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc) (secondary) |
-| GOES-16–19 | [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/) — `goes{N}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{N}_y{YYYY}_v2-2-1.nc` | [GOES-16, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-1.nc) (primary); [GOES-18, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-1.nc) (secondary) |
+| GOES-8–15 | [NCEI science/XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/) — annual `v2-2-1` files | [GOES-15, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes15/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g15_y2012_v2-2-1.nc) (primary); [GOES-14, 2012](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/goes14/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g14_y2012_v2-2-1.nc) (secondary) |
+| GOES-16 and GOES-18 | [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/) — annual `v2-2-2` files | [GOES-16, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-2.nc) (primary); [GOES-18, 2023](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-2.nc) (secondary) |
+| GOES-17 and GOES-19 | The same GOES-R archive — annual `v2-2-1` files | |
 
-The data product version is pinned to `v2-2-1`. Run metadata records the
-resolved Hugging Face revision, source URLs and SHA-256 hashes, target file
-hashes, and the NOAA schedule source.
+The annual product version is pinned per satellite: GOES-8–15, GOES-17, and
+GOES-19 use `v2-2-1`; GOES-16 and GOES-18 use `v2-2-2`. Run metadata records
+the product version for each NOAA file, the resolved Hugging Face revision,
+source URLs and SHA-256 hashes, target file hashes, and the NOAA schedule
+source.
 
 ## Reproducing target generation
 

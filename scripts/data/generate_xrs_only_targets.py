@@ -17,8 +17,7 @@ import shutil
 import sys
 import urllib.error
 import urllib.request
-from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +36,13 @@ try:
         sha256_file,
     )
 except ModuleNotFoundError:
-    from paper_background.noaa import InputDownloadError, cache_path, download_atomic, read_l2_year, sha256_file
+    from paper_background.noaa import (
+        InputDownloadError,
+        cache_path,
+        download_atomic,
+        read_l2_year,
+        sha256_file,
+    )
 
 
 HF_DATASET = "nasa-ibm-ai4science/surya-bench-flare-forecasting"
@@ -49,7 +54,13 @@ TARGET_COLUMNS = (
     "max_background_deviation",
     "total_background_deviation",
 )
-PRODUCT_VERSION = "v2-2-1"
+PRODUCT_VERSIONS: dict[int, str] = {
+    **{satellite: "v2-2-1" for satellite in range(8, 16)},
+    16: "v2-2-2",
+    17: "v2-2-1",
+    18: "v2-2-2",
+    19: "v2-2-1",
+}
 NOAA_TABLE_URL = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf"
 NOAA_LEGACY_BASE = "https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/"
 NOAA_GOES_R_BASE = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/"
@@ -85,15 +96,15 @@ PRIMARY_SECONDARY_SCHEDULE = (
 
 
 def parse_timestamp(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value.strip())
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def epoch_seconds(value: datetime) -> int:
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
     return int(value.timestamp())
 
 
@@ -134,23 +145,38 @@ def fetch_hf_splits(revision: str, cache_dir: Path, offline: bool = False) -> tu
     return paths, inputs
 
 
-def xrs_url_for(satellite: int, year: int) -> str:
-    """Build the official NOAA/NCEI annual GOES XRS L2 avg1m science URL."""
-    filename = f"sci_xrsf-l2-avg1m_g{satellite}_y{year}_{PRODUCT_VERSION}.nc"
+def xrs_url_for(satellite: int, year: int, version: str | None = None) -> str:
+    """Build the official NOAA/NCEI annual GOES XRS L2 avg1m science URL.
+
+    Args:
+        satellite: GOES satellite number.
+        year: UTC year represented by the annual file.
+        version: Product version override; defaults to the satellite's pinned version.
+
+    Returns:
+        Official direct-download URL for the annual file.
+    """
+    product_version = version or PRODUCT_VERSIONS[satellite]
+    filename = f"sci_xrsf-l2-avg1m_g{satellite}_y{year}_{product_version}.nc"
     if satellite <= 15:
         return f"{NOAA_LEGACY_BASE}goes{satellite}/xrsf-l2-avg1m_science/{filename}"
     return f"{NOAA_GOES_R_BASE}goes{satellite}/l2/data/xrsf-l2-avg1m_science/{filename}"
 
 
 class AnnualXrsCache:
-    """Load annual files from the existing NOAA cache or fetch pinned-version inputs."""
+    """Load cached or downloaded annual files using per-satellite versions."""
 
     def __init__(self, root: Path, lock_path: Path, offline: bool) -> None:
         self.root = root
         self.offline = offline
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        default_version = lock["xrs_l2"].get("version", "v2-2-1")
         self.locked = {
-            (int(item["satellite"]), int(item["year"])): item
+            (
+                int(item["satellite"]),
+                int(item["year"]),
+                str(item.get("version", default_version)),
+            ): item
             for item in lock["xrs_l2"]["files"]
         }
         self.series: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
@@ -161,11 +187,14 @@ class AnnualXrsCache:
         key = (satellite, year)
         if key in self.series:
             return self.series[key]
-        locked = self.locked.get(key)
-        url = xrs_url_for(satellite, year)
-        path = cache_path(self.root, satellite, year, PRODUCT_VERSION)
+        version = PRODUCT_VERSIONS[satellite]
+        locked = self.locked.get((satellite, year, version))
+        url = xrs_url_for(satellite, year, version)
+        path = cache_path(self.root, satellite, year, version)
         legacy_path = self.root / "xrs_l2" / f"g{satellite}" / f"{year}.nc"
-        candidates = [path, legacy_path]
+        candidates = [path]
+        if locked is not None:
+            candidates.append(legacy_path)
         existing = next((candidate for candidate in candidates if candidate.is_file()), None)
         download_record: dict[str, Any] | None = None
         if existing is not None and locked is not None:
@@ -197,11 +226,12 @@ class AnnualXrsCache:
         item = {
             "satellite": satellite,
             "year": year,
+            "product_version": version,
             "path": str(existing),
             "url": url,
             "size_bytes": existing.stat().st_size,
             "sha256": sha256(existing),
-            "valid_samples": int(len(seconds)),
+            "valid_samples": len(seconds),
             "sample_count": int(metadata["sample_count"]),
             "locked_input": locked is not None,
         }
@@ -235,9 +265,9 @@ def selected_observations(
         next_boundary = boundaries[active_index + 1][0] if active_index + 1 < len(boundaries) else end
         segment_end = min(end, next_boundary)
         primary, secondary = boundaries[active_index][1:]
-        for year in range(datetime.fromtimestamp(cursor, timezone.utc).year, datetime.fromtimestamp(segment_end - 1, timezone.utc).year + 1):
-            year_start = epoch_seconds(datetime(year, 1, 1, tzinfo=timezone.utc))
-            year_end = epoch_seconds(datetime(year + 1, 1, 1, tzinfo=timezone.utc))
+        for year in range(datetime.fromtimestamp(cursor, UTC).year, datetime.fromtimestamp(segment_end - 1, UTC).year + 1):
+            year_start = epoch_seconds(datetime(year, 1, 1, tzinfo=UTC))
+            year_end = epoch_seconds(datetime(year + 1, 1, 1, tzinfo=UTC))
             lo, hi = max(cursor, year_start), min(segment_end, year_end)
             if hi <= lo:
                 continue
@@ -366,7 +396,7 @@ def generate_split(
         missing_prediction += int(not len(prediction))
         missing_background += int(baseline is None)
         generated = dict(source)
-        generated["original_row_index"] = row_index
+        generated["original_row_index"] = str(row_index)
         generated["max_xflux"] = "" if max_xflux is None else format(max_xflux, ".12g")
         generated["fluence"] = "" if fluence is None else format(fluence, ".12g")
         generated["max_background_deviation"] = "" if max_deviation is None else format(max_deviation, ".12g")
@@ -443,17 +473,19 @@ def main() -> None:
         "valid_measurement": "finite positive xrsb_flux and xrsb_flag == 0",
         "missing_samples": "no interpolation; sum valid samples and record coverage",
         "fluence_and_total_deviation": "60 seconds times valid one-minute sample sum",
-        "goes_l2_product_version": PRODUCT_VERSION,
+        "goes_l2_product_versions_by_satellite": {
+            str(satellite): version for satellite, version in PRODUCT_VERSIONS.items()
+        },
         "satellite_schedule_source": "NOAA/NCEI GOES Flare Report ReadMe, Appendix A, Table 5, 2026-06-10",
         "satellite_schedule_source_url": NOAA_TABLE_URL,
         "noaa_data_url_templates": {
-            "GOES-8_to_15": f"{NOAA_LEGACY_BASE}goes{{satellite}}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{PRODUCT_VERSION}.nc",
-            "GOES-16_to_19": f"{NOAA_GOES_R_BASE}goes{{satellite}}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{PRODUCT_VERSION}.nc",
+            "GOES-8_to_15": f"{NOAA_LEGACY_BASE}goes{{satellite}}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
+            "GOES-16_to_19": f"{NOAA_GOES_R_BASE}goes{{satellite}}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
         },
         "satellite_sample_selection": "scheduled primary where valid, with same-minute scheduled secondary fallback",
         "satellite_schedule": [list(row) for row in PRIMARY_SECONDARY_SCHEDULE],
-        "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), timezone.utc).isoformat(),
-        "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), timezone.utc).isoformat(),
+        "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat(),
+        "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat(),
     }
     config_json = json.dumps(run_config, sort_keys=True, separators=(",", ":"))
     fingerprint_seed = json.dumps({
@@ -471,7 +503,7 @@ def main() -> None:
     summary: dict[str, Any] = {
         "schema_version": 1,
         "run_id": run_id,
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "created_at_utc": datetime.now(UTC).isoformat(),
         "hugging_face": hf_inputs,
         "method": run_config,
         "noaa_inputs": list(cache.input_manifest.values()),

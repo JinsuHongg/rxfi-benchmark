@@ -10,6 +10,13 @@
   "xrs_l2": {
     "product": "science-quality GOES XRS L2 avg1m",
     "version": "v2-2-1",
+    "versions_by_satellite": {
+      "8-15": "v2-2-1",
+      "16": "v2-2-2",
+      "17": "v2-2-1",
+      "18": "v2-2-2",
+      "19": "v2-2-1"
+    },
     "files": [
       {
         "satellite": 13,
@@ -354,6 +361,96 @@
         "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g19_y2025_v2-2-1.nc",
         "size_bytes": 30719782,
         "sha256": "f6b2f1d007eeb03d46746b27fa7b3d0a118b377d9e0fae7fa22e941d65f58823"
+      },
+      {
+        "satellite": 16,
+        "year": 2019,
+        "filename": "2019.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2019_v2-2-2.nc",
+        "size_bytes": 28067563,
+        "sha256": "a0a91121d595f1cd7fb3ba0e49172ad123d27ef97bc8aa976abce354713e249c"
+      },
+      {
+        "satellite": 16,
+        "year": 2020,
+        "filename": "2020.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2020_v2-2-2.nc",
+        "size_bytes": 29578842,
+        "sha256": "b0aca1b325f76fd8f32aa9e4583829b09cd2b648d888c4c0212ec2d3579d8822"
+      },
+      {
+        "satellite": 16,
+        "year": 2021,
+        "filename": "2021.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2021_v2-2-2.nc",
+        "size_bytes": 31655974,
+        "sha256": "13e34a5b8af21db6fb077a9bbcaada00192e948264ffd91954a978662e3004ac"
+      },
+      {
+        "satellite": 16,
+        "year": 2022,
+        "filename": "2022.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2022_v2-2-2.nc",
+        "size_bytes": 33897584,
+        "sha256": "88110f7b89e4a9a9d2bfc2bd234c033b8714902ed329c3ff8b2a94fb151545ab"
+      },
+      {
+        "satellite": 16,
+        "year": 2023,
+        "filename": "2023.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2023_v2-2-2.nc",
+        "size_bytes": 33480427,
+        "sha256": "dda17dc320983497b7af74739ae267c5db986ddc0d718ab86db06f009681273a"
+      },
+      {
+        "satellite": 18,
+        "year": 2023,
+        "filename": "2023.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2023_v2-2-2.nc",
+        "size_bytes": 32890911,
+        "sha256": "54476782cc4e03dfaeb7688ec14008b87cc60d67488cdc0dd4480e01fa0664a9"
+      },
+      {
+        "satellite": 16,
+        "year": 2024,
+        "filename": "2024.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2024_v2-2-2.nc",
+        "size_bytes": 33301047,
+        "sha256": "e51943c4a0a5818634034a927fc228bc151b53b86b83382452858fd01f4bae4b"
+      },
+      {
+        "satellite": 18,
+        "year": 2024,
+        "filename": "2024.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2024_v2-2-2.nc",
+        "size_bytes": 33640762,
+        "sha256": "29e193a877e07c74ae0e6a2f3682deda1a98fc63461e1e0d8b029f4b9e88c8d4"
+      },
+      {
+        "satellite": 16,
+        "year": 2025,
+        "filename": "2025.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g16_y2025_v2-2-2.nc",
+        "size_bytes": 8674044,
+        "sha256": "fe92e009be1016c19f557fb7c6e9b60306bff321f7b2423e303847d57592b222"
+      },
+      {
+        "satellite": 18,
+        "year": 2025,
+        "filename": "2025.nc",
+        "version": "v2-2-2",
+        "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g18_y2025_v2-2-2.nc",
+        "size_bytes": 33241615,
+        "sha256": "9a7919b02113ebb474a55a78671558ccb6e95b07aae5d43c4fd4d0df07528668"
       }
     ]
   }
