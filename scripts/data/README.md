@@ -23,6 +23,17 @@ existing `*_targets.csv` files:
 conda run -n rxfi-benchmark python -m scripts.data.generate_regression_targets
 ```
 
+On the cluster, submit the CPU launcher instead:
+
+```bash
+mkdir -p logs/target_generation
+sbatch scripts/launchers/slurm/generate_regression_targets.sbatch
+```
+
+The launcher uses the `flare_surya` environment unless
+`CONDA_ENV_NAME` names another installed environment. It does not pass
+`--overwrite`; existing split files cause the generator to stop.
+
 The experiment settings are in
 [`../../configs/regression_target_experiment.json`](../../configs/regression_target_experiment.json).
 Use `--revision <40-character-commit-sha> --offline` to reproduce using cached
