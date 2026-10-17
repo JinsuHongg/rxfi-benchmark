@@ -1,35 +1,42 @@
 #!/usr/bin/env python3
 """Config-driven ViT-Small quantile regression for NOAA/NCEI targets."""
 from __future__ import annotations
-import argparse, csv, hashlib, json, math, random, subprocess, time
+
+import argparse
+import csv
+import hashlib
+import json
+import math
+import random
+import subprocess
+import time
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
-import timm, torch, yaml, zarr
-from torch import nn
-from torch.utils.data import DataLoader, Dataset
 
-try:
-    from input_normalization import DEFAULT_STATS_PATH, NORMALIZATION_NAME, channel_names_from_array, load_channel_stats, normalize_image
-except ModuleNotFoundError:
-    from scripts.training.input_normalization import DEFAULT_STATS_PATH, NORMALIZATION_NAME, channel_names_from_array, load_channel_stats, normalize_image
+import matplotlib  # pyright: ignore[reportMissingImports]
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # pyright: ignore[reportMissingImports]
+import numpy as np
+import timm  # pyright: ignore[reportMissingImports]
+import torch  # pyright: ignore[reportMissingImports]
+import yaml
+import zarr
+from torch.utils.data import DataLoader, Dataset  # pyright: ignore[reportMissingImports]
+
+from scripts.training.input_normalization import (
+    DEFAULT_STATS_PATH,
+    NORMALIZATION_NAME,
+    channel_names_from_array,
+    load_channel_stats,
+    normalize_image,
+)
 
 SPLITS = ("train", "validation", "test", "leaky_validation")
-SOURCE_HASHES = {"train":"2ec7b8f39367f8340a39889bc66525aff303410d7b7ce6c12a55ea346b55e865","validation":"803d2e5584fe9bbe23bc02cbed1b06fb47520e4863c2b22b5f09f9d5c654c658","test":"40ddef01aebe23e5ee460717a08b7392827eacca2852af074d5f1533f59ebd4b","leaky_validation":"03134a82a53891d25761774c5aad52f77e01673195f7cfd28c0dc061bfe5849e"}
 PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
-
-def channel_selection(config, actual_order):
-    selected = config.get("selected_channels", actual_order)
-    if not selected or len(set(selected)) != len(selected) or any(name not in actual_order for name in selected): raise ValueError("selected_channels must be a non-empty, unique subset of canonical channel_order")
-    indices = [actual_order.index(name) for name in selected]
-    if int(config["in_chans"]) != len(indices): raise ValueError("in_chans must equal selected channel count")
-    return list(selected), indices
 
 def channel_selection(config, actual_order):
     selected = config.get("selected_channels", actual_order)
@@ -49,13 +56,18 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 def timestamp_ns(value: str) -> int:
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")); parsed = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    parsed = datetime.fromisoformat(value); parsed = parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
     return int(parsed.timestamp() * 1_000_000_000)
 
 def validate_transform(spec: Any) -> dict[str, Any]:
-    if not isinstance(spec, dict) or spec.get("name") not in {"log10_scaled", "log10_1p_scaled", "log10_1p"}: raise ValueError("Unsupported target_transform.name")
+    if not isinstance(spec, dict) or spec.get("name") not in {"log10_scaled", "log10_1p_scaled", "log10_1p", "asinh_zscore"}: raise ValueError("Unsupported target_transform.name")
     result = {"name": spec["name"]}
-    if spec["name"] != "log10_1p":
+    if spec["name"] == "asinh_zscore":
+        for key in ("scale_s", "transformed_mean", "transformed_std_population"):
+            value = float(spec.get(key, 0))
+            if not math.isfinite(value) or (key != "transformed_mean" and value <= 0): raise ValueError(f"Invalid asinh target parameter: {key}")
+            result[key] = value
+    elif spec["name"] != "log10_1p":
         scale = float(spec.get("scale", 0))
         if not math.isfinite(scale) or scale <= 0: raise ValueError("Scaled transform requires positive scale")
         result["scale"] = scale
@@ -63,12 +75,14 @@ def validate_transform(spec: Any) -> dict[str, Any]:
 
 def forward(raw: float, spec: dict[str, Any]) -> float | None:
     if not math.isfinite(raw): return None
-    if spec["name"] == "log10_scaled": value = math.log10(raw / spec["scale"]) if raw > 0 else math.nan
+    if spec["name"] == "asinh_zscore": value = (math.asinh(raw / spec["scale_s"]) - spec["transformed_mean"]) / spec["transformed_std_population"]
+    elif spec["name"] == "log10_scaled": value = math.log10(raw / spec["scale"]) if raw > 0 else math.nan
     elif spec["name"] == "log10_1p_scaled": value = math.log10(1 + raw / spec["scale"]) if raw >= 0 else math.nan
     else: value = math.log10(1 + raw) if raw >= 0 else math.nan
     return value if math.isfinite(value) else None
 
 def inverse(value: float, spec: dict[str, Any]) -> float:
+    if spec["name"] == "asinh_zscore": return spec["scale_s"] * math.sinh(value * spec["transformed_std_population"] + spec["transformed_mean"])
     if spec["name"] == "log10_scaled": return spec["scale"] * 10 ** value
     if spec["name"] == "log10_1p_scaled": return spec["scale"] * (10 ** value - 1)
     return 10 ** value - 1
@@ -86,14 +100,20 @@ def target(row: dict[str,str], config: dict[str,Any], spec: dict[str,Any]) -> tu
 def read_rows(config: dict[str,Any], spec: dict[str,Any]) -> tuple[dict[str,list[dict[str,str]]],dict[str,Any]]:
     result = {}; meta = {"source_split_sha256":{},"derived_target_sha256":{},"target_validity":{}}
     for split in SPLITS:
-        source = Path(config["source_split_dir"]) / f"{split}.csv"; derived = Path(config["derived_target_dir"]) / f"{split}_targets.csv"
-        sh, dh = sha256(source), sha256(derived)
-        if sh != SOURCE_HASHES[split]: raise RuntimeError(f"Frozen {split} hash changed")
-        with source.open(newline="", encoding="utf-8") as h: source_rows = list(csv.DictReader(h))
-        with derived.open(newline="", encoding="utf-8") as h: rows = list(csv.DictReader(h))
-        if len(source_rows) != len(rows): raise RuntimeError(f"{split} row count mismatch")
-        for i,(a,b) in enumerate(zip(source_rows,rows)):
-            if a["timestamp"] != b["timestamp"] or int(b.get("original_row_index",i)) != i: raise RuntimeError(f"{split} row alignment mismatch at {i}")
+        if "target_split_dir" in config:
+            derived = Path(config["target_split_dir"]) / f"{split}.csv"
+            dh = sha256(derived); sh = "generated_target_split"
+            with derived.open(newline="", encoding="utf-8") as h: rows = list(csv.DictReader(h))
+            if not rows or "timestamp" not in rows[0] or config["target_column"] not in rows[0]: raise RuntimeError(f"{derived} is missing timestamp or target column")
+            if "original_row_index" in rows[0] and any(int(row["original_row_index"]) != i for i,row in enumerate(rows)): raise RuntimeError(f"{split} generated target row order is invalid")
+        else:
+            source = Path(config["source_split_dir"]) / f"{split}.csv"; derived = Path(config["derived_target_dir"]) / f"{split}_targets.csv"
+            sh, dh = sha256(source), sha256(derived)
+            with source.open(newline="", encoding="utf-8") as h: source_rows = list(csv.DictReader(h))
+            with derived.open(newline="", encoding="utf-8") as h: rows = list(csv.DictReader(h))
+            if len(source_rows) != len(rows): raise RuntimeError(f"{split} row count mismatch")
+            for i,(a,b) in enumerate(zip(source_rows,rows)):
+                if a["timestamp"] != b["timestamp"] or int(b.get("original_row_index",i)) != i: raise RuntimeError(f"{split} row alignment mismatch at {i}")
         valid = sum(target(row,config,spec) is not None for row in rows); result[split] = rows; meta["source_split_sha256"][split] = sh; meta["derived_target_sha256"][split] = dh; meta["target_validity"][split] = {"total":len(rows),"valid":valid,"excluded_missing_or_invalid":len(rows)-valid}
     return result,meta
 
@@ -102,7 +122,9 @@ def attach_images(rows: dict[str,list[dict[str,str]]], config: dict[str,Any], sp
     for values in rows.values():
         for row in values:
             if target(row,config,spec) is not None: needed[datetime.fromisoformat(row["timestamp"]).year].add(timestamp_ns(row["timestamp"]))
-    positions = {}; availability = {"per_year":{},"missing_or_unreadable":[]}; root = Path(config["zarr_path"])
+    positions: dict[int, dict[int, int]] = {}
+    availability: dict[str, Any] = {"per_year":{},"missing_or_unreadable":[]}
+    root = Path(config["zarr_path"])
     for year, stamps in needed.items():
         group_path = root / str(year) / "dataset"
         if not group_path.exists(): positions[year] = {}; availability["missing_or_unreadable"] += [{"year":year,"timestamp_ns":stamp} for stamp in stamps]; continue
@@ -117,12 +139,12 @@ def attach_images(rows: dict[str,list[dict[str,str]]], config: dict[str,Any], sp
             if value is None: continue
             raw,z=value; stamp=timestamp_ns(row["timestamp"]); year=datetime.fromisoformat(row["timestamp"]).year
             if (year,stamp) in unavailable: availability["missing_or_unreadable"].append({"split":split,"timestamp":row["timestamp"],"year":year,"reason":"timestamp_not_in_zarr"}); continue
-            records.append(Record(split,int(row.get("original_row_index",i)),row["timestamp"],year,positions[year][stamp],raw,z,row["max_flare_class"]))
+            records.append(Record(split,int(row.get("original_row_index",i)),row["timestamp"],year,positions[year][stamp],raw,z,row.get("max_flare_class",row.get("max_goes_class",""))))
         result[split]=records
     return result,availability
 
 class SuryaDataset(Dataset):
-    def __init__(self,records:list[Record],zarr_path:str,channel_indices:list[int],channel_mean:np.ndarray,channel_std:np.ndarray): self.records,self.zarr_path,self.channel_indices,self.arrays=records,Path(zarr_path),channel_indices,{}; self.channel_mean,self.channel_std=channel_mean,channel_std
+    def __init__(self,records:list[Record],zarr_path:str,channel_indices:list[int],channel_mean:np.ndarray,channel_std:np.ndarray): super().__init__(); self.records,self.zarr_path,self.channel_indices,self.arrays=records,Path(zarr_path),channel_indices,{}; self.channel_mean,self.channel_std=channel_mean,channel_std
     def __len__(self): return len(self.records)
     def __getitem__(self,index):
         record=self.records[index]
@@ -192,17 +214,39 @@ def validate_config(config):
     if config["precision"] not in PRECISIONS:raise ValueError("Unsupported precision")
     return spec
 
+def resolve_target_transform(config):
+    """Load the train-fitted transform for a configured XRS target."""
+    if config.get("target_transform", {}).get("name") != "asinh_zscore":
+        return config["target_transform"]
+    stats_path = Path(config["target_stats_path"])
+    with stats_path.open(encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if payload.get("schema_version") != 1 or payload.get("fit_split") != "train":
+        raise ValueError(f"Unsupported or non-train target statistics in {stats_path}")
+    if Path(payload.get("zarr_path", "")).resolve() != Path(config["zarr_path"]).resolve():
+        raise ValueError("Target statistics were computed from a different Zarr path")
+    if "target_split_dir" in config:
+        train_csv = Path(config["target_split_dir"]) / "train.csv"
+        if sha256(train_csv) != payload.get("source_csv_sha256"):
+            raise ValueError("Target statistics do not match the configured train.csv")
+    try:
+        target_stats = payload["targets"][config["target_column"]]
+    except KeyError as error:
+        raise ValueError(f"No target statistics for {config['target_column']!r}") from error
+    return {"name": "asinh_zscore", **target_stats}
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument("--config",default="configs/vit_small_224_max_peak_flux_qr.yaml");parser.add_argument("--smoke-only",action="store_true");parser.add_argument("--validate-transforms",action="store_true");parser.add_argument("--batch-size",type=int);parser.add_argument("--precision",choices=sorted(PRECISIONS));parser.add_argument("--num-workers",type=int);parser.add_argument("--gradient-accumulation-steps",type=int);args=parser.parse_args()
     config=yaml.safe_load(Path(args.config).read_text());
     for name in ("batch_size","precision","num_workers","gradient_accumulation_steps"):
         if getattr(args,name) is not None:config[name]=getattr(args,name)
+    config["target_transform"]=resolve_target_transform(config)
     spec=validate_config(config)
     if args.validate_transforms:transform_tests();print(json.dumps({"transform_tests":"passed","transform":spec}));return
     if not torch.cuda.is_available():raise RuntimeError("CUDA GPU is required; refusing CPU fallback")
     output=Path(config["output_dir"]);output.mkdir(parents=True,exist_ok=True);(output/"checkpoints").mkdir(exist_ok=True);(output/"predictions").mkdir(exist_ok=True)
     random.seed(config["seed"]);np.random.seed(config["seed"]);torch.manual_seed(config["seed"]);torch.cuda.manual_seed_all(config["seed"])
-    rows,integrity=read_rows(config,spec);hashes=dict(integrity["derived_target_sha256"]);records,availability=attach_images(rows,config,spec);stats_path=Path(config["normalization_stats_path"]);channel_mean,channel_std,stats_metadata=load_channel_stats(stats_path,availability["canonical_channel_order"],config["zarr_path"],Path(config["derived_target_dir"])/"train_targets.csv");datasets={s:SuryaDataset(r,config["zarr_path"],availability["selected_channel_indices"],channel_mean,channel_std) for s,r in records.items()};loaders={s:loader(d,config,s=="train") for s,d in datasets.items()};device=torch.device("cuda");q=torch.tensor(config["quantiles"],device=device)
+    rows,integrity=read_rows(config,spec);hashes=dict(integrity["derived_target_sha256"]);records,availability=attach_images(rows,config,spec);stats_path=Path(config["normalization_stats_path"]);training_index=Path(config["derived_target_dir"])/"train_targets.csv" if "derived_target_dir" in config else None;channel_mean,channel_std,stats_metadata=load_channel_stats(stats_path,availability["canonical_channel_order"],config["zarr_path"],training_index);datasets={s:SuryaDataset(r,config["zarr_path"],availability["selected_channel_indices"],channel_mean,channel_std) for s,r in records.items()};loaders={s:loader(d,config,s=="train") for s,d in datasets.items()};device=torch.device("cuda");q=torch.tensor(config["quantiles"],device=device)
     cohort={s:{"total_split_rows":integrity["target_validity"][s]["total"],"valid_target_rows":integrity["target_validity"][s]["valid"],"image_target_available_rows":len(records[s]),"missing_target_rows":integrity["target_validity"][s]["excluded_missing_or_invalid"],"missing_image_rows":integrity["target_validity"][s]["valid"]-len(records[s])} for s in SPLITS};print(json.dumps({"cohort":cohort}),flush=True);meta={"git_commit":git_commit(),"config_path":args.config,"config":config,"target_transform":spec,"input_normalization":{"name":NORMALIZATION_NAME,"stats_path":str(stats_path),"stats_source":stats_metadata["source"]},"integrity":integrity,"cohort":cohort,"legacy_suryabench_label_used_as_target":False,"torch_version":torch.__version__,"cuda_version":torch.version.cuda,"gpu_name":torch.cuda.get_device_name(device),"selected_channel_names":availability["selected_channel_names"],"selected_channel_indices":availability["selected_channel_indices"]}
     (output/"resolved_config.yaml").write_text(yaml.safe_dump(config,sort_keys=False));(output/"transform_metadata.json").write_text(json.dumps(spec,indent=2)+"\n");(output/"experiment_metadata.json").write_text(json.dumps(meta,indent=2)+"\n");write_csv(output/"cohort_summary.csv",[{"split":s,**cohort[s]} for s in SPLITS]);write_csv(output/"missing_or_unreadable_images.csv",availability["missing_or_unreadable"],["split","timestamp","year","reason"])
     fields=["split","original_row_index","timestamp","target_name","target_raw","target_transformed","max_flare_class","q05","q50","q95","q05_raw","q50_raw","q95_raw"];(output/"prediction_schema.json").write_text(json.dumps({"columns":fields,"quantiles":config["quantiles"],"target_transform":spec},indent=2)+"\n")
@@ -216,5 +260,6 @@ def main():
     for split in ("validation","test","leaky_validation"):
         result=run_epoch(model,loaders[split],None,scaler,device,q,config);summary.append({"split":split,"selected_epoch":best_epoch,**result});write_csv(output/"predictions"/f"{split}_predictions.csv",exports(model,loaders[split],records[split],config,spec,device),fields)
     write_csv(output/"summary_metrics.csv",summary);(output/"checkpoint_metadata.json").write_text(json.dumps({"best_validation_epoch":best_epoch,"best_validation_pinball_loss":best,"selection_split":"validation"},indent=2)+"\n")
-    if hashes!={s:sha256(Path(config["derived_target_dir"])/f"{s}_targets.csv") for s in SPLITS}:raise RuntimeError("Derived targets changed during training")
+    hash_paths={s:(Path(config["target_split_dir"])/f"{s}.csv" if "target_split_dir" in config else Path(config["derived_target_dir"])/f"{s}_targets.csv") for s in SPLITS}
+    if hashes!={s:sha256(hash_paths[s]) for s in SPLITS}:raise RuntimeError("Target CSVs changed during training")
 if __name__=="__main__":main()

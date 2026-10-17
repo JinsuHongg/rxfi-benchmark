@@ -34,4 +34,15 @@ use `asinh(y / s)`, where `s` is the training-cohort median absolute value;
 the artifact also records the transformed mean and population standard
 deviation for per-target z-score normalization.
 
+The XRS-only QR configurations under `configs/xrs_only/` train one model for
+each of the ten target columns. They read the generated split CSVs directly,
+use the interarea Zarr and input stats, and apply each target's train-fitted
+asinh and z-score values. Submit the ten-run array after generating the CSVs
+and target stats:
+
+```bash
+mkdir -p logs/xrs_qr
+sbatch scripts/launchers/slurm/run_xrs_only_qr_array.sbatch
+```
+
 Use the YAML configurations under `configs/`; training commands are documented in the repository [README](../../README.md).

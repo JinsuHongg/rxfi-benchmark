@@ -1,0 +1,28 @@
+experiment_name: xrs_only_fluence_qr
+output_dir: outputs/xrs_only/fluence_qr
+zarr_path: /scratch/users/jhong36/surya-bench-224-interarea.zarr
+target_split_dir: data/derived
+target_stats_path: outputs/target_normalization_stats/train_target_stats.json
+target_column: fluence
+target_transform: {name: asinh_zscore}
+image_size: 224
+in_chans: 13
+channels: 13
+channel_order: [aia94, aia131, aia171, aia193, aia211, aia304, aia335, aia1600, hmi_m, hmi_bx, hmi_by, hmi_bz, hmi_v]
+normalization: signed_log1p_train_channel_zscore
+normalization_stats_path: outputs/input_normalization_stats/train_channel_stats.json
+model_name: vit_small_patch16_224
+patch_size: 16
+pretrained: false
+quantiles: [0.05, 0.50, 0.95]
+optimizer: adamw
+learning_rate: 0.0001
+weight_decay: 0.01
+lr_policy: constant
+epochs: 10
+batch_size: 32
+gradient_accumulation_steps: 1
+num_workers: 4
+precision: '32'
+seed: 0
+checkpoint_metric: validation_pinball_loss
