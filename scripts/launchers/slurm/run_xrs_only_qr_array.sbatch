@@ -26,9 +26,8 @@ configs=(
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 mkdir -p logs/xrs_qr
-CONDA_ENV_PREFIX="${CONDA_ENV_PREFIX:?set CONDA_ENV_PREFIX to the rxfi-benchmark QR environment}"
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_PREFIX"
+conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 export PYTHONPATH="$PWD/src:$PWD/scripts:$PWD/scripts/training${PYTHONPATH:+:$PYTHONPATH}"
 
 srun python scripts/training/train_vit_quantile_regression.py \

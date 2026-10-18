@@ -11,20 +11,16 @@
 # Submit from the repository root:
 #   mkdir -p logs/vit_small_224_max_flare_class
 #   sbatch scripts/launchers/slurm_vit_small_224_max_flare_class.sbatch
-# Optionally set CONDA_ENV_PREFIX or OUTPUT_DIR at submission time.
+# Optionally set CONDA_ENV_NAME or OUTPUT_DIR at submission time.
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 CONFIG="${CONFIG:-configs/vit_small_224_max_flare_class.yaml}"
-CONDA_ENV_PREFIX="${CONDA_ENV_PREFIX:-/home/users/jhong36/miniforge3/envs/rxfi-benchmark}"
+CONDA_ENV_NAME="${CONDA_ENV_NAME:-rxfi-benchmark}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/vit_small_224_max_flare_class_slurm_${SLURM_JOB_ID:?missing SLURM_JOB_ID}}"
 
 test -f "$CONFIG" || {
   echo "Missing config: $CONFIG" >&2
-  exit 2
-}
-test -d "$CONDA_ENV_PREFIX" || {
-  echo "Missing Conda environment: $CONDA_ENV_PREFIX" >&2
   exit 2
 }
 test ! -e "$OUTPUT_DIR" || {
@@ -34,7 +30,7 @@ test ! -e "$OUTPUT_DIR" || {
 mkdir -p "$(dirname "$OUTPUT_DIR")" logs/vit_small_224_max_flare_class
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_PREFIX"
+conda activate "$CONDA_ENV_NAME"
 
 echo "hostname=$(hostname) job_id=${SLURM_JOB_ID} cwd=$PWD"
 echo "config=$CONFIG output=$OUTPUT_DIR python=$(command -v python) conda_env=${CONDA_PREFIX:-unset}"

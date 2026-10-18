@@ -15,7 +15,7 @@ cd "${SLURM_SUBMIT_DIR:-$PWD}"
 export PYTHONPATH="$PWD/src:$PWD/scripts:$PWD/scripts/training${PYTHONPATH:+:$PYTHONPATH}"
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "${CONDA_ENV_NAME:-flare_surya}"
+conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 
 echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"
 echo "python=$(command -v python) conda_env=${CONDA_DEFAULT_ENV:-unset}"

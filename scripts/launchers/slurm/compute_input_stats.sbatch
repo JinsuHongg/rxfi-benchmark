@@ -15,7 +15,7 @@ cd "${SLURM_SUBMIT_DIR:-$PWD}"
 export PYTHONPATH="$PWD/src:$PWD/scripts:$PWD/scripts/training${PYTHONPATH:+:$PYTHONPATH}"
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate flare_surya
+conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 
 ZARR_PATH=/scratch/users/jhong36/surya-bench-224-v2.zarr
 INDEX_CSV=/scratch/users/jhong36/data/surya_index/train_targets.csv

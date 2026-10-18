@@ -30,7 +30,7 @@ mkdir -p logs/target_generation
 sbatch scripts/launchers/slurm/generate_regression_targets.sbatch
 ```
 
-The launcher uses the `flare_surya` environment unless
+The launcher uses the `rxfi-benchmark` environment unless
 `CONDA_ENV_NAME` names another installed environment. It does not pass
 `--overwrite`; existing split files cause the generator to stop.
 

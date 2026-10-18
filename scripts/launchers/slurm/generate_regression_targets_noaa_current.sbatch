@@ -15,7 +15,7 @@ cd "${SLURM_SUBMIT_DIR:-$PWD}"
 export PYTHONPATH="$PWD/src:$PWD/scripts:$PWD/scripts/training${PYTHONPATH:+:$PYTHONPATH}"
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "${CONDA_ENV_NAME:-flare_surya}"
+conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 
 REVISION=bf474bc1e7752bd529e9707650f9310db8693763
 DERIVED_DIR="$PWD/data/derived_noaa_current"
