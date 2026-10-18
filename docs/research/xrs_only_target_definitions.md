@@ -49,13 +49,15 @@ coverage is `n_background / 120` for 2 hours and `n_background / 1440` for 24
 hours. A coverage value of 0.9 therefore means 90% of the expected minute
 samples are valid.
 
-Only finite, positive measurements with quality flag 0 are used. If a scheduled
-primary record has a measured flux but a nonzero flag, a flag-zero sample from
-the scheduled secondary is used when available. If the primary timestamp or
-flux value is missing, or neither satellite has a valid flag-zero sample, the
-generator reports the mismatch and aborts before writing split files. Missing
-samples are not interpolated or silently omitted. The QC file records valid
-sample counts, coverage fractions, and primary/secondary source counts.
+Only finite, positive measurements with quality flag 0 are used. The scheduled
+primary is preferred; if it has no flag-zero sample for a minute, the scheduled
+secondary is used when it has one, including when the primary record or flux is
+missing. If neither satellite has a flag-zero sample, that minute is skipped
+and listed in `missing_xrs_samples.csv` with the schedule and each satellite's
+data status. The generator stops before replacing split files only if any
+required prediction or background window contains zero valid samples. Partial
+window coverage is allowed, and the QC records valid counts, coverage, and
+primary/secondary source counts.
 
 ## Target conditions
 
@@ -91,13 +93,13 @@ are retained; they are not clipped to zero.
 The generator follows the primary/secondary GOES schedule in NOAA/NCEI's
 [GOES Flare Report ReadMe, Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
 For each minute, it uses a valid flag-zero sample from the scheduled primary
-satellite. If the primary record exists with a measured flux but has a
-nonzero quality flag, it uses a valid flag-zero sample from the scheduled
-secondary when available. A missing primary timestamp or flux value causes an
-error even if the secondary has data; having no valid flag-zero sample from
-either satellite also stops generation. These checks run over the full required
-time span before any split file is written. The flare-catalog satellite field
-is not used to select the XRS series.
+satellite, otherwise a valid flag-zero sample from the scheduled secondary.
+This fallback applies when the primary record is absent, its flux is missing or
+invalid, or its quality flag is nonzero. If neither satellite has a valid
+flag-zero sample, the minute is omitted and recorded in the missing-sample QC
+CSV. Before replacing split files, the generator checks that every required
+prediction and background window has at least one valid sample. The
+flare-catalog satellite field is not used to select the XRS series.
 
 NOAA/NCEI's direct annual file layout depends on the GOES generation:
 

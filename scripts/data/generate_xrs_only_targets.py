@@ -157,25 +157,6 @@ def valid_flux_at(data: XrsYearData, requested: np.ndarray) -> tuple[np.ndarray,
     return present, flux
 
 
-def record_schedule_issues(
-    counts: dict[str, int],
-    examples: list[str],
-    category: str,
-    timestamps: np.ndarray,
-    primary: int,
-    secondary: int | None,
-) -> None:
-    """Count schedule/data issues and retain a bounded set of examples."""
-    counts[category] += len(timestamps)
-    remaining = 20 - len(examples)
-    secondary_label = f"; scheduled secondary GOES-{secondary}" if secondary is not None else ""
-    for timestamp in timestamps[:remaining]:
-        examples.append(
-            f"{datetime.fromtimestamp(int(timestamp), UTC).isoformat()}: "
-            f"{category}; scheduled primary GOES-{primary}{secondary_label}"
-        )
-
-
 def empty_xrs_year_data() -> XrsYearData:
     """Create an empty annual series for an unavailable satellite file."""
     empty_times = np.empty(0, dtype=np.int64)
@@ -219,18 +200,26 @@ def select_segment_samples(
     primary_satellite: int,
     secondary_satellite: int | None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, np.ndarray]]:
-    """Select primary flag-zero samples and allowed secondary fallbacks."""
+    """Select flag-zero samples and describe minutes with no eligible source."""
     primary_record = timestamps_present(primary.record_times, expected)
     primary_measured = timestamps_present(primary.measured_times, expected)
     primary_valid, primary_flux = valid_flux_at(primary, expected)
     secondary_valid, secondary_flux = valid_flux_at(secondary, expected)
-    fallback_needed = primary_record & primary_measured & ~primary_valid
     use_primary = primary_valid
-    use_secondary = fallback_needed & secondary_valid
-    issue_times = {
-        "primary timestamp missing": expected[~primary_record],
-        "primary flux value missing or invalid": expected[primary_record & ~primary_measured],
-        "neither satellite has valid flag-zero data": expected[fallback_needed & ~secondary_valid],
+    use_secondary = ~primary_valid & secondary_valid
+    missing = ~primary_valid & ~secondary_valid
+    gap_details = {
+        "timestamp": expected[missing],
+        "primary_status": np.select(
+            [~primary_record, ~primary_measured],
+            ["missing_record", "missing_or_invalid_flux"],
+            default="nonzero_flag",
+        )[missing],
+        "secondary_status": np.select(
+            [~timestamps_present(secondary.record_times, expected), ~timestamps_present(secondary.measured_times, expected)],
+            ["missing_record", "missing_or_invalid_flux"],
+            default="nonzero_flag",
+        )[missing],
     }
     times = np.concatenate((expected[use_primary], expected[use_secondary]))
     flux = np.concatenate((primary_flux[use_primary], secondary_flux[use_secondary]))
@@ -242,7 +231,7 @@ def select_segment_samples(
         np.ones(np.count_nonzero(use_primary), dtype=bool),
         np.zeros(np.count_nonzero(use_secondary), dtype=bool),
     ))
-    return times, flux, satellites, is_primary, issue_times
+    return times, flux, satellites, is_primary, gap_details
 
 
 def fetch_hf_splits(revision: str, cache_dir: Path, offline: bool = False) -> tuple[dict[str, Path], dict[str, Any]]:
@@ -369,18 +358,13 @@ def selected_observations(
     start: int,
     end: int,
     cache: AnnualXrsCache,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Select flag-zero samples and stop on missing scheduled-primary records."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[dict[str, Any]]]:
+    """Select eligible observations and retain uncovered schedule minutes for QC."""
     parts_t: list[np.ndarray] = []
     parts_f: list[np.ndarray] = []
     parts_s: list[np.ndarray] = []
     parts_primary: list[np.ndarray] = []
-    issue_counts = {
-        "primary timestamp missing": 0,
-        "primary flux value missing or invalid": 0,
-        "neither satellite has valid flag-zero data": 0,
-    }
-    issue_examples: list[str] = []
+    gaps: list[dict[str, Any]] = []
     for lo, hi, year, primary_satellite, secondary_satellite in scheduled_year_ranges(start, end):
         expected = np.arange(lo, hi, CADENCE_SECONDS, dtype=np.int64)
         primary_data = cache.load(primary_satellite, year) or empty_xrs_year_data()
@@ -392,35 +376,24 @@ def selected_observations(
         samples = select_segment_samples(
             expected, primary_data, secondary_data, primary_satellite, secondary_satellite
         )
-        sample_times, sample_flux, sample_satellites, sample_is_primary, issues = samples
+        sample_times, sample_flux, sample_satellites, sample_is_primary, gap_details = samples
         if len(sample_times):
             parts_t.append(sample_times)
             parts_f.append(sample_flux)
             parts_s.append(sample_satellites)
             parts_primary.append(sample_is_primary)
-        for category, timestamps in issues.items():
-            record_schedule_issues(
-                issue_counts,
-                issue_examples,
-                category,
-                timestamps,
-                primary_satellite,
-                secondary_satellite,
-            )
-    issue_total = sum(issue_counts.values())
-    if issue_total:
-        details = "\n".join(f"  - {example}" for example in issue_examples)
-        omitted = issue_total - len(issue_examples)
-        if omitted:
-            details += f"\n  - ... and {omitted} more issue(s)"
-        counts = ", ".join(f"{name}: {count}" for name, count in issue_counts.items() if count)
-        raise RuntimeError(
-            "NOAA GOES schedule/data mismatch; refusing to generate split data. "
-            f"Issue counts: {counts}.\n{details}"
-        )
+        gaps.extend({
+            "timestamp_utc": datetime.fromtimestamp(int(timestamp), UTC).isoformat(),
+            "scheduled_primary_satellite": primary_satellite,
+            "scheduled_secondary_satellite": secondary_satellite,
+            "primary_status": str(primary_status),
+            "secondary_status": str(secondary_status),
+        } for timestamp, primary_status, secondary_status in zip(
+            gap_details["timestamp"], gap_details["primary_status"], gap_details["secondary_status"]
+        ))
     if not parts_t:
         empty_t = np.empty(0, dtype=np.int64)
-        return empty_t, np.empty(0, dtype=float), np.empty(0, dtype=np.int16), np.empty(0, dtype=bool)
+        return empty_t, np.empty(0, dtype=float), np.empty(0, dtype=np.int16), np.empty(0, dtype=bool), gaps
     times = np.concatenate(parts_t)
     flux = np.concatenate(parts_f)
     satellites = np.concatenate(parts_s)
@@ -428,7 +401,7 @@ def selected_observations(
     order = np.argsort(times, kind="stable")
     times, flux, satellites, is_primary = times[order], flux[order], satellites[order], is_primary[order]
     unique = np.r_[True, times[1:] != times[:-1]]
-    return times[unique], flux[unique], satellites[unique], is_primary[unique]
+    return times[unique], flux[unique], satellites[unique], is_primary[unique], gaps
 
 
 def samples_in_window(times: np.ndarray, flux: np.ndarray, satellites: np.ndarray, is_primary: np.ndarray, start: int, end: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -557,6 +530,35 @@ def generate_split(
     return qc_rows, target_rows, summary
 
 
+def validate_required_windows(
+    source_rows: dict[str, tuple[list[str], list[dict[str, str]]]],
+    times: np.ndarray,
+    flux: np.ndarray,
+    satellites: np.ndarray,
+    is_primary: np.ndarray,
+) -> None:
+    """Stop before staging if any required 24-hour target window is empty."""
+    missing: list[str] = []
+    for split, (_, rows) in source_rows.items():
+        for row_index, row in enumerate(rows):
+            start = epoch_seconds(parse_timestamp(row["timestamp"]))
+            windows = (
+                ("prediction", start, start + WINDOW_SECONDS),
+                ("background", start - WINDOW_SECONDS, start),
+            )
+            for name, window_start, window_end in windows:
+                samples, _, _ = samples_in_window(
+                    times, flux, satellites, is_primary, window_start, window_end
+                )
+                if not len(samples) and len(missing) < 20:
+                    missing.append(f"{split}.{name} row {row_index} at {row['timestamp']}")
+    if missing:
+        raise RuntimeError(
+            "required target windows contain no valid flag-zero samples; split files were not replaced. "
+            f"Examples: {'; '.join(missing)}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--revision", default="main", help="Hugging Face dataset revision or full commit SHA")
@@ -577,9 +579,10 @@ def main() -> None:
     all_times = [parse_timestamp(row["timestamp"]) for _, rows in all_source_rows.values() for row in rows]
     span_start = epoch_seconds(min(all_times) - timedelta(hours=48))
     span_end = epoch_seconds(max(all_times) + timedelta(hours=24))
-    times, flux, satellites, is_primary = selected_observations(span_start, span_end, cache)
+    times, flux, satellites, is_primary, missing_samples = selected_observations(span_start, span_end, cache)
     if not len(times):
         raise RuntimeError("NOAA XRS selection yielded no valid samples for the split date range")
+    validate_required_windows(all_source_rows, times, flux, satellites, is_primary)
 
     run_config = {
         "target_columns": list(TARGET_COLUMNS),
@@ -587,7 +590,7 @@ def main() -> None:
         "background_window": "[s - 24 h, s)",
         "background_estimator": "mean of lowest ceil(N/2) valid samples",
         "valid_measurement": "finite positive xrsb_flux and xrsb_flag == 0",
-        "missing_samples": "abort on missing scheduled-primary timestamps or flux values; use flag-zero secondary data only when primary has a flagged measurement",
+        "missing_samples": "use a flag-zero scheduled secondary sample whenever the primary lacks a flag-zero sample; skip and record minutes when neither satellite has one; stop only if a required prediction or background window has zero valid samples",
         "fluence_and_total_deviation": "60 seconds times valid one-minute sample sum",
         "goes_l2_product_versions_by_satellite": {
             str(satellite): version for satellite, version in PRODUCT_VERSIONS.items()
@@ -598,7 +601,7 @@ def main() -> None:
             "GOES-8_to_15": f"{NOAA_LEGACY_BASE}goes{{satellite}}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
             "GOES-16_to_19": f"{NOAA_GOES_R_BASE}goes{{satellite}}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
         },
-        "satellite_sample_selection": "use flag-zero scheduled primary data; fall back to flag-zero secondary for present but flagged primary records; abort on missing primary records or values, or when neither source has flag-zero data",
+        "satellite_sample_selection": "use flag-zero scheduled primary data, otherwise use flag-zero scheduled secondary data; skip and record minutes when neither satellite has a flag-zero sample",
         "satellite_schedule": [list(row) for row in PRIMARY_SECONDARY_SCHEDULE],
         "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat(),
         "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat(),
@@ -606,6 +609,7 @@ def main() -> None:
     config_json = json.dumps(run_config, sort_keys=True, separators=(",", ":"))
     fingerprint_seed = json.dumps({
         "config": run_config,
+        "selection_policy": run_config["satellite_sample_selection"],
         "hf_inputs": hf_inputs,
         "noaa_inputs": sorted(cache.input_manifest.values(), key=lambda item: item["url"]),
         "unavailable_noaa_inputs": sorted(cache.unavailable, key=lambda item: item["url"]),
@@ -624,6 +628,11 @@ def main() -> None:
         "method": run_config,
         "noaa_inputs": list(cache.input_manifest.values()),
         "unavailable_noaa_inputs": cache.unavailable,
+        "missing_flag_zero_samples": {
+            "count": len(missing_samples),
+            "path": str(run_dir / "missing_xrs_samples.csv"),
+            "policy": "skip minutes without a flag-zero sample from either scheduled satellite; list each skipped minute for QC",
+        },
         "splits": {},
     }
     qc_all: list[dict[str, Any]] = []
@@ -652,6 +661,11 @@ def main() -> None:
 
     qc_columns = list(qc_all[0]) if qc_all else []
     write_csv(run_dir / "target_coverage_qc.csv", qc_columns, qc_all)
+    write_csv(
+        run_dir / "missing_xrs_samples.csv",
+        ["timestamp_utc", "scheduled_primary_satellite", "scheduled_secondary_satellite", "primary_status", "secondary_status"],
+        missing_samples,
+    )
     summary["target_coverage_qc"] = str(run_dir / "target_coverage_qc.csv")
     summary["target_coverage_qc_sha256"] = sha256(run_dir / "target_coverage_qc.csv")
     summary["run_config_sha256"] = hashlib.sha256(config_json.encode()).hexdigest()
