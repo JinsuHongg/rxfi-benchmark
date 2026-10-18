@@ -7,6 +7,7 @@ from typing import Any
 import lightning.pytorch as pl
 import timm
 import torch
+from loguru import logger
 from torchmetrics import MeanSquaredError
 from transformers import get_cosine_schedule_with_warmup
 
@@ -180,6 +181,46 @@ class QuantileRegressionModule(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
         }
+
+
+class WarmupAwareEarlyStopping(pl.Callback):
+    """Stop when validation loss stalls after the configured warmup period."""
+
+    def __init__(self, monitor: str, patience: int, start_epoch: int) -> None:
+        """Track validation improvements beginning at a one-based epoch."""
+        super().__init__()
+        if patience <= 0 or start_epoch <= 0:
+            raise ValueError("patience and start_epoch must be positive")
+        self.monitor = monitor
+        self.patience = patience
+        self.start_epoch = start_epoch
+        self.best_score = float("inf")
+        self.wait_count = 0
+
+    def on_validation_epoch_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Count non-improving validation epochs after warmup completes."""
+        del pl_module
+        if trainer.current_epoch + 1 < self.start_epoch:
+            return
+        metric = trainer.callback_metrics.get(self.monitor)
+        if metric is None:
+            return
+        score = float(metric.detach().cpu())
+        if score < self.best_score:
+            self.best_score = score
+            self.wait_count = 0
+            return
+        self.wait_count += 1
+        if self.wait_count >= self.patience:
+            trainer.should_stop = True
+            logger.info(
+                "Early stopping at epoch {}: {} did not improve for {} epochs",
+                trainer.current_epoch + 1,
+                self.monitor,
+                self.patience,
+            )
 
 
 class TrainingHistoryCallback(pl.Callback):

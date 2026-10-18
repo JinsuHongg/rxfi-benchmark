@@ -40,6 +40,7 @@ from scripts.training.input_normalization import (
 from scripts.training.qr_lightning import (
     QuantileRegressionModule,
     TrainingHistoryCallback,
+    WarmupAwareEarlyStopping,
 )
 
 SPLITS = ("train", "validation", "test")
@@ -454,6 +455,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "num_workers",
         "gradient_accumulation_steps",
         "lr_policy",
+        "learning_rate",
     }
     if config.get("normalization") != NORMALIZATION_NAME:
         raise ValueError(f"normalization must be {NORMALIZATION_NAME!r}")
@@ -469,7 +471,6 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "pretrained": False,
         "quantiles": [0.05, 0.5, 0.95],
         "optimizer": "adamw",
-        "learning_rate": 1e-4,
         "weight_decay": 0.01,
         "seed": 0,
         "checkpoint_metric": "validation_pinball_loss",
@@ -478,6 +479,14 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"Missing frozen config fields: {sorted(frozen.keys() - config.keys())}")
     if any(config[key] != value for key, value in frozen.items()):
         raise ValueError("Model, optimizer, or checkpoint settings differ from the QR family")
+    if float(config["learning_rate"]) <= 0:
+        raise ValueError("learning_rate must be positive")
+    patience = config.get("early_stopping_patience")
+    start_epoch = int(config.get("early_stopping_start_epoch", 1))
+    if patience is not None and int(patience) <= 0:
+        raise ValueError("early_stopping_patience must be positive")
+    if start_epoch <= 0:
+        raise ValueError("early_stopping_start_epoch must be positive")
     if config["lr_policy"] not in {"constant", "cosine_warmup"}:
         raise ValueError("lr_policy must be constant or cosine_warmup")
     if config["lr_policy"] == "cosine_warmup":
@@ -745,6 +754,15 @@ def main() -> None:
         save_top_k=1,
     )
     history = TrainingHistoryCallback()
+    callbacks: list[pl.Callback] = [checkpoint, history]
+    if config.get("early_stopping_patience") is not None:
+        callbacks.append(
+            WarmupAwareEarlyStopping(
+                monitor="validation/pinball_loss",
+                patience=int(config["early_stopping_patience"]),
+                start_epoch=int(config.get("early_stopping_start_epoch", 1)),
+            )
+        )
     model = QuantileRegressionModule(config)
     precision = {"32": "32-true", "16-mixed": "16-mixed", "bf16-mixed": "bf16-mixed"}[
         config["precision"]
@@ -756,7 +774,7 @@ def main() -> None:
         precision=precision,
         accumulate_grad_batches=int(config["gradient_accumulation_steps"]),
         logger=wandb_logger,
-        callbacks=[checkpoint, history],
+        callbacks=callbacks,
         default_root_dir=str(output),
         log_every_n_steps=1,
         num_sanity_val_steps=0,
