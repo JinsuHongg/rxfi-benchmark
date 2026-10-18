@@ -27,7 +27,7 @@ dependencies:
       - h5netcdf==1.8.1
       - h5py==3.15.1
       - lightning==2.6.5
-      - transformers==5.19.0
+      - transformers==4.57.6
 variables:
   WANDB_ENTITY: gsu-dmlab
   WANDB_PROJECT: rxfi-regression
