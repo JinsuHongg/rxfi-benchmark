@@ -530,35 +530,6 @@ def generate_split(
     return qc_rows, target_rows, summary
 
 
-def validate_required_windows(
-    source_rows: dict[str, tuple[list[str], list[dict[str, str]]]],
-    times: np.ndarray,
-    flux: np.ndarray,
-    satellites: np.ndarray,
-    is_primary: np.ndarray,
-) -> None:
-    """Stop before staging if any required 24-hour target window is empty."""
-    missing: list[str] = []
-    for split, (_, rows) in source_rows.items():
-        for row_index, row in enumerate(rows):
-            start = epoch_seconds(parse_timestamp(row["timestamp"]))
-            windows = (
-                ("prediction", start, start + WINDOW_SECONDS),
-                ("background", start - WINDOW_SECONDS, start),
-            )
-            for name, window_start, window_end in windows:
-                samples, _, _ = samples_in_window(
-                    times, flux, satellites, is_primary, window_start, window_end
-                )
-                if not len(samples) and len(missing) < 20:
-                    missing.append(f"{split}.{name} row {row_index} at {row['timestamp']}")
-    if missing:
-        raise RuntimeError(
-            "required target windows contain no valid flag-zero samples; split files were not replaced. "
-            f"Examples: {'; '.join(missing)}"
-        )
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--revision", default="main", help="Hugging Face dataset revision or full commit SHA")
@@ -580,9 +551,6 @@ def main() -> None:
     span_start = epoch_seconds(min(all_times) - timedelta(hours=48))
     span_end = epoch_seconds(max(all_times) + timedelta(hours=24))
     times, flux, satellites, is_primary, missing_samples = selected_observations(span_start, span_end, cache)
-    if not len(times):
-        raise RuntimeError("NOAA XRS selection yielded no valid samples for the split date range")
-    validate_required_windows(all_source_rows, times, flux, satellites, is_primary)
 
     run_config = {
         "target_columns": list(TARGET_COLUMNS),
@@ -603,8 +571,8 @@ def main() -> None:
         },
         "satellite_sample_selection": "use flag-zero scheduled primary data, otherwise use flag-zero scheduled secondary data; skip and record minutes when neither satellite has a flag-zero sample",
         "satellite_schedule": [list(row) for row in PRIMARY_SECONDARY_SCHEDULE],
-        "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat(),
-        "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat(),
+        "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat() if len(times) else None,
+        "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat() if len(times) else None,
     }
     config_json = json.dumps(run_config, sort_keys=True, separators=(",", ":"))
     fingerprint_seed = json.dumps({

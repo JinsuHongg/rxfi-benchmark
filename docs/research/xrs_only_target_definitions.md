@@ -54,9 +54,11 @@ primary is preferred; if it has no flag-zero sample for a minute, the scheduled
 secondary is used when it has one, including when the primary record or flux is
 missing. If neither satellite has a flag-zero sample, that minute is skipped
 and listed in `missing_xrs_samples.csv` with the schedule and each satellite's
-data status. The generator stops before replacing split files only if any
-required prediction or background window contains zero valid samples. Partial
-window coverage is allowed, and the QC records valid counts, coverage, and
+data status. Split rows and source timestamps are preserved. If a prediction
+window has no valid samples, all target columns for that row are left blank. If
+a background window has no valid samples, only the deviation targets depending
+on that background are left blank. Partial coverage is used without
+interpolation. The QC records per-window status, valid counts, coverage, and
 primary/secondary source counts.
 
 ## Target conditions
@@ -97,8 +99,8 @@ satellite, otherwise a valid flag-zero sample from the scheduled secondary.
 This fallback applies when the primary record is absent, its flux is missing or
 invalid, or its quality flag is nonzero. If neither satellite has a valid
 flag-zero sample, the minute is omitted and recorded in the missing-sample QC
-CSV. Before replacing split files, the generator checks that every required
-prediction and background window has at least one valid sample. The
+CSV. Rows and timestamps remain in every split. Target fields are left blank
+for rows whose required prediction or background window has no samples. The
 flare-catalog satellite field is not used to select the XRS series.
 
 NOAA/NCEI's direct annual file layout depends on the GOES generation:

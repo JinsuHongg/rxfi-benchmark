@@ -98,6 +98,7 @@ def generate_split(
             "original_row_index": row_index,
             "timestamp": source["timestamp"],
             "prediction_valid_count": len(prediction),
+            "prediction_status": "ok" if len(prediction) else "no_valid_samples",
             "prediction_coverage_fraction": format(
                 len(prediction) / (int(config["prediction_window_hours"]) * 60), ".8f"
             ),
@@ -113,6 +114,7 @@ def generate_split(
             baseline = lower_tail_mean(background_samples, int(condition["lower_percent"]))
             backgrounds[condition_id] = baseline
             qc[f"background_{condition_id}_valid_count"] = len(background_samples)
+            qc[f"background_{condition_id}_status"] = "ok" if len(background_samples) else "no_valid_samples"
             qc[f"background_{condition_id}_coverage_fraction"] = format(
                 len(background_samples) / (window_seconds // 60), ".8f"
             )
@@ -153,44 +155,6 @@ def validate_alignment(
         for column in source_columns:
             if generated[column] != source[column]:
                 raise RuntimeError(f"source column {column} changed for {split} at row {row_index}")
-
-
-def validate_required_windows(
-    split_data: dict[str, tuple[list[str], list[dict[str, str]]]],
-    timestamps: np.ndarray,
-    flux: np.ndarray,
-    satellites: np.ndarray,
-    is_primary: np.ndarray,
-    config: dict[str, Any],
-) -> None:
-    """Reject zero-sample target windows before any split output is staged."""
-    missing_counts: dict[str, int] = {}
-    examples: list[str] = []
-    prediction_seconds = int(config["prediction_window_hours"]) * 3600
-    background_hours = sorted({int(item["window_hours"]) for item in config["background_conditions"]})
-    for split, (_, rows) in split_data.items():
-        for row_index, row in enumerate(rows):
-            start = epoch_seconds(parse_timestamp(row["timestamp"]))
-            windows = [("prediction", start, start + prediction_seconds)]
-            windows.extend(
-                (f"background_{hours}h", start - hours * 3600, start)
-                for hours in background_hours
-            )
-            for name, window_start, window_end in windows:
-                samples, _, _ = samples_in_window(
-                    timestamps, flux, satellites, is_primary, window_start, window_end
-                )
-                if not len(samples):
-                    key = f"{split}.{name}"
-                    missing_counts[key] = missing_counts.get(key, 0) + 1
-                    if len(examples) < 20:
-                        examples.append(f"{key} row {row_index} at {row['timestamp']}")
-    if missing_counts:
-        counts = ", ".join(f"{name}: {count}" for name, count in sorted(missing_counts.items()))
-        raise RuntimeError(
-            "required target windows contain no valid flag-zero samples; split files were not replaced. "
-            f"Counts: {counts}. Examples: {'; '.join(examples)}"
-        )
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -251,13 +215,10 @@ def main() -> None:
     span_end = epoch_seconds(max(all_datetimes) + timedelta(hours=int(config["prediction_window_hours"])))
     cache = AnnualXrsCache(args.xrs_cache_dir, args.xrs_input_lock, offline=args.offline)
     times, flux, satellites, is_primary, missing_samples = selected_observations(span_start, span_end, cache)
-    if not len(times):
-        raise RuntimeError("NOAA XRS selection yielded no valid samples for the split date range")
-    validate_required_windows(split_data, times, flux, satellites, is_primary, config)
 
     run_manifest = {
         "config": config,
-        "satellite_sample_selection": "flag-zero primary, then flag-zero secondary; record uncovered minutes; require at least one sample in every prediction and background window",
+        "satellite_sample_selection": "flag-zero primary, then flag-zero secondary; record uncovered minutes; retain split rows and leave affected target values blank when their required window has no valid samples",
         "hugging_face": hf_inputs,
         "noaa": cache.input_manifest,
     }
@@ -296,6 +257,7 @@ def main() -> None:
             "path": str(run_dir / "missing_xrs_samples.csv"),
             "policy": "skip minutes without a flag-zero sample from either scheduled satellite; list each skipped minute for QC",
         },
+        "empty_target_windows": "retain every split row and source timestamp; leave target values blank when a required prediction or background window has no valid samples",
         "split_outputs": {split: {"path": str(path), **split_summaries[split]} for split, path in final_paths.items()},
         "target_coverage_qc": {"path": str(qc_path), "sha256": sha256(qc_path)},
     }

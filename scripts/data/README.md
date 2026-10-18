@@ -60,10 +60,10 @@ Use `--revision <40-character-commit-sha> --offline` to reproduce from cached
 inputs only. NOAA's direct annual file layout is generation-specific:
 
 - GOES-8–15: [NCEI legacy XRS archive](https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/science/xrs/), using `v2-2-1` annual files.
-- GOES-16 and GOES-18: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), using `v2-2-2` annual files.
-- GOES-17 and GOES-19: the same GOES-R archive, using `v2-2-1` annual files.
+- GOES-16–18: [NOAA/NCEI GOES-R archive](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/), using `v2-2-2` annual files.
+- GOES-19: the same GOES-R archive, using `v2-2-1` annual files.
 - The generator selects the version per satellite and records it in run metadata because NOAA may publish versions on different schedules.
-- Minutes with no flag-zero sample from either scheduled satellite are listed with timestamp and per-satellite status in `missing_xrs_samples.csv`. Generation proceeds with partial window coverage, but preflight stops before replacing split files if any required prediction or background window has zero valid samples.
+- Minutes with no flag-zero sample from either scheduled satellite are listed with timestamp and per-satellite status in `missing_xrs_samples.csv`. All split rows are retained; target values are blank only for targets whose required prediction or background window has no valid samples.
 
 The primary/secondary schedule comes from [NOAA's GOES Flare Report ReadMe,
 Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
