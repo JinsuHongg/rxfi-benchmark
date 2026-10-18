@@ -30,7 +30,7 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 export PYTHONPATH="$PWD/src:$PWD/scripts:$PWD/scripts/training${PYTHONPATH:+:$PYTHONPATH}"
 
-srun python scripts/training/train_vit_quantile_regression.py \
+srun python -m scripts.training.train_vit_quantile_regression \
   --config "${configs[$SLURM_ARRAY_TASK_ID]}" \
   --batch-size "${QR_BATCH_SIZE:-32}" \
   --precision "${QR_PRECISION:-32}" \

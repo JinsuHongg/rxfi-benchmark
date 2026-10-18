@@ -11,6 +11,6 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 case "$TASK_FAMILY" in
  classification) python scripts/training/train_vit_classifier.py --config "configs/project2/vit_small_224_${channel}_max_flare_class_ordinal5.yaml" --batch-size "${P2_BATCH_SIZE:-32}" --precision "${P2_PRECISION:-32}" --num-workers "${P2_NUM_WORKERS:-4}" --gradient-accumulation-steps "${P2_GRADIENT_ACCUMULATION:-1}" ;;
- regression) python scripts/training/train_vit_quantile_regression.py --config "configs/project2/vit_small_224_${channel}_cumulative_peak_flux_qr.yaml" --batch-size "${P2_BATCH_SIZE:-32}" --precision "${P2_PRECISION:-32}" --num-workers "${P2_NUM_WORKERS:-4}" --gradient-accumulation-steps "${P2_GRADIENT_ACCUMULATION:-1}" ;;
+ regression) python -m scripts.training.train_vit_quantile_regression --config "configs/project2/vit_small_224_${channel}_cumulative_peak_flux_qr.yaml" --batch-size "${P2_BATCH_SIZE:-32}" --precision "${P2_PRECISION:-32}" --num-workers "${P2_NUM_WORKERS:-4}" --gradient-accumulation-steps "${P2_GRADIENT_ACCUMULATION:-1}" ;;
  *) echo 'TASK_FAMILY must be classification or regression' >&2; exit 2 ;;
 esac
