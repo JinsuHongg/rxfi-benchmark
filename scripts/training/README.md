@@ -47,4 +47,8 @@ mkdir -p logs/xrs_qr
 sbatch scripts/launchers/slurm/run_xrs_only_qr_array.sbatch
 ```
 
+For a short end-to-end run, pass `--epochs 1` or `--epochs 2` to the trainer.
+The standard frozen configs remain at ten epochs and are validated before the
+command-line override is applied.
+
 Use the YAML configurations under `configs/`; training commands are documented in the repository [README](../../README.md).

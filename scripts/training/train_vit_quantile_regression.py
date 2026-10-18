@@ -236,12 +236,15 @@ def resolve_target_transform(config):
     return {"name": "asinh_zscore", **target_stats}
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument("--config",default="configs/vit_small_224_max_peak_flux_qr.yaml");parser.add_argument("--smoke-only",action="store_true");parser.add_argument("--validate-transforms",action="store_true");parser.add_argument("--batch-size",type=int);parser.add_argument("--precision",choices=sorted(PRECISIONS));parser.add_argument("--num-workers",type=int);parser.add_argument("--gradient-accumulation-steps",type=int);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("--config",default="configs/vit_small_224_max_peak_flux_qr.yaml");parser.add_argument("--epochs",type=int,help="Override the validated config epoch count for a short run");parser.add_argument("--smoke-only",action="store_true");parser.add_argument("--validate-transforms",action="store_true");parser.add_argument("--batch-size",type=int);parser.add_argument("--precision",choices=sorted(PRECISIONS));parser.add_argument("--num-workers",type=int);parser.add_argument("--gradient-accumulation-steps",type=int);args=parser.parse_args()
     config=yaml.safe_load(Path(args.config).read_text());
     for name in ("batch_size","precision","num_workers","gradient_accumulation_steps"):
         if getattr(args,name) is not None:config[name]=getattr(args,name)
     config["target_transform"]=resolve_target_transform(config)
     spec=validate_config(config)
+    if args.epochs is not None:
+        if args.epochs <= 0: raise ValueError("--epochs must be a positive integer")
+        config["epochs"]=args.epochs
     if args.validate_transforms:transform_tests();print(json.dumps({"transform_tests":"passed","transform":spec}));return
     if not torch.cuda.is_available():raise RuntimeError("CUDA GPU is required; refusing CPU fallback")
     output=Path(config["output_dir"]);output.mkdir(parents=True,exist_ok=True);(output/"checkpoints").mkdir(exist_ok=True);(output/"predictions").mkdir(exist_ok=True)
