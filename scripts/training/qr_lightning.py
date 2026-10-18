@@ -7,6 +7,7 @@ from typing import Any
 import lightning.pytorch as pl
 import timm
 import torch
+from torchmetrics import MeanSquaredError
 from transformers import get_cosine_schedule_with_warmup
 
 
@@ -26,6 +27,12 @@ class QuantileRegressionModule(pl.LightningModule):
         )
         self.register_buffer(
             "quantiles", torch.tensor(config["quantiles"], dtype=torch.float32)
+        )
+        self.rmse_q50_metrics = torch.nn.ModuleDict(
+            {
+                split: MeanSquaredError(squared=False)
+                for split in ("train", "validation", "test")
+            }
         )
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
@@ -73,6 +80,15 @@ class QuantileRegressionModule(pl.LightningModule):
                 sync_dist=True,
             )
         median_error = target - prediction[:, 1]
+        rmse_q50 = self.rmse_q50_metrics[split]
+        rmse_q50.update(prediction[:, 1], target)
+        self.log(
+            f"{split}/rmse_q50",
+            rmse_q50,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
         metrics = {
             "mae_q50": median_error.abs().mean(),
             "mse_q50": median_error.square().mean(),
