@@ -246,7 +246,7 @@ def selected_observations(
     end: int,
     cache: AnnualXrsCache,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build valid minute samples using scheduled primary, then secondary fallback."""
+    """Build valid minute samples and reject secondary-only schedule timestamps."""
     boundaries = [(epoch_seconds(parse_timestamp(row[0])), int(row[1]), int(row[2])) for row in PRIMARY_SECONDARY_SCHEDULE]
     active_index = 0
     for index, (effective, _, _) in enumerate(boundaries):
@@ -258,6 +258,8 @@ def selected_observations(
     parts_f: list[np.ndarray] = []
     parts_s: list[np.ndarray] = []
     parts_primary: list[np.ndarray] = []
+    mismatch_count = 0
+    mismatch_examples: list[str] = []
     cursor = start
     while cursor < end:
         while active_index + 1 < len(boundaries) and boundaries[active_index + 1][0] <= cursor:
@@ -277,31 +279,41 @@ def selected_observations(
             else:
                 left, right = np.searchsorted(p[0], [lo, hi])
                 p_times, p_flux = p[0][left:right], p[1][left:right]
-            if secondary is None or secondary == primary:
-                s_times, s_flux = np.empty(0, dtype=np.int64), np.empty(0, dtype=float)
-            else:
+            if secondary is not None and secondary != primary:
                 s = cache.load(secondary, year)
-                if s is None:
-                    s_times, s_flux = np.empty(0, dtype=np.int64), np.empty(0, dtype=float)
-                else:
+                if s is not None:
                     left, right = np.searchsorted(s[0], [lo, hi])
-                    candidate_t, candidate_f = s[0][left:right], s[1][left:right]
+                    candidate_t = s[0][left:right]
                     indices = np.searchsorted(p_times, candidate_t)
                     primary_has = (indices < len(p_times))
                     if np.any(primary_has):
                         primary_has[primary_has] &= p_times[indices[primary_has]] == candidate_t[primary_has]
-                    s_times, s_flux = candidate_t[~primary_has], candidate_f[~primary_has]
+                    secondary_only = candidate_t[~primary_has]
+                    mismatch_count += len(secondary_only)
+                    for timestamp in secondary_only:
+                        if len(mismatch_examples) == 20:
+                            break
+                        mismatch_examples.append(
+                            f"{datetime.fromtimestamp(int(timestamp), UTC).isoformat()}: "
+                            f"scheduled primary GOES-{primary} missing; "
+                            f"scheduled secondary GOES-{secondary} has valid data"
+                        )
             if len(p_times):
                 parts_t.append(p_times)
                 parts_f.append(p_flux)
                 parts_s.append(np.full(len(p_times), primary, dtype=np.int16))
                 parts_primary.append(np.ones(len(p_times), dtype=bool))
-            if len(s_times):
-                parts_t.append(s_times)
-                parts_f.append(s_flux)
-                parts_s.append(np.full(len(s_times), secondary, dtype=np.int16))
-                parts_primary.append(np.zeros(len(s_times), dtype=bool))
         cursor = segment_end
+    if mismatch_count:
+        details = "\n".join(f"  - {example}" for example in mismatch_examples)
+        omitted = mismatch_count - len(mismatch_examples)
+        if omitted:
+            details += f"\n  - ... and {omitted} more mismatch(es)"
+        raise RuntimeError(
+            "NOAA GOES schedule/data mismatch: scheduled primary samples are "
+            f"missing while secondary samples are available at {mismatch_count} "
+            f"timestamp(s). Refusing to generate split data.\n{details}"
+        )
     if not parts_t:
         empty_t = np.empty(0, dtype=np.int64)
         return empty_t, np.empty(0, dtype=float), np.empty(0, dtype=np.int16), np.empty(0, dtype=bool)
@@ -482,7 +494,7 @@ def main() -> None:
             "GOES-8_to_15": f"{NOAA_LEGACY_BASE}goes{{satellite}}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
             "GOES-16_to_19": f"{NOAA_GOES_R_BASE}goes{{satellite}}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
         },
-        "satellite_sample_selection": "scheduled primary where valid, with same-minute scheduled secondary fallback",
+        "satellite_sample_selection": "scheduled primary only; abort if valid secondary data exists without the scheduled primary",
         "satellite_schedule": [list(row) for row in PRIMARY_SECONDARY_SCHEDULE],
         "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat(),
         "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat(),

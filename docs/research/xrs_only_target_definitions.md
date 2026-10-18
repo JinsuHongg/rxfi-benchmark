@@ -54,7 +54,8 @@ all available eligible samples are used when at least one is present, even
 when coverage is below 90%. A target that requires a window with no eligible
 samples is missing. Partial-window sums are not rescaled to the full 24-hour
 duration. The QC file records valid sample counts, coverage fractions, and
-primary/secondary counts for the prediction and background windows.
+source counts for the prediction and background windows. Under the strict NOAA
+primary policy, secondary source counts are zero in generated outputs.
 
 ## Target conditions
 
@@ -89,9 +90,12 @@ are retained; they are not clipped to zero.
 
 The generator follows the primary/secondary GOES schedule in NOAA/NCEI's
 [GOES Flare Report ReadMe, Appendix A, Table 5](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/docs/GOES_Flare_Report_ReadMe.pdf).
-For each minute, it uses a valid scheduled primary sample when available;
-otherwise it uses a valid sample from the scheduled secondary satellite. The
-flare-catalog satellite field is not used to select the XRS series.
+For each minute, it uses only a valid sample from the scheduled primary
+satellite. The secondary is checked for data mismatches: if it has a valid
+sample where the scheduled primary does not, generation reports the timestamp
+and aborts before writing any split files. It never substitutes secondary data
+for the primary. The flare-catalog satellite field is not used to select the
+XRS series.
 
 NOAA/NCEI's direct annual file layout depends on the GOES generation:
 
