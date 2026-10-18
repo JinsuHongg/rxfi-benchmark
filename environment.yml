@@ -9,6 +9,7 @@ dependencies:
   - loguru
   - nodejs>=22
   - ruff
+  - wandb
   - pip:
       # CUDA-enabled wheels and their pinned CUDA 12.4 runtime dependencies.
       - --extra-index-url https://download.pytorch.org/whl/cu124
@@ -25,3 +26,6 @@ dependencies:
       - xarray==2026.4.0
       - h5netcdf==1.8.1
       - h5py==3.15.1
+variables:
+  WANDB_ENTITY: gsu-dmlab
+  WANDB_PROJECT: rxfi-regression

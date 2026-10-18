@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import random
 import subprocess
 import time
@@ -23,6 +24,7 @@ import matplotlib.pyplot as plt  # pyright: ignore[reportMissingImports]
 import numpy as np
 import timm  # pyright: ignore[reportMissingImports]
 import torch  # pyright: ignore[reportMissingImports]
+import wandb  # pyright: ignore[reportMissingImports]
 import yaml
 import zarr
 from torch.utils.data import DataLoader, Dataset  # pyright: ignore[reportMissingImports]
@@ -35,7 +37,7 @@ from scripts.training.input_normalization import (
     normalize_image,
 )
 
-SPLITS = ("train", "validation", "test", "leaky_validation")
+SPLITS = ("train", "validation", "test")
 PRECISIONS = {"32", "16-mixed", "bf16-mixed"}
 
 def channel_selection(config, actual_order):
@@ -200,6 +202,52 @@ def git_commit():
     try:return subprocess.check_output(["git","rev-parse","HEAD"],text=True,stderr=subprocess.DEVNULL).strip()
     except (OSError,subprocess.CalledProcessError):return None
 
+def initialize_wandb(
+    config: dict[str, Any], metadata: dict[str, Any], cohort: dict[str, Any]
+) -> wandb.Run:
+    """Create a W&B run with resolved experiment and data provenance."""
+    entity = os.environ.get("WANDB_ENTITY")
+    project = os.environ.get("WANDB_PROJECT")
+    if not entity or not project:
+        raise RuntimeError("WANDB_ENTITY and WANDB_PROJECT must be set")
+    run_name = f"{datetime.now(UTC).strftime('%Y-%m-%d-%H-%M')}-{config['target_column']}"
+    run_config = {
+        **config,
+        "git_commit": metadata["git_commit"],
+        "gpu_name": metadata["gpu_name"],
+        "torch_version": metadata["torch_version"],
+        "cuda_version": metadata["cuda_version"],
+        "cohort": cohort,
+        "input_normalization": metadata["input_normalization"],
+        "derived_target_sha256": metadata["integrity"]["derived_target_sha256"],
+        "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+    }
+    run = wandb.init(
+        entity=entity,
+        project=project,
+        name=run_name,
+        config=run_config,
+        dir=config["output_dir"],
+        tags=["xrs-only", config["target_column"]],
+    )
+    if run is None:
+        raise RuntimeError("W&B did not create a run")
+    run.define_metric("epoch")
+    run.define_metric("train/*", step_metric="epoch")
+    run.define_metric("validation/*", step_metric="epoch")
+    run.define_metric("final/*", step_metric="epoch")
+    return run
+
+def epoch_wandb_metrics(row: dict[str, int | float]) -> dict[str, int | float]:
+    """Format aggregate train and validation metrics for one W&B epoch."""
+    metrics = {"epoch": row["epoch"], "epoch/elapsed_seconds": row["elapsed_seconds"]}
+    for split in ("train", "validation"):
+        prefix = f"{split}_"
+        metrics.update(
+            {f"{split}/{key.removeprefix(prefix)}": value for key, value in row.items() if key.startswith(prefix)}
+        )
+    return metrics
+
 def validate_config(config):
     spec=validate_transform(config.get("target_transform"));required={"experiment_name","output_dir","target_column","quantiles","model_name","checkpoint_metric","precision","batch_size","num_workers","gradient_accumulation_steps"}
     if config.get("normalization") != NORMALIZATION_NAME: raise ValueError(f"normalization must be {NORMALIZATION_NAME!r}")
@@ -255,14 +303,15 @@ def main():
     fields=["split","original_row_index","timestamp","target_name","target_raw","target_transformed","max_flare_class","q05","q50","q95","q05_raw","q50_raw","q95_raw"];(output/"prediction_schema.json").write_text(json.dumps({"columns":fields,"quantiles":config["quantiles"],"target_transform":spec},indent=2)+"\n")
     model=timm.create_model(config["model_name"],pretrained=False,in_chans=config["in_chans"],num_classes=3).to(device)
     if args.smoke_only:return
+    run = initialize_wandb(config, meta, cohort)
     scaler=torch.amp.GradScaler("cuda",enabled=config["precision"]=="16-mixed");opt=torch.optim.AdamW(model.parameters(),lr=config["learning_rate"],weight_decay=config["weight_decay"]);history=[];best,best_epoch=math.inf,0
     for epoch in range(1,config["epochs"]+1):
-        start=time.perf_counter();train=run_epoch(model,loaders["train"],opt,scaler,device,q,config);valid=run_epoch(model,loaders["validation"],None,scaler,device,q,config);row={"epoch":epoch,**{"train_"+k:v for k,v in train.items()},**{"validation_"+k:v for k,v in valid.items()},"elapsed_seconds":round(time.perf_counter()-start,2)};history.append(row);write_csv(output/"training_log.csv",history)
+        start=time.perf_counter();train=run_epoch(model,loaders["train"],opt,scaler,device,q,config);valid=run_epoch(model,loaders["validation"],None,scaler,device,q,config);row={"epoch":epoch,**{"train_"+k:v for k,v in train.items()},**{"validation_"+k:v for k,v in valid.items()},"elapsed_seconds":round(time.perf_counter()-start,2)};history.append(row);write_csv(output/"training_log.csv",history);run.log(epoch_wandb_metrics(row),step=epoch)
         if valid["pinball_loss"]<best:best,best_epoch=valid["pinball_loss"],epoch;torch.save({"epoch":epoch,"model_state_dict":model.state_dict(),"target_transform":spec,"quantiles":config["quantiles"]},output/"checkpoints"/"best_validation_pinball_loss.pt")
-    plot_curves(output/"learning_curves.svg",history);state=torch.load(output/"checkpoints"/"best_validation_pinball_loss.pt",map_location=device,weights_only=False);model.load_state_dict(state["model_state_dict"]);summary=[]
-    for split in ("validation","test","leaky_validation"):
-        result=run_epoch(model,loaders[split],None,scaler,device,q,config);summary.append({"split":split,"selected_epoch":best_epoch,**result});write_csv(output/"predictions"/f"{split}_predictions.csv",exports(model,loaders[split],records[split],config,spec,device),fields)
-    write_csv(output/"summary_metrics.csv",summary);(output/"checkpoint_metadata.json").write_text(json.dumps({"best_validation_epoch":best_epoch,"best_validation_pinball_loss":best,"selection_split":"validation"},indent=2)+"\n")
+    plot_curves(output/"learning_curves.svg",history);state=torch.load(output/"checkpoints"/"best_validation_pinball_loss.pt",map_location=device,weights_only=False);model.load_state_dict(state["model_state_dict"]);summary=[];final_metrics: dict[str, int | float] = {"epoch":best_epoch,"final/selected_epoch":best_epoch}
+    for split in ("validation","test"):
+        result=run_epoch(model,loaders[split],None,scaler,device,q,config);summary.append({"split":split,"selected_epoch":best_epoch,**result});write_csv(output/"predictions"/f"{split}_predictions.csv",exports(model,loaders[split],records[split],config,spec,device),fields);final_metrics.update({f"final/{split}/{key}":value for key,value in result.items()})
+    run.log(final_metrics,step=config["epochs"]+1);write_csv(output/"summary_metrics.csv",summary);(output/"checkpoint_metadata.json").write_text(json.dumps({"best_validation_epoch":best_epoch,"best_validation_pinball_loss":best,"selection_split":"validation"},indent=2)+"\n");run.finish()
     hash_paths={s:(Path(config["target_split_dir"])/f"{s}.csv" if "target_split_dir" in config else Path(config["derived_target_dir"])/f"{s}_targets.csv") for s in SPLITS}
     if hashes!={s:sha256(hash_paths[s]) for s in SPLITS}:raise RuntimeError("Target CSVs changed during training")
 if __name__=="__main__":main()

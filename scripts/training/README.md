@@ -51,4 +51,12 @@ For a short end-to-end run, pass `--epochs 1` or `--epochs 2` to the trainer.
 The standard frozen configs remain at ten epochs and are validated before the
 command-line override is applied.
 
+Quantile-regression runs log epoch-level training/validation metrics and final
+validation/test metrics to W&B. Run names use the UTC format
+`YYYY-MM-DD-HH-MM-{target}`. W&B receives scalar metrics and run configuration;
+checkpoints and per-sample prediction CSVs remain local under the configured
+output directory. The trainer evaluates only validation and test splits.
+Authenticate with W&B before submitting a training job; the Conda environment
+sets `WANDB_ENTITY` and `WANDB_PROJECT` from `environment.yml`.
+
 Use the YAML configurations under `configs/`; training commands are documented in the repository [README](../../README.md).
