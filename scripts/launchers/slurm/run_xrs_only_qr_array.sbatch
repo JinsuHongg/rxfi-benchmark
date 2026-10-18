@@ -35,4 +35,5 @@ srun python -m scripts.training.train_vit_quantile_regression \
   --batch-size "${QR_BATCH_SIZE:-32}" \
   --precision "${QR_PRECISION:-32}" \
   --num-workers "${QR_NUM_WORKERS:-4}" \
-  --gradient-accumulation-steps "${QR_GRADIENT_ACCUMULATION:-1}"
+  --gradient-accumulation-steps "${QR_GRADIENT_ACCUMULATION:-1}" \
+  --epochs "${QR_EPOCHS:-10}"
