@@ -172,26 +172,30 @@ def read_zarr_times(
 
 
 def fit_target_statistics(rows: list[TrainingRow]) -> dict[str, Any]:
-    """Fit scaled-asinh and z-score parameters for each target.
+    """Fit scaled-asinh and z-score parameters on each target's available rows.
 
     Args:
-        rows: Common-cohort rows with finite values for all targets.
+        rows: Training rows whose timestamps are present in the input Zarr.
 
     Returns:
-        Per-target training statistics.
+        Per-target training statistics and valid-value counts.
 
     Raises:
-        ValueError: If any target has no positive scale or nonzero variance.
+        ValueError: If a target has no values or has no finite variation.
     """
     result: dict[str, Any] = {}
     for name in TARGET_COLUMNS:
-        target_values = [row.targets[name] for row in rows]
-        if any(value is None for value in target_values):
-            raise ValueError(f"Common-cohort rows contain missing values for {name!r}")
         raw = np.asarray(
-            [value for value in target_values if value is not None], dtype=np.float64
+            [row.targets[name] for row in rows if row.targets[name] is not None],
+            dtype=np.float64,
         )
+        if raw.size == 0:
+            raise ValueError(f"No finite training values for target {name!r}")
         scale = float(np.median(np.abs(raw)))
+        if np.isfinite(scale) and scale <= 0:
+            nonzero = np.abs(raw[raw != 0])
+            if nonzero.size:
+                scale = float(np.median(nonzero))
         if not np.isfinite(scale) or scale <= 0:
             raise ValueError(f"Cannot fit a positive asinh scale for target {name!r}")
         transformed = np.arcsinh(raw / scale)
@@ -200,7 +204,7 @@ def fit_target_statistics(rows: list[TrainingRow]) -> dict[str, Any]:
         if not np.isfinite(std) or std <= 0:
             raise ValueError(f"Cannot fit a positive target standard deviation for {name!r}")
         result[name] = {
-            "n_train": len(rows),
+            "n_train": int(raw.size),
             "scale_s": scale,
             "raw_min": float(np.min(raw)),
             "raw_max": float(np.max(raw)),
@@ -211,7 +215,7 @@ def fit_target_statistics(rows: list[TrainingRow]) -> dict[str, Any]:
 
 
 def compute_stats(target_csv: Path, zarr_path: Path) -> dict[str, Any]:
-    """Compute target statistics on the common Zarr-matched train cohort.
+    """Compute per-target statistics on Zarr-matched training rows.
 
     Args:
         target_csv: Generated training split CSV with all ten targets.
@@ -222,31 +226,37 @@ def compute_stats(target_csv: Path, zarr_path: Path) -> dict[str, Any]:
     """
     rows = read_training_rows(target_csv)
     zarr_times, time_hashes = read_zarr_times(zarr_path, {row.year for row in rows})
-    complete_rows = [row for row in rows if all(value is not None for value in row.targets.values())]
     matched_rows = [
-        row for row in complete_rows if row.timestamp_ns in zarr_times.get(row.year, set())
+        row for row in rows if row.timestamp_ns in zarr_times.get(row.year, set())
     ]
     if not matched_rows:
-        raise ValueError("No rows have all ten finite targets and a matching Zarr timestamp")
+        raise ValueError("No training rows have a matching Zarr timestamp")
+    target_valid_rows = {
+        name: sum(row.targets[name] is not None for row in matched_rows)
+        for name in TARGET_COLUMNS
+    }
     result = {
         "schema_version": 1,
         "fit_split": "train",
-        "fit_cohort": "all ten targets finite and timestamp present in Zarr time array",
+        "fit_cohort": "finite target value and timestamp present in Zarr time array, independently per target",
         "source_csv": str(target_csv),
         "source_csv_sha256": sha256_file(target_csv),
         "zarr_path": str(zarr_path),
         "zarr_time_sha256_by_year": time_hashes,
         "cohort": {
             "train_rows": len(rows),
-            "all_targets_finite_rows": len(complete_rows),
             "input_timestamp_matches": len(matched_rows),
-            "missing_target_rows": len(rows) - len(complete_rows),
-            "missing_input_timestamp_rows": len(complete_rows) - len(matched_rows),
+            "missing_input_timestamp_rows": len(rows) - len(matched_rows),
+            "target_valid_rows": target_valid_rows,
+            "target_missing_rows": {
+                name: len(matched_rows) - count
+                for name, count in target_valid_rows.items()
+            },
         },
         "transform": {
             "name": "asinh_scaled",
             "formula": "z = asinh(y / s)",
-            "scale_rule": "s = median(abs(y)) over finite values in the common matched training cohort, including zeros",
+            "scale_rule": "s = median(abs(y)) over finite matched training values; if this is zero, use median(abs(y)) over nonzero matched values",
             "inverse_formula": "y = s * sinh(z)",
         },
         "normalization": {

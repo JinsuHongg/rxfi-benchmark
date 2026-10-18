@@ -3,7 +3,7 @@
 Model-fitting entry points and a utility for measuring quantile-regression batch-size performance.
 
 - `compute_input_stats.py`: computes per-channel population mean/std after signed `log1p`, using only rows from the training index CSV. Its default output is `outputs/input_normalization_stats/train_channel_stats.json`.
-- `compute_target_stats.py`: computes train-only, per-target scaled-asinh and population z-score statistics from the common cohort of rows with all ten finite targets and matching timestamps in the configured Zarr store.
+- `compute_target_stats.py`: computes train-only, per-target scaled-asinh and population z-score statistics from rows with a finite value for that target and a matching timestamp in the configured Zarr store. Blank target values do not remove a row from another target's statistics.
 - `benchmark_qr_batch_size.py`: measures throughput and memory use across requested QR batch sizes and precision settings.
 - `train_vit_classifier.py`: trains the configured ViT flare-classification model.
 - `train_vit_quantile_regression.py`: trains the configured ViT quantile-regression model.
@@ -29,10 +29,12 @@ sbatch scripts/launchers/slurm/compute_target_stats.sbatch
 
 The launcher reads `data/derived/train.csv`, matches its timestamps to the
 Zarr time arrays, and writes
-`outputs/target_normalization_stats/train_target_stats.json`. Target values
-use `asinh(y / s)`, where `s` is the training-cohort median absolute value;
-the artifact also records the transformed mean and population standard
-deviation for per-target z-score normalization.
+`outputs/target_normalization_stats/train_target_stats.json`. Each target is
+fit independently from its finite values on matched training rows. Target
+values use `asinh(y / s)`, where `s` is the median absolute value; if that is
+zero, the median absolute nonzero value is used. The artifact records each
+target's valid row count, transformed mean, and population standard deviation
+for z-score normalization.
 
 The XRS-only QR configurations under `configs/xrs_only/` train one model for
 each of the ten target columns. They read the generated split CSVs directly,
