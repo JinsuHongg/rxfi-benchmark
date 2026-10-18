@@ -284,10 +284,10 @@ def main() -> None:
     temporary.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     temporary.replace(args.output)
     logger.info(
-        "Wrote target statistics to {} for {}/{} common-cohort rows",
+        "Wrote target statistics to {} for {} matched input timestamps; per-target valid rows: {}",
         args.output,
         result["cohort"]["input_timestamp_matches"],
-        result["cohort"]["train_rows"],
+        result["cohort"]["target_valid_rows"],
     )
 
 
