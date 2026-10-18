@@ -17,6 +17,8 @@ import shutil
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -67,6 +69,16 @@ NOAA_GOES_R_BASE = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-s
 WINDOW_SECONDS = 24 * 60 * 60
 CADENCE_SECONDS = 60
 EXPECTED_SAMPLES_PER_WINDOW = WINDOW_SECONDS // CADENCE_SECONDS
+
+
+@dataclass(frozen=True)
+class XrsYearData:
+    """Store record presence separately from usable quality-flagged samples."""
+
+    record_times: np.ndarray
+    measured_times: np.ndarray
+    valid_times: np.ndarray
+    valid_flux: np.ndarray
 
 # NOAA/NCEI GOES Flare Report ReadMe, Appendix A, Table 5 (10 June 2026).
 # This schedule is independent of flare events and is used only to choose which
@@ -125,6 +137,114 @@ def resolve_hf_revision(revision: str) -> str:
     return resolved
 
 
+def timestamps_present(available: np.ndarray, requested: np.ndarray) -> np.ndarray:
+    """Return a mask for requested timestamps present in a sorted array."""
+    if not len(available):
+        return np.zeros(len(requested), dtype=bool)
+    indices = np.searchsorted(available, requested)
+    in_bounds = indices < len(available)
+    present = np.zeros(len(requested), dtype=bool)
+    present[in_bounds] = available[indices[in_bounds]] == requested[in_bounds]
+    return present
+
+
+def valid_flux_at(data: XrsYearData, requested: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return flag-zero presence and flux aligned to requested timestamps."""
+    indices = np.searchsorted(data.valid_times, requested)
+    present = timestamps_present(data.valid_times, requested)
+    flux = np.full(len(requested), np.nan, dtype=float)
+    flux[present] = data.valid_flux[indices[present]]
+    return present, flux
+
+
+def record_schedule_issues(
+    counts: dict[str, int],
+    examples: list[str],
+    category: str,
+    timestamps: np.ndarray,
+    primary: int,
+    secondary: int | None,
+) -> None:
+    """Count schedule/data issues and retain a bounded set of examples."""
+    counts[category] += len(timestamps)
+    remaining = 20 - len(examples)
+    secondary_label = f"; scheduled secondary GOES-{secondary}" if secondary is not None else ""
+    for timestamp in timestamps[:remaining]:
+        examples.append(
+            f"{datetime.fromtimestamp(int(timestamp), UTC).isoformat()}: "
+            f"{category}; scheduled primary GOES-{primary}{secondary_label}"
+        )
+
+
+def empty_xrs_year_data() -> XrsYearData:
+    """Create an empty annual series for an unavailable satellite file."""
+    empty_times = np.empty(0, dtype=np.int64)
+    return XrsYearData(empty_times, empty_times, empty_times, np.empty(0, dtype=float))
+
+
+def scheduled_year_ranges(
+    start: int,
+    end: int,
+) -> Iterator[tuple[int, int, int, int, int]]:
+    """Yield year-bounded UTC ranges with their scheduled satellite pair."""
+    boundaries = [
+        (epoch_seconds(parse_timestamp(row[0])), int(row[1]), int(row[2]))
+        for row in PRIMARY_SECONDARY_SCHEDULE
+    ]
+    active_index = 0
+    for index, (effective, _, _) in enumerate(boundaries):
+        if effective <= start:
+            active_index = index
+        else:
+            break
+    cursor = start
+    while cursor < end:
+        while active_index + 1 < len(boundaries) and boundaries[active_index + 1][0] <= cursor:
+            active_index += 1
+        segment_end = min(end, boundaries[active_index + 1][0] if active_index + 1 < len(boundaries) else end)
+        for year in range(datetime.fromtimestamp(cursor, UTC).year, datetime.fromtimestamp(segment_end - 1, UTC).year + 1):
+            year_start = epoch_seconds(datetime(year, 1, 1, tzinfo=UTC))
+            year_end = epoch_seconds(datetime(year + 1, 1, 1, tzinfo=UTC))
+            lo, hi = max(cursor, year_start), min(segment_end, year_end)
+            if lo < hi:
+                primary, secondary = boundaries[active_index][1:]
+                yield lo, hi, year, primary, secondary
+        cursor = segment_end
+
+
+def select_segment_samples(
+    expected: np.ndarray,
+    primary: XrsYearData,
+    secondary: XrsYearData,
+    primary_satellite: int,
+    secondary_satellite: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    """Select primary flag-zero samples and allowed secondary fallbacks."""
+    primary_record = timestamps_present(primary.record_times, expected)
+    primary_measured = timestamps_present(primary.measured_times, expected)
+    primary_valid, primary_flux = valid_flux_at(primary, expected)
+    secondary_valid, secondary_flux = valid_flux_at(secondary, expected)
+    fallback_needed = primary_record & primary_measured & ~primary_valid
+    use_primary = primary_valid
+    use_secondary = fallback_needed & secondary_valid
+    issue_times = {
+        "primary timestamp missing": expected[~primary_record],
+        "primary flux value missing or invalid": expected[primary_record & ~primary_measured],
+        "neither satellite has valid flag-zero data": expected[fallback_needed & ~secondary_valid],
+    }
+    times = np.concatenate((expected[use_primary], expected[use_secondary]))
+    flux = np.concatenate((primary_flux[use_primary], secondary_flux[use_secondary]))
+    satellites = np.concatenate((
+        np.full(np.count_nonzero(use_primary), primary_satellite, dtype=np.int16),
+        np.full(np.count_nonzero(use_secondary), secondary_satellite or primary_satellite, dtype=np.int16),
+    ))
+    is_primary = np.concatenate((
+        np.ones(np.count_nonzero(use_primary), dtype=bool),
+        np.zeros(np.count_nonzero(use_secondary), dtype=bool),
+    ))
+    return times, flux, satellites, is_primary, issue_times
+
+
 def fetch_hf_splits(revision: str, cache_dir: Path, offline: bool = False) -> tuple[dict[str, Path], dict[str, Any]]:
     if offline and not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise ValueError("--offline requires a full 40-character --revision SHA")
@@ -179,11 +299,11 @@ class AnnualXrsCache:
             ): item
             for item in lock["xrs_l2"]["files"]
         }
-        self.series: dict[tuple[int, int], tuple[np.ndarray, np.ndarray]] = {}
+        self.series: dict[tuple[int, int], XrsYearData] = {}
         self.input_manifest: dict[str, dict[str, Any]] = {}
         self.unavailable: list[dict[str, Any]] = []
 
-    def load(self, satellite: int, year: int) -> tuple[np.ndarray, np.ndarray] | None:
+    def load(self, satellite: int, year: int) -> XrsYearData | None:
         key = (satellite, year)
         if key in self.series:
             return self.series[key]
@@ -216,13 +336,17 @@ class AnnualXrsCache:
                 raise
         assert existing is not None
         seconds, flux, flags, metadata = read_l2_year(existing)
-        valid = np.isfinite(flux) & (flux > 0) & (flags == 0) & ((seconds % CADENCE_SECONDS) == 0)
-        seconds = seconds[valid]
-        flux = flux[valid]
-        if len(seconds) > 1:
-            unique = np.r_[True, seconds[1:] != seconds[:-1]]
-            seconds, flux = seconds[unique], flux[unique]
-        self.series[key] = (seconds, flux)
+        on_grid = (seconds % CADENCE_SECONDS) == 0
+        measured = on_grid & np.isfinite(flux) & (flux > 0)
+        valid = measured & (flags == 0)
+        record_times = np.unique(seconds[on_grid])
+        measured_times = np.unique(seconds[measured])
+        valid_times, valid_flux = seconds[valid], flux[valid]
+        if len(valid_times) > 1:
+            unique = np.r_[True, valid_times[1:] != valid_times[:-1]]
+            valid_times, valid_flux = valid_times[unique], valid_flux[unique]
+        series = XrsYearData(record_times, measured_times, valid_times, valid_flux)
+        self.series[key] = series
         item = {
             "satellite": satellite,
             "year": year,
@@ -231,14 +355,14 @@ class AnnualXrsCache:
             "url": url,
             "size_bytes": existing.stat().st_size,
             "sha256": sha256(existing),
-            "valid_samples": len(seconds),
+            "valid_samples": len(valid_times),
             "sample_count": int(metadata["sample_count"]),
             "locked_input": locked is not None,
         }
         if download_record is not None:
             item["retrieved_at_utc"] = download_record["retrieved_at_utc"]
         self.input_manifest.setdefault(f"g{satellite}/{year}", item)
-        return seconds, flux
+        return series
 
 
 def selected_observations(
@@ -246,73 +370,53 @@ def selected_observations(
     end: int,
     cache: AnnualXrsCache,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build valid minute samples and reject secondary-only schedule timestamps."""
-    boundaries = [(epoch_seconds(parse_timestamp(row[0])), int(row[1]), int(row[2])) for row in PRIMARY_SECONDARY_SCHEDULE]
-    active_index = 0
-    for index, (effective, _, _) in enumerate(boundaries):
-        if effective <= start:
-            active_index = index
-        else:
-            break
+    """Select flag-zero samples and stop on missing scheduled-primary records."""
     parts_t: list[np.ndarray] = []
     parts_f: list[np.ndarray] = []
     parts_s: list[np.ndarray] = []
     parts_primary: list[np.ndarray] = []
-    mismatch_count = 0
-    mismatch_examples: list[str] = []
-    cursor = start
-    while cursor < end:
-        while active_index + 1 < len(boundaries) and boundaries[active_index + 1][0] <= cursor:
-            active_index += 1
-        next_boundary = boundaries[active_index + 1][0] if active_index + 1 < len(boundaries) else end
-        segment_end = min(end, next_boundary)
-        primary, secondary = boundaries[active_index][1:]
-        for year in range(datetime.fromtimestamp(cursor, UTC).year, datetime.fromtimestamp(segment_end - 1, UTC).year + 1):
-            year_start = epoch_seconds(datetime(year, 1, 1, tzinfo=UTC))
-            year_end = epoch_seconds(datetime(year + 1, 1, 1, tzinfo=UTC))
-            lo, hi = max(cursor, year_start), min(segment_end, year_end)
-            if hi <= lo:
-                continue
-            p = cache.load(primary, year)
-            if p is None:
-                p_times, p_flux = np.empty(0, dtype=np.int64), np.empty(0, dtype=float)
-            else:
-                left, right = np.searchsorted(p[0], [lo, hi])
-                p_times, p_flux = p[0][left:right], p[1][left:right]
-            if secondary is not None and secondary != primary:
-                s = cache.load(secondary, year)
-                if s is not None:
-                    left, right = np.searchsorted(s[0], [lo, hi])
-                    candidate_t = s[0][left:right]
-                    indices = np.searchsorted(p_times, candidate_t)
-                    primary_has = (indices < len(p_times))
-                    if np.any(primary_has):
-                        primary_has[primary_has] &= p_times[indices[primary_has]] == candidate_t[primary_has]
-                    secondary_only = candidate_t[~primary_has]
-                    mismatch_count += len(secondary_only)
-                    for timestamp in secondary_only:
-                        if len(mismatch_examples) == 20:
-                            break
-                        mismatch_examples.append(
-                            f"{datetime.fromtimestamp(int(timestamp), UTC).isoformat()}: "
-                            f"scheduled primary GOES-{primary} missing; "
-                            f"scheduled secondary GOES-{secondary} has valid data"
-                        )
-            if len(p_times):
-                parts_t.append(p_times)
-                parts_f.append(p_flux)
-                parts_s.append(np.full(len(p_times), primary, dtype=np.int16))
-                parts_primary.append(np.ones(len(p_times), dtype=bool))
-        cursor = segment_end
-    if mismatch_count:
-        details = "\n".join(f"  - {example}" for example in mismatch_examples)
-        omitted = mismatch_count - len(mismatch_examples)
+    issue_counts = {
+        "primary timestamp missing": 0,
+        "primary flux value missing or invalid": 0,
+        "neither satellite has valid flag-zero data": 0,
+    }
+    issue_examples: list[str] = []
+    for lo, hi, year, primary_satellite, secondary_satellite in scheduled_year_ranges(start, end):
+        expected = np.arange(lo, hi, CADENCE_SECONDS, dtype=np.int64)
+        primary_data = cache.load(primary_satellite, year) or empty_xrs_year_data()
+        secondary_data = (
+            cache.load(secondary_satellite, year)
+            if secondary_satellite != primary_satellite
+            else None
+        ) or empty_xrs_year_data()
+        samples = select_segment_samples(
+            expected, primary_data, secondary_data, primary_satellite, secondary_satellite
+        )
+        sample_times, sample_flux, sample_satellites, sample_is_primary, issues = samples
+        if len(sample_times):
+            parts_t.append(sample_times)
+            parts_f.append(sample_flux)
+            parts_s.append(sample_satellites)
+            parts_primary.append(sample_is_primary)
+        for category, timestamps in issues.items():
+            record_schedule_issues(
+                issue_counts,
+                issue_examples,
+                category,
+                timestamps,
+                primary_satellite,
+                secondary_satellite,
+            )
+    issue_total = sum(issue_counts.values())
+    if issue_total:
+        details = "\n".join(f"  - {example}" for example in issue_examples)
+        omitted = issue_total - len(issue_examples)
         if omitted:
-            details += f"\n  - ... and {omitted} more mismatch(es)"
+            details += f"\n  - ... and {omitted} more issue(s)"
+        counts = ", ".join(f"{name}: {count}" for name, count in issue_counts.items() if count)
         raise RuntimeError(
-            "NOAA GOES schedule/data mismatch: scheduled primary samples are "
-            f"missing while secondary samples are available at {mismatch_count} "
-            f"timestamp(s). Refusing to generate split data.\n{details}"
+            "NOAA GOES schedule/data mismatch; refusing to generate split data. "
+            f"Issue counts: {counts}.\n{details}"
         )
     if not parts_t:
         empty_t = np.empty(0, dtype=np.int64)
@@ -483,7 +587,7 @@ def main() -> None:
         "background_window": "[s - 24 h, s)",
         "background_estimator": "mean of lowest ceil(N/2) valid samples",
         "valid_measurement": "finite positive xrsb_flux and xrsb_flag == 0",
-        "missing_samples": "no interpolation; sum valid samples and record coverage",
+        "missing_samples": "abort on missing scheduled-primary timestamps or flux values; use flag-zero secondary data only when primary has a flagged measurement",
         "fluence_and_total_deviation": "60 seconds times valid one-minute sample sum",
         "goes_l2_product_versions_by_satellite": {
             str(satellite): version for satellite, version in PRODUCT_VERSIONS.items()
@@ -494,7 +598,7 @@ def main() -> None:
             "GOES-8_to_15": f"{NOAA_LEGACY_BASE}goes{{satellite}}/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
             "GOES-16_to_19": f"{NOAA_GOES_R_BASE}goes{{satellite}}/l2/data/xrsf-l2-avg1m_science/sci_xrsf-l2-avg1m_g{{satellite}}_y{{year}}_{{version}}.nc",
         },
-        "satellite_sample_selection": "scheduled primary only; abort if valid secondary data exists without the scheduled primary",
+        "satellite_sample_selection": "use flag-zero scheduled primary data; fall back to flag-zero secondary for present but flagged primary records; abort on missing primary records or values, or when neither source has flag-zero data",
         "satellite_schedule": [list(row) for row in PRIMARY_SECONDARY_SCHEDULE],
         "noaa_selected_time_start_utc": datetime.fromtimestamp(int(times[0]), UTC).isoformat(),
         "noaa_selected_time_end_utc": datetime.fromtimestamp(int(times[-1]), UTC).isoformat(),
