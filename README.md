@@ -24,9 +24,8 @@ The two deviation families each have four conditions, using background windows
 of 2 or 24 hours and the mean of the lower 10% or 50% of valid samples. Each
 background is calculated immediately before `s`. All available valid samples
 are used even when coverage is below 90%; values are missing only when a
-required window has no valid samples. Full formulas, coverage definitions,
-quality rules, source versions, and reproduction instructions are in the
-[XRS-only target definitions](docs/research/xrs_only_target_definitions.md).
+required window has no valid samples. For data preparation details and
+reproduction instructions, see the [data preparation guide](scripts/data/README.md).
 
 The source samples follow the published temporal splits of the
 [NASA-IBM SuryaBench flare-forecasting
@@ -42,18 +41,17 @@ whose 24-hour target support overlaps a usable train or validation sample
 are removed. Train and validation rows are retained, and the existing
 test CSV is preserved byte-for-byte.
 
-| Split | CSV rows | Share of rows | Usable target and image samples* |
-| --- | ---: | ---: | ---: |
-| Train | 61,224 | 48.36% | 58,007 |
-| Validation | 14,136 | 11.17% | 13,324 |
-| Leaky validation | 7,382 | 5.83% | 6,942 |
-| Test | 43,848 | 34.64% | 41,910 |
+| Split | Time period (observed CSV bounds and policy) | Usable data* | Share of rows |
+| --- | --- | ---: | ---: |
+| Train | 2010-05-13–2019-01-04; historical rows outside the holdout windows | 61,224 / 58,007 | 48.36% |
+| Validation | 2010-07-15–2019-02-14; Jan 15–Feb 14 and Jul 15–Aug 14 each year | 14,136 / 13,324 | 11.17% |
+| Leaky validation | 2010-07-05–2019-01-14; 10-day buffers around validation, after overlap filtering | 7,382 / 6,942 | 5.83% |
+| Test | 2020-01-01–2024-12-31 | 43,848 / 41,910 | 34.64% |
 
-Shares use 126,590 total CSV rows. *Usable samples have a finite `max_xflux`
-target and a matching image timestamp in the Zarr store. The train/test
-boundary retains 23 train and 21 test samples whose 24-hour target supports
-intersect (270 interval pairs). For data preparation commands, see the
-[data preparation README](scripts/data/README.md).
+Shares use 126,590 total CSV rows. *Counts are CSV rows / usable samples.
+Usable samples have a finite `max_xflux` target and a matching image timestamp
+in the Zarr store. The train/test boundary retains 23 train and 21 test
+samples whose 24-hour target supports intersect (270 interval pairs).
 
 ## Data sources and methods
 
@@ -62,13 +60,8 @@ The project uses NOAA/NCEI [GOES XRS Level 2 one-minute measurements](https://ww
 Detailed formulas, quality filters, source versions, split handling, and
 reproduction commands are documented separately:
 
-- [XRS-only target definitions](docs/research/xrs_only_target_definitions.md)
-- [Supplementary old-RXFI split target](docs/research/old_rxfi_split_targets.md)
-- [Legacy RXFI versus background-deviation comparison](docs/research/old_rxfi_vs_background_deviation.md)
-- [NOAA catalog fields and historical RXFI context](docs/research/noaa_xrs_catalog_and_rxfi_definition.md)
 - [Background calculation and event-level catalog enrichment](scripts/background/README.md)
 - [Data-generation scripts and commands](scripts/data/README.md)
-- [Legacy catalog-based target generation](docs/research/24h_target_generation.md)
 
 ## Repository layout
 
@@ -76,7 +69,6 @@ reproduction commands are documented separately:
 rxfi-benchmark/
 ├── configs/          # Data-generation configurations and input locks
 ├── data/             # Local source caches and derived targets (gitignored)
-├── docs/research/    # Research definitions, provenance, and methods
 ├── outputs/          # Reproducibility summaries and data-quality artifacts
 ├── scripts/          # Data download, background, and target-generation tools
 └── environment.yml   # Conda environment for data workflows
