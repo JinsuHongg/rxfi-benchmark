@@ -9,32 +9,52 @@ forecast windows; it does not present model architectures or model results.
 
 The current regression experiment defines ten target conditions from
 science-quality, one-minute GOES XRS-B observations. For forecast start `s`,
-the prediction window is `[s, s + 24 h)`. The two background-independent
-targets are:
+the prediction window is `[s, s + 24 h)`. The ten conditions belong to four
+target families:
 
-- `max_xflux`: maximum XRS-B irradiance.
-- `fluence`: unscaled sum of valid one-minute XRS-B samples.
+- **Maximum X-ray flux (`max_xflux`)**: maximum XRS-B irradiance in the
+  prediction window.
+- **Fluence (`fluence`)**: unscaled sum of valid one-minute XRS-B samples.
+- **Maximum background deviation (`max_background_deviation`)**: maximum
+  difference between XRS-B irradiance and the selected background level.
+- **Total background deviation (`total_background_deviation`)**: unscaled
+  one-minute sum of those differences.
 
-The other eight conditions are `max_background_deviation` and
-`total_background_deviation`, each using a background window of 2 or 24 hours
-and the mean of its lower 10% or 50% of valid samples. Each background is
-calculated immediately before `s`; deviation sums are unscaled one-minute
-sample sums. All available valid samples are used even when coverage is below
-90%; values are missing only when a required window has no valid samples.
-Full formulas, coverage definitions, quality rules, source versions, and
-reproduction instructions are in the
+The two deviation families each have four conditions, using background windows
+of 2 or 24 hours and the mean of the lower 10% or 50% of valid samples. Each
+background is calculated immediately before `s`. All available valid samples
+are used even when coverage is below 90%; values are missing only when a
+required window has no valid samples. Full formulas, coverage definitions,
+quality rules, source versions, and reproduction instructions are in the
 [XRS-only target definitions](docs/research/xrs_only_target_definitions.md).
 
-A supplementary `max_old_rxfi` target supports comparison with the historical
-catalog-event ratio `peak irradiance / background irradiance`. Its background
-uses the 24 hours before flare start, excludes other flare intervals, and is
-capped at the XRS-B value at the event's start. A split window includes events
-whose catalog `start_time` falls in `[s, s + 24 h)`. Windows with no eligible
-event RXFI are missing rather than zero. This supplemental target does not
-change the ten XRS-only target conditions.
+The source samples follow the published temporal splits of the
+[NASA-IBM SuryaBench flare-forecasting
+dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting):
+train, validation, leaky validation, and test. Target generation preserves
+those source memberships.
 
-The samples follow the published temporal splits of the
-[NASA-IBM SuryaBench flare-forecasting dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting): train, validation, leaky validation, and test. Split membership is preserved during target generation.
+The current derived temporal split assigns historical rows through 2019 to
+train, validation, or calibration (`leaky_validation`). Validation
+uses January 15–February 14 and July 15–August 14 each year. Calibration uses
+the ten days immediately before and after those windows. Only calibration rows
+whose 24-hour target support overlaps a usable train or validation sample
+are removed. Train and validation rows are retained, and the existing
+test CSV is preserved byte-for-byte.
+
+| Split | CSV rows | Share of rows | Usable target and image samples* |
+| --- | ---: | ---: | ---: |
+| Train | 61,224 | 48.36% | 58,007 |
+| Validation | 14,136 | 11.17% | 13,324 |
+| Leaky validation | 7,382 | 5.83% | 6,942 |
+| Test | 43,848 | 34.64% | 41,910 |
+
+Shares use 126,590 total CSV rows. *Usable samples have a finite `max_xflux`
+target and a matching image timestamp in the Zarr store. The train/test
+boundary retains 23 train and 21 test samples whose 24-hour target supports
+intersect (270 interval pairs). The detailed split policy, audit, and
+reproduction commands are in the
+[data preparation README](scripts/data/README.md#seasonal-validation-split-v2).
 
 ## Data sources and methods
 
