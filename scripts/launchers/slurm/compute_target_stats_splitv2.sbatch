@@ -26,7 +26,7 @@ echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"
 echo "python=$(command -v python) conda_env=${CONDA_DEFAULT_ENV:-unset}"
 echo "zarr_path=$ZARR_PATH target_csv=$TARGET_CSV output=$OUTPUT"
 
-srun python scripts/training/compute_target_stats.py \
+srun --cpu-bind=none python scripts/training/compute_target_stats.py \
   --zarr-path "$ZARR_PATH" \
   --training-targets "$TARGET_CSV" \
   --output "$OUTPUT"
