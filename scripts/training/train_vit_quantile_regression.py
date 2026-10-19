@@ -456,6 +456,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "gradient_accumulation_steps",
         "lr_policy",
         "learning_rate",
+        "weight_decay",
     }
     if config.get("normalization") != NORMALIZATION_NAME:
         raise ValueError(f"normalization must be {NORMALIZATION_NAME!r}")
@@ -471,7 +472,6 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "pretrained": False,
         "quantiles": [0.05, 0.5, 0.95],
         "optimizer": "adamw",
-        "weight_decay": 0.01,
         "seed": 0,
         "checkpoint_metric": "validation_pinball_loss",
     }
@@ -481,6 +481,8 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Model, optimizer, or checkpoint settings differ from the QR family")
     if float(config["learning_rate"]) <= 0:
         raise ValueError("learning_rate must be positive")
+    if float(config["weight_decay"]) < 0:
+        raise ValueError("weight_decay cannot be negative")
     patience = config.get("early_stopping_patience")
     start_epoch = int(config.get("early_stopping_start_epoch", 1))
     if patience is not None and int(patience) <= 0:
@@ -533,7 +535,7 @@ def write_csv(
 ) -> None:
     """Write UTF-8 CSV output with stable field ordering."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    columns = fields or (list(rows[0]) if rows else [])
+    columns = fields or list(dict.fromkeys(key for row in rows for key in row))
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
