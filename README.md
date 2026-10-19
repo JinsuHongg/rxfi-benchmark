@@ -52,9 +52,8 @@ test CSV is preserved byte-for-byte.
 Shares use 126,590 total CSV rows. *Usable samples have a finite `max_xflux`
 target and a matching image timestamp in the Zarr store. The train/test
 boundary retains 23 train and 21 test samples whose 24-hour target supports
-intersect (270 interval pairs). The detailed split policy, audit, and
-reproduction commands are in the
-[data preparation README](scripts/data/README.md#seasonal-validation-split-v2).
+intersect (270 interval pairs). For data preparation commands, see the
+[data preparation README](scripts/data/README.md).
 
 ## Data sources and methods
 
