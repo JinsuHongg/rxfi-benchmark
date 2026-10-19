@@ -361,7 +361,8 @@ def run(config_path: Path) -> None:
     staging_dir = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.", dir=output_dir.parent))
     try:
         for split in SPLIT_NAMES[:-1]:
-            write_csv(staging_dir / f"{split}.csv", fields, cohorts[split])
+            ordered_rows = sorted(cohorts[split], key=lambda row: row.timestamp)
+            write_csv(staging_dir / f"{split}.csv", fields, ordered_rows)
         test_hash = copy_test(source_dir, staging_dir)
         manifest = make_manifest(
             staging_dir, cohorts, removed, source_hashes, test_hash, available_times, support_hours
