@@ -43,9 +43,9 @@ test CSV is preserved byte-for-byte.
 
 | Split | Time period (observed CSV bounds and policy) | Usable data* | Share of rows |
 | --- | --- | ---: | ---: |
-| Train | 2010-05-13–2019-01-04; historical rows outside the holdout windows | 61,224 / 58,007 | 48.36% |
-| Validation | 2010-07-15–2019-02-14; Jan 15–Feb 14 and Jul 15–Aug 14 each year | 14,136 / 13,324 | 11.17% |
-| Leaky validation | 2010-07-05–2019-01-14; 10-day buffers around validation, after overlap filtering | 7,382 / 6,942 | 5.83% |
+| Train | 2010-05-13–2019-12-31; historical rows outside the holdout windows | 61,224 / 58,007 | 48.36% |
+| Validation | 2010-07-15–2019-08-14; Jan 15–Feb 14 and Jul 15–Aug 14 each year | 14,136 / 13,324 | 11.17% |
+| Leaky validation | 2010-07-05–2019-08-24; 10-day buffers around validation, after overlap filtering | 7,382 / 6,942 | 5.83% |
 | Test | 2020-01-01–2024-12-31 | 43,848 / 41,910 | 34.64% |
 
 Shares use 126,590 total CSV rows. *Counts are CSV rows / usable samples.
