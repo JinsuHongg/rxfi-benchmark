@@ -31,7 +31,7 @@ class QuantileRegressionModule(pl.LightningModule):
         )
         self.rmse_q50_metrics = torch.nn.ModuleDict(
             {
-                split: MeanSquaredError(squared=False)
+                f"{split}_split": MeanSquaredError(squared=False)
                 for split in ("train", "validation", "test")
             }
         )
@@ -81,7 +81,7 @@ class QuantileRegressionModule(pl.LightningModule):
                 sync_dist=True,
             )
         median_error = target - prediction[:, 1]
-        rmse_q50 = self.rmse_q50_metrics[split]
+        rmse_q50 = self.rmse_q50_metrics[f"{split}_split"]
         rmse_q50.update(prediction[:, 1], target)
         self.log(
             f"{split}/rmse_q50",
