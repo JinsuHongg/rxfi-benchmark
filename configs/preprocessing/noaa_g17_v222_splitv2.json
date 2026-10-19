@@ -1,0 +1,18 @@
+{
+  "source_dir": "data/derived_noaa_g17_v222",
+  "output_dir": "data/derived_noaa_g17_v222_splitv2",
+  "zarr_path": "/scratch/users/jhong36/surya-bench-224-interarea.zarr",
+  "historical_end_year": 2019,
+  "test_start_year": 2020,
+  "target_support_hours": 24,
+  "core_validation_windows": [
+    {"start": "01-15", "end": "02-14"},
+    {"start": "07-15", "end": "08-14"}
+  ],
+  "calibration_windows": [
+    {"start": "01-05", "end": "01-14"},
+    {"start": "02-15", "end": "02-24"},
+    {"start": "07-05", "end": "07-14"},
+    {"start": "08-15", "end": "08-24"}
+  ]
+}
