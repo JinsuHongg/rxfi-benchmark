@@ -14,7 +14,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import lightning.pytorch as pl
 import matplotlib  # pyright: ignore[reportMissingImports]
@@ -108,6 +108,15 @@ def timestamp_ns(value: str) -> int:
     return int(parsed.timestamp() * 1_000_000_000)
 
 
+def has_valid_row_order(rows: list[dict[str, Any]]) -> bool:
+    """Accept legacy source order or a chronological split with source indices."""
+    indices = [int(row.get("original_row_index", index)) for index, row in enumerate(rows)]
+    if indices == list(range(len(rows))):
+        return True
+    timestamps = [timestamp_ns(str(row["timestamp"])) for row in rows]
+    return timestamps == sorted(timestamps)
+
+
 def validate_transform(spec: Any) -> dict[str, Any]:
     """Validate and normalize a configured target transform."""
     supported = {"log10_scaled", "log10_1p_scaled", "log10_1p", "asinh_zscore"}
@@ -189,9 +198,8 @@ def read_rows(
                 rows = list(csv.DictReader(handle))
             if not rows or "timestamp" not in rows[0] or config["target_column"] not in rows[0]:
                 raise RuntimeError(f"{derived} is missing timestamp or target column")
-            for index, row in enumerate(rows):
-                if int(row.get("original_row_index", index)) != index:
-                    raise RuntimeError(f"{split} generated target row order is invalid")
+            if not has_valid_row_order(rows):
+                raise RuntimeError(f"{split} generated target row order is invalid")
         else:
             source = Path(config["source_split_dir"]) / f"{split}.csv"
             derived = Path(config["derived_target_dir"]) / f"{split}_targets.csv"
@@ -597,8 +605,7 @@ def prediction_rows(
                 "q95_raw": format(raw[2], ".12g"),
             }
         )
-    indices = [int(row["original_row_index"]) for row in rows]
-    if indices != sorted(indices):
+    if not has_valid_row_order(rows):
         raise RuntimeError("Prediction export order differs from the source split")
     return rows
 
@@ -655,7 +662,7 @@ def write_run_metadata(
         "cohort": data.cohort,
         "legacy_suryabench_label_used_as_target": False,
         "torch_version": torch.__version__,
-        "cuda_version": getattr(torch.version, "cuda", None),
+        "cuda_version": getattr(getattr(torch, "version", None), "cuda", None),
         "gpu_name": torch.cuda.get_device_name(0),
         "selected_channel_names": data.availability["selected_channel_names"],
         "selected_channel_indices": data.availability["selected_channel_indices"],
@@ -773,7 +780,7 @@ def main() -> None:
         accelerator="gpu",
         devices=1,
         max_epochs=int(config["epochs"]),
-        precision=precision,
+        precision=cast(Any, precision),
         accumulate_grad_batches=int(config["gradient_accumulation_steps"]),
         logger=wandb_logger,
         callbacks=callbacks,
@@ -802,12 +809,22 @@ def main() -> None:
     )
     write_csv(
         output / "predictions" / "validation_predictions.csv",
-        prediction_rows(validation_predictions, data.records["validation"], config, spec),
+        prediction_rows(
+            cast(list[torch.Tensor], validation_predictions),
+            data.records["validation"],
+            config,
+            spec,
+        ),
         PREDICTION_FIELDS,
     )
     write_csv(
         output / "predictions" / "test_predictions.csv",
-        prediction_rows(test_predictions, data.records["test"], config, spec),
+        prediction_rows(
+            cast(list[torch.Tensor], test_predictions),
+            data.records["test"],
+            config,
+            spec,
+        ),
         PREDICTION_FIELDS,
     )
     test_metrics = test_results[0] if test_results else {}
