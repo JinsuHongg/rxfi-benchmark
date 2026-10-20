@@ -690,9 +690,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_name(config: dict[str, Any]) -> str:
-    """Build the timestamp-model-target W&B run name."""
+    """Build the timestamp-model-target-seed W&B run name."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M")
-    return f"{timestamp}-{config['model_name']}-{config['target_column']}"
+    return (
+        f"{timestamp}-{config['model_name']}-{config['target_column']}"
+        f"-seed{config['seed']}"
+    )
 
 
 def write_run_metadata(
