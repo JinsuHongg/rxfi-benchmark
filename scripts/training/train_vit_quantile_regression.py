@@ -74,6 +74,7 @@ class Record:
     raw: float
     transformed: float
     flare_class: str
+    validation_period: int = -1
 
 
 def channel_selection(config: dict[str, Any], actual_order: list[str]) -> tuple[list[str], list[int]]:
@@ -115,6 +116,17 @@ def has_valid_row_order(rows: list[dict[str, Any]]) -> bool:
         return True
     timestamps = [timestamp_ns(str(row["timestamp"])) for row in rows]
     return timestamps == sorted(timestamps)
+
+
+def validation_period_index(
+    timestamp: str, periods: dict[str, dict[str, str]]
+) -> int:
+    """Map a validation timestamp to the configured seasonal window index."""
+    month_day = datetime.fromisoformat(timestamp).strftime("%m-%d")
+    for index, period in enumerate(periods.values()):
+        if period["start"] <= month_day <= period["end"]:
+            return index
+    raise ValueError(f"Validation timestamp {timestamp} is outside configured periods")
 
 
 def validate_transform(spec: Any) -> dict[str, Any]:
@@ -318,12 +330,21 @@ def attach_images(
                     raw=raw,
                     transformed=transformed,
                     flare_class=row.get("max_flare_class", row.get("max_goes_class", "")),
+                    validation_period=(
+                        validation_period_index(
+                            timestamp, config["validation_periods"]
+                        )
+                        if split == "validation" and config.get("validation_periods")
+                        else -1
+                    ),
                 )
             )
     return records, availability
 
 
-class SuryaDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+class SuryaDataset(
+    Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
+):
     """Read and normalize one image on demand from the yearly Zarr groups."""
 
     def __init__(
@@ -346,8 +367,8 @@ class SuryaDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         """Return the number of valid image-target pairs."""
         return len(self.records)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Load, normalize, and return one image and transformed target."""
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Load one image, target, and validation-window identifier."""
         record = self.records[index]
         if record.year not in self.arrays:
             path = self.zarr_path / str(record.year) / "dataset"
@@ -362,6 +383,7 @@ class SuryaDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         return (
             torch.from_numpy(normalized),
             torch.tensor(record.transformed, dtype=torch.float32),
+            torch.tensor(record.validation_period, dtype=torch.int64),
         )
 
 
@@ -424,7 +446,9 @@ class SuryaDataModule(pl.LightningDataModule):
             for split in SPLITS
         }
 
-    def _loader(self, split: str) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    def _loader(
+        self, split: str
+    ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """Create a loader that shuffles only the training cohort."""
         return DataLoader(
             self.datasets[split],
@@ -435,15 +459,21 @@ class SuryaDataModule(pl.LightningDataModule):
             persistent_workers=int(self.config["num_workers"]) > 0,
         )
 
-    def train_dataloader(self) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    def train_dataloader(
+        self,
+    ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """Return the shuffled training loader."""
         return self._loader("train")
 
-    def val_dataloader(self) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    def val_dataloader(
+        self,
+    ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """Return the ordered validation loader."""
         return self._loader("validation")
 
-    def test_dataloader(self) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+    def test_dataloader(
+        self,
+    ) -> DataLoader[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """Return the ordered test loader."""
         return self._loader("test")
 

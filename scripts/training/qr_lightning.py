@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 import lightning.pytorch as pl
 import timm
 import torch
 from loguru import logger
-from torchmetrics import MeanSquaredError
+from torchmetrics import MeanSquaredError, Metric, R2Score, SpearmanCorrCoef
 from transformers import get_cosine_schedule_with_warmup
 
 
@@ -20,6 +20,7 @@ class QuantileRegressionModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(config)
         self.config = config
+        self.scheduler_metadata: dict[str, Any] = {}
         self.model = timm.create_model(
             config["model_name"],
             pretrained=False,
@@ -35,16 +36,39 @@ class QuantileRegressionModule(pl.LightningModule):
                 for split in ("train", "validation", "test")
             }
         )
+        self.validation_spearman_q50 = SpearmanCorrCoef()
+        self.validation_r2_q50 = R2Score()
+        self.validation_period_names = list(config.get("validation_periods", {}))
+        self.period_spearman_q50 = torch.nn.ModuleDict(
+            {name: SpearmanCorrCoef() for name in self.validation_period_names}
+        )
+        self.period_r2_q50 = torch.nn.ModuleDict(
+            {name: R2Score() for name in self.validation_period_names}
+        )
+        self.period_rmse_q50 = torch.nn.ModuleDict(
+            {
+                name: MeanSquaredError(squared=False)
+                for name in self.validation_period_names
+            }
+        )
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         """Return one predicted value per configured quantile."""
         return self.model(images)
 
+    def inverse_target(self, values: torch.Tensor) -> torch.Tensor:
+        """Map standardized asinh targets back to physical units."""
+        transform = self.config["target_transform"]
+        return float(transform["scale_s"]) * torch.sinh(
+            values * float(transform["transformed_std_population"])
+            + float(transform["transformed_mean"])
+        )
+
     def _shared_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], split: str
+        self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], split: str
     ) -> torch.Tensor:
         """Compute pinball loss and batch-weighted aggregate diagnostics."""
-        images, target = batch
+        images, target, period_indices = batch
         prediction = self(images)
         quantiles = self.quantiles.to(dtype=prediction.dtype)
         error = target[:, None] - prediction
@@ -81,7 +105,7 @@ class QuantileRegressionModule(pl.LightningModule):
                 sync_dist=True,
             )
         median_error = target - prediction[:, 1]
-        rmse_q50 = self.rmse_q50_metrics[f"{split}_split"]
+        rmse_q50 = cast(Metric, self.rmse_q50_metrics[f"{split}_split"])
         rmse_q50.update(prediction[:, 1], target)
         self.log(
             f"{split}/rmse_q50",
@@ -103,6 +127,11 @@ class QuantileRegressionModule(pl.LightningModule):
             .float()
             .mean(),
         }
+        if split == "validation":
+            self._log_validation_metrics(prediction, target, batch_size)
+            self._log_validation_period_metrics(
+                prediction, target, period_indices
+            )
         for name, value in metrics.items():
             self.log(
                 f"{split}/{name}",
@@ -123,36 +152,141 @@ class QuantileRegressionModule(pl.LightningModule):
             )
         return loss
 
+    def _log_validation_metrics(
+        self, prediction: torch.Tensor, target: torch.Tensor, batch_size: int
+    ) -> None:
+        """Log rank, variance, interval, and raw-unit validation metrics."""
+        self.validation_spearman_q50.update(prediction[:, 1], target)
+        self.validation_r2_q50.update(prediction[:, 1], target)
+        self.log(
+            "validation/spearman_q50",
+            self.validation_spearman_q50,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            "validation/r2_q50_transformed",
+            self.validation_r2_q50,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        target_raw = self.inverse_target(target)
+        median_raw = self.inverse_target(prediction[:, 1])
+        metrics = {
+            "validation/interval_coverage_90": (
+                (target >= prediction[:, 0]) & (target <= prediction[:, 2])
+            ).float().mean(),
+            "validation/mean_interval_width_90_transformed": (
+                prediction[:, 2] - prediction[:, 0]
+            ).mean(),
+            "validation/mae_q50_raw": (target_raw - median_raw).abs().mean(),
+        }
+        for name, value in metrics.items():
+            self.log(
+                name,
+                value,
+                on_step=False,
+                on_epoch=True,
+                batch_size=batch_size,
+                sync_dist=True,
+            )
+
+    def _log_validation_period_metrics(
+        self,
+        prediction: torch.Tensor,
+        target: torch.Tensor,
+        period_indices: torch.Tensor,
+    ) -> None:
+        """Log validation diagnostics separately for configured time windows."""
+        for index, name in enumerate(self.validation_period_names):
+            mask = period_indices == index
+            if not bool(mask.any()):
+                continue
+            period_prediction = prediction[mask]
+            period_target = target[mask]
+            period_size = int(mask.sum())
+            prefix = f"validation_{name}"
+            error = period_target - period_prediction[:, 1]
+            quantiles = self.quantiles.to(dtype=period_prediction.dtype)
+            residual = period_target[:, None] - period_prediction
+            pinball = torch.maximum(quantiles * residual, (quantiles - 1) * residual)
+            self.period_spearman_q50[name].update(
+                period_prediction[:, 1], period_target
+            )
+            self.period_r2_q50[name].update(period_prediction[:, 1], period_target)
+            self.period_rmse_q50[name].update(
+                period_prediction[:, 1], period_target
+            )
+            metrics = {
+                f"{prefix}/pinball_loss": pinball.mean(),
+                f"{prefix}/mae_q50": error.abs().mean(),
+                f"{prefix}/interval_coverage_90": (
+                    (period_target >= period_prediction[:, 0])
+                    & (period_target <= period_prediction[:, 2])
+                ).float().mean(),
+                f"{prefix}/mean_interval_width_90_transformed": (
+                    period_prediction[:, 2] - period_prediction[:, 0]
+                ).mean(),
+                f"{prefix}/mae_q50_raw": (
+                    self.inverse_target(period_target)
+                    - self.inverse_target(period_prediction[:, 1])
+                ).abs().mean(),
+            }
+            for metric_name, value in metrics.items():
+                self.log(
+                    metric_name,
+                    value,
+                    on_step=False,
+                    on_epoch=True,
+                    batch_size=period_size,
+                    sync_dist=True,
+                )
+            stateful_metrics = {
+                "rmse_q50": cast(Metric, self.period_rmse_q50[name]),
+                "spearman_q50": cast(Metric, self.period_spearman_q50[name]),
+                "r2_q50_transformed": cast(Metric, self.period_r2_q50[name]),
+            }
+            for metric_name, metric in stateful_metrics.items():
+                self.log(
+                    f"{prefix}/{metric_name}",
+                    metric,
+                    on_step=False,
+                    on_epoch=True,
+                    sync_dist=True,
+                )
+
     def training_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Run one optimization batch and log weighted training metrics."""
         del batch_idx
         return self._shared_step(batch, "train")
 
     def validation_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Run one validation batch for checkpoint selection."""
         del batch_idx
         return self._shared_step(batch, "validation")
 
     def test_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Evaluate one test batch after training is complete."""
         del batch_idx
         return self._shared_step(batch, "test")
 
     def predict_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+        self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Return CPU predictions while preserving loader row order."""
         del batch_idx
-        images, _ = batch
+        images, _, _ = batch
         return self(images).float().cpu()
 
-    def configure_optimizers(self) -> dict[str, Any] | torch.optim.Optimizer:
+    def configure_optimizers(self) -> Any:
         """Configure AdamW and an optional per-update cosine warmup schedule."""
         optimizer = torch.optim.AdamW(
             self.parameters(),
@@ -248,11 +382,10 @@ class TrainingHistoryCallback(pl.Callback):
             "epoch": int(trainer.current_epoch + 1),
             "elapsed_seconds": round(time.perf_counter() - self.epoch_started_at, 2),
         }
-        for split in ("train", "validation"):
-            for key, value in values.items():
-                if key.startswith(f"{split}/"):
-                    name = key.removeprefix(f"{split}/")
-                    row[f"{split}_{name}"] = float(value.detach().cpu())
+        for key, value in values.items():
+            if key.startswith(("train/", "validation/", "validation_")):
+                prefix, _, name = key.partition("/")
+                row[f"{prefix}_{name}"] = float(value.detach().cpu())
         if "validation_mse_q50" in row:
             row["validation_rmse_q50"] = float(row["validation_mse_q50"]) ** 0.5
         self.rows.append(row)

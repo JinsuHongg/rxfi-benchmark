@@ -5,6 +5,13 @@ target_split_dir: data/derived_noaa_g17_v222_splitv2
 target_stats_path: outputs/target_normalization_stats/noaa_g17_v222_splitv2/train_target_stats.json
 target_column: max_xflux
 target_transform: {name: asinh_zscore}
+validation_periods:
+  jan_feb:
+    start: '01-15'
+    end: '02-14'
+  jul_aug:
+    start: '07-15'
+    end: '08-14'
 image_size: 224
 in_chans: 13
 channels: 13
