@@ -492,6 +492,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "batch_size",
         "num_workers",
         "gradient_accumulation_steps",
+        "seed",
         "lr_policy",
         "learning_rate",
         "weight_decay",
@@ -509,18 +510,32 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "pretrained": False,
         "quantiles": [0.05, 0.5, 0.95],
         "optimizer": "adamw",
-        "seed": 0,
         "checkpoint_metric": "validation_pinball_loss",
     }
     if frozen.keys() - config.keys():
         raise ValueError(f"Missing frozen config fields: {sorted(frozen.keys() - config.keys())}")
     if any(config[key] != value for key, value in frozen.items()):
         raise ValueError("Model, optimizer, or checkpoint settings differ from the QR family")
+    if int(config["seed"]) < 0:
+        raise ValueError("seed must be non-negative")
     if config["model_name"] not in {
         "vit_small_patch16_224",
         "vit_tiny_patch16_224",
+        "compact_cnn_v1",
     }:
-        raise ValueError("model_name must be a supported 224px ViT variant")
+        raise ValueError("model_name must be a supported 224px model")
+    if config["model_name"] == "compact_cnn_v1":
+        channels = config.get("cnn_channels")
+        if not isinstance(channels, list) or not channels or any(
+            int(channel) <= 0 for channel in channels
+        ):
+            raise ValueError("cnn_channels must be a non-empty list of positive integers")
+        stem_kernel_size = int(config.get("cnn_stem_kernel_size", 0))
+        if stem_kernel_size < 3 or stem_kernel_size % 2 == 0:
+            raise ValueError("cnn_stem_kernel_size must be an odd integer of at least 3")
+        dropout = float(config.get("cnn_dropout", -1))
+        if not 0 <= dropout < 1:
+            raise ValueError("cnn_dropout must be in [0, 1)")
     if float(config["learning_rate"]) <= 0:
         raise ValueError("learning_rate must be positive")
     if float(config["weight_decay"]) < 0:

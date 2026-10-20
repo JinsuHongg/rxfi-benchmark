@@ -1,0 +1,40 @@
+experiment_name: xrs_only_max_xflux_compact_cnn_qr_splitv2_seed1
+output_dir: outputs/xrs_only/max_xflux_compact_cnn_qr_splitv2_seed1
+zarr_path: /scratch/users/jhong36/surya-bench-224-interarea.zarr
+target_split_dir: data/derived_noaa_g17_v222_splitv2
+target_stats_path: outputs/target_normalization_stats/noaa_g17_v222_splitv2/train_target_stats.json
+target_column: max_xflux
+target_transform: {name: asinh_zscore}
+validation_periods:
+  jan_feb:
+    start: '01-15'
+    end: '02-14'
+  jul_aug:
+    start: '07-15'
+    end: '08-14'
+image_size: 224
+in_chans: 13
+channels: 13
+channel_order: [aia94, aia131, aia171, aia193, aia211, aia304, aia335, aia1600, hmi_m, hmi_bx, hmi_by, hmi_bz, hmi_v]
+normalization: signed_log1p_train_channel_zscore
+normalization_stats_path: outputs/input_normalization_stats/noaa_g17_v222_splitv2/train_channel_stats.json
+model_name: compact_cnn_v1
+cnn_channels: [32, 64, 128, 192]
+cnn_stem_kernel_size: 7
+cnn_dropout: 0.2
+pretrained: false
+quantiles: [0.05, 0.50, 0.95]
+optimizer: adamw
+learning_rate: 0.00003
+weight_decay: 0.05
+lr_policy: cosine_warmup
+warmup_ratio: 0.1
+epochs: 30
+early_stopping_start_epoch: 4
+early_stopping_patience: 3
+batch_size: 32
+gradient_accumulation_steps: 1
+num_workers: 4
+precision: '32'
+seed: 1
+checkpoint_metric: validation_pinball_loss

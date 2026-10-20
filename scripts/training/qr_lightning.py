@@ -12,21 +12,91 @@ from torchmetrics import MeanSquaredError, Metric, R2Score, SpearmanCorrCoef
 from transformers import get_cosine_schedule_with_warmup
 
 
+class CompactCNN(torch.nn.Module):
+    """Small convolutional regressor with a broad initial receptive field."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        output_channels: int,
+        channels: list[int],
+        stem_kernel_size: int,
+        dropout: float,
+    ) -> None:
+        """Build convolution stages followed by pooled quantile predictions.
+
+        Args:
+            in_channels: Number of image channels.
+            output_channels: Number of predicted target quantiles.
+            channels: Output width for each downsampling stage.
+            stem_kernel_size: Kernel width used by the first convolution.
+            dropout: Dropout probability before the prediction head.
+        """
+        super().__init__()
+        layers: list[torch.nn.Module] = []
+        current_channels = in_channels
+        for index, output_width in enumerate(channels):
+            kernel_size = stem_kernel_size if index == 0 else 3
+            layers.extend(
+                [
+                    torch.nn.Conv2d(
+                        current_channels,
+                        output_width,
+                        kernel_size=kernel_size,
+                        stride=2,
+                        padding=kernel_size // 2,
+                        bias=False,
+                    ),
+                    torch.nn.BatchNorm2d(output_width),
+                    torch.nn.GELU(),
+                    torch.nn.Conv2d(
+                        output_width,
+                        output_width,
+                        kernel_size=3,
+                        padding=1,
+                        bias=False,
+                    ),
+                    torch.nn.BatchNorm2d(output_width),
+                    torch.nn.GELU(),
+                ]
+            )
+            current_channels = output_width
+        self.features = torch.nn.Sequential(*layers)
+        self.pool = torch.nn.AdaptiveAvgPool2d(1)
+        self.dropout = torch.nn.Dropout(dropout)
+        self.head = torch.nn.Linear(current_channels, output_channels)
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """Map a batch of channel-first images to target quantiles."""
+        features = self.features(images)
+        pooled = self.pool(features).flatten(start_dim=1)
+        return self.head(self.dropout(pooled))
+
+
 class QuantileRegressionModule(pl.LightningModule):
-    """ViT-Small quantile model, metrics, optimizer, and learning-rate policy."""
+    """Quantile model, metrics, optimizer, and learning-rate policy."""
 
     def __init__(self, config: dict[str, Any]) -> None:
-        """Build the configured ViT and retain optimizer/scheduler settings."""
+        """Build the configured model and retain optimizer/scheduler settings."""
         super().__init__()
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
-        self.model = timm.create_model(
-            config["model_name"],
-            pretrained=False,
-            in_chans=int(config["in_chans"]),
-            num_classes=len(config["quantiles"]),
-        )
+        if config["model_name"] == "compact_cnn_v1":
+            self.model = CompactCNN(
+                in_channels=int(config["in_chans"]),
+                output_channels=len(config["quantiles"]),
+                channels=[int(value) for value in config["cnn_channels"]],
+                stem_kernel_size=int(config["cnn_stem_kernel_size"]),
+                dropout=float(config["cnn_dropout"]),
+            )
+        else:
+            self.model = timm.create_model(
+                config["model_name"],
+                pretrained=False,
+                in_chans=int(config["in_chans"]),
+                num_classes=len(config["quantiles"]),
+            )
         self.register_buffer(
             "quantiles", torch.tensor(config["quantiles"], dtype=torch.float32)
         )
