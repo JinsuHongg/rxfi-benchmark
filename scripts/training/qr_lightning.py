@@ -83,7 +83,11 @@ class QuantileRegressionModule(pl.LightningModule):
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
-        if config["model_name"] in {"alexnet", "alexnet_small_head"}:
+        if config["model_name"] in {
+            "alexnet",
+            "alexnet_small_head",
+            "alexnet_global_pool",
+        }:
             self.model = alexnet(weights=None)
             self.model.features[0] = torch.nn.Conv2d(
                 in_channels=int(config["in_chans"]),
@@ -100,6 +104,15 @@ class QuantileRegressionModule(pl.LightningModule):
                     torch.nn.Dropout(p=0.5),
                     torch.nn.Linear(
                         in_features=512,
+                        out_features=len(config["quantiles"]),
+                    ),
+                )
+            elif config["model_name"] == "alexnet_global_pool":
+                self.model.avgpool = torch.nn.AdaptiveAvgPool2d((1, 1))
+                self.model.classifier = torch.nn.Sequential(
+                    torch.nn.Dropout(p=0.5),
+                    torch.nn.Linear(
+                        in_features=256,
                         out_features=len(config["quantiles"]),
                     ),
                 )
