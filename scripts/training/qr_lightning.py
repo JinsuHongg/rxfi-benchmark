@@ -83,7 +83,7 @@ class QuantileRegressionModule(pl.LightningModule):
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
-        if config["model_name"] == "alexnet":
+        if config["model_name"] in {"alexnet", "alexnet_small_head"}:
             self.model = alexnet(weights=None)
             self.model.features[0] = torch.nn.Conv2d(
                 in_channels=int(config["in_chans"]),
@@ -92,10 +92,22 @@ class QuantileRegressionModule(pl.LightningModule):
                 stride=4,
                 padding=2,
             )
-            self.model.classifier[6] = torch.nn.Linear(
-                in_features=4096,
-                out_features=len(config["quantiles"]),
-            )
+            if config["model_name"] == "alexnet_small_head":
+                self.model.classifier = torch.nn.Sequential(
+                    torch.nn.Dropout(p=0.5),
+                    torch.nn.Linear(in_features=9216, out_features=512),
+                    torch.nn.ReLU(inplace=True),
+                    torch.nn.Dropout(p=0.5),
+                    torch.nn.Linear(
+                        in_features=512,
+                        out_features=len(config["quantiles"]),
+                    ),
+                )
+            else:
+                self.model.classifier[6] = torch.nn.Linear(
+                    in_features=4096,
+                    out_features=len(config["quantiles"]),
+                )
         elif config["model_name"] == "compact_cnn_v1":
             self.model = CompactCNN(
                 in_channels=int(config["in_chans"]),

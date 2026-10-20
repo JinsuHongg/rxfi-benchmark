@@ -523,6 +523,7 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         "vit_tiny_patch16_224",
         "compact_cnn_v1",
         "alexnet",
+        "alexnet_small_head",
     }:
         raise ValueError("model_name must be a supported 224px model")
     if config["model_name"] == "compact_cnn_v1":
