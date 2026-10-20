@@ -503,7 +503,6 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
     if missing:
         raise ValueError(f"Missing config fields: {sorted(missing)}")
     frozen = {
-        "model_name": "vit_small_patch16_224",
         "image_size": 224,
         "in_chans": int(config["in_chans"]),
         "channels": int(config["in_chans"]),
@@ -517,6 +516,11 @@ def validate_config(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"Missing frozen config fields: {sorted(frozen.keys() - config.keys())}")
     if any(config[key] != value for key, value in frozen.items()):
         raise ValueError("Model, optimizer, or checkpoint settings differ from the QR family")
+    if config["model_name"] not in {
+        "vit_small_patch16_224",
+        "vit_tiny_patch16_224",
+    }:
+        raise ValueError("model_name must be a supported 224px ViT variant")
     if float(config["learning_rate"]) <= 0:
         raise ValueError("learning_rate must be positive")
     if float(config["weight_decay"]) < 0:
