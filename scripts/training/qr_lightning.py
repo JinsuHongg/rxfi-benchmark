@@ -363,6 +363,7 @@ class TrainingHistoryCallback(pl.Callback):
     def __init__(self) -> None:
         """Initialize an empty history for one fit run."""
         self.rows: list[dict[str, int | float]] = []
+        self.train_epoch_metrics: dict[str, float] = {}
         self.epoch_started_at = 0.0
 
     def on_train_epoch_start(
@@ -371,6 +372,16 @@ class TrainingHistoryCallback(pl.Callback):
         """Record the local start time used for the epoch duration field."""
         del trainer, pl_module
         self.epoch_started_at = time.perf_counter()
+
+    def on_train_epoch_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Preserve train metrics before validation replaces callback metrics."""
+        del pl_module
+        for key, value in trainer.callback_metrics.items():
+            if key.startswith("train/"):
+                name = key.removeprefix("train/")
+                self.train_epoch_metrics[f"train_{name}"] = float(value.detach().cpu())
 
     def on_validation_epoch_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -381,11 +392,13 @@ class TrainingHistoryCallback(pl.Callback):
         row: dict[str, int | float] = {
             "epoch": int(trainer.current_epoch + 1),
             "elapsed_seconds": round(time.perf_counter() - self.epoch_started_at, 2),
+            **self.train_epoch_metrics,
         }
         for key, value in values.items():
-            if key.startswith(("train/", "validation/", "validation_")):
+            if key.startswith(("validation/", "validation_")):
                 prefix, _, name = key.partition("/")
                 row[f"{prefix}_{name}"] = float(value.detach().cpu())
         if "validation_mse_q50" in row:
             row["validation_rmse_q50"] = float(row["validation_mse_q50"]) ** 0.5
         self.rows.append(row)
+        self.train_epoch_metrics = {}
