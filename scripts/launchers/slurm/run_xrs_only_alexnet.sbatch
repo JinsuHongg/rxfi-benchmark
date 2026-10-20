@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=xrs_alexnet_qr
 #SBATCH --partition=qGPU24
-#SBATCH --array=0-2%1
+#SBATCH --array=0-2%4
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=8
