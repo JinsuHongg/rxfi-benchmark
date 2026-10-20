@@ -603,7 +603,12 @@ def plot_curves(path: Path, history: list[dict[str, int | float]]) -> None:
     """Save train and validation loss/error curves as a local SVG."""
     epochs = [row["epoch"] for row in history]
     figure, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axes[0].plot(epochs, [row["train_pinball_loss"] for row in history], label="train")
+    train_rows = [row for row in history if "train_pinball_loss" in row]
+    axes[0].plot(
+        [row["epoch"] for row in train_rows],
+        [row["train_pinball_loss"] for row in train_rows],
+        label="train",
+    )
     axes[0].plot(
         epochs,
         [row["validation_pinball_loss"] for row in history],
@@ -684,8 +689,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_name(config: dict[str, Any]) -> str:
-    """Build the timestamp-target W&B run name."""
-    return f"{datetime.now(UTC).strftime('%Y-%m-%d-%H-%M')}-{config['target_column']}"
+    """Build the timestamp-model-target W&B run name."""
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M")
+    return f"{timestamp}-{config['model_name']}-{config['target_column']}"
 
 
 def write_run_metadata(
