@@ -9,6 +9,7 @@ import timm
 import torch
 from loguru import logger
 from torchmetrics import MeanSquaredError, Metric, R2Score, SpearmanCorrCoef
+from torchvision.models import alexnet
 from transformers import get_cosine_schedule_with_warmup
 
 
@@ -82,7 +83,20 @@ class QuantileRegressionModule(pl.LightningModule):
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
-        if config["model_name"] == "compact_cnn_v1":
+        if config["model_name"] == "alexnet":
+            self.model = alexnet(weights=None)
+            self.model.features[0] = torch.nn.Conv2d(
+                in_channels=int(config["in_chans"]),
+                out_channels=64,
+                kernel_size=11,
+                stride=4,
+                padding=2,
+            )
+            self.model.classifier[6] = torch.nn.Linear(
+                in_features=4096,
+                out_features=len(config["quantiles"]),
+            )
+        elif config["model_name"] == "compact_cnn_v1":
             self.model = CompactCNN(
                 in_channels=int(config["in_chans"]),
                 output_channels=len(config["quantiles"]),
