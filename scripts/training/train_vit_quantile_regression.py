@@ -11,6 +11,7 @@ import os
 import random
 import subprocess
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -682,6 +683,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/vit_small_224_max_peak_flux_qr.yaml")
     parser.add_argument("--epochs", type=int, help="Override the configured epoch count")
+    parser.add_argument("--learning-rate", type=float)
+    parser.add_argument("--weight-decay", type=float)
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--wandb-group")
+    parser.add_argument("--wandb-job-type")
+    parser.add_argument("--skip-sample-predictions", action="store_true")
+    parser.add_argument("--skip-test", action="store_true")
     parser.add_argument("--smoke-only", action="store_true")
     parser.add_argument("--validate-transforms", action="store_true")
     parser.add_argument("--batch-size", type=int)
@@ -692,11 +701,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_name(config: dict[str, Any]) -> str:
-    """Build the timestamp-model-target-seed W&B run name."""
+    """Build a timestamped W&B name containing the searched parameters."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M")
+    learning_rate = f"{float(config['learning_rate']):.0e}"
+    learning_rate = learning_rate.replace("e-0", "e-").replace("e+0", "e+")
+    weight_decay = f"{float(config['weight_decay']):g}"
     return (
         f"{timestamp}-{config['model_name']}-{config['target_column']}"
-        f"-seed{config['seed']}"
+        f"-lr{learning_rate}-wd{weight_decay}-seed{config['seed']}"
     )
 
 
@@ -758,12 +770,27 @@ def write_run_metadata(
 
 
 def main() -> None:
-    """Validate the experiment, fit, evaluate once, and export local predictions."""
+    """Fit the experiment and export selected-checkpoint evaluation artifacts."""
     args = parse_args()
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
-    for name in ("batch_size", "precision", "num_workers", "gradient_accumulation_steps"):
-        if getattr(args, name) is not None:
-            config[name] = getattr(args, name)
+    overrides = {
+        "batch_size": args.batch_size,
+        "precision": args.precision,
+        "num_workers": args.num_workers,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "seed": args.seed,
+    }
+    for name, value in overrides.items():
+        if value is not None:
+            config[name] = value
+    if args.output_dir is not None:
+        config["output_dir"] = str(args.output_dir)
+    config["experiment_name"] = (
+        f"xrs_only_{config['model_name']}_{config['target_column']}"
+        f"_lr{config['learning_rate']}_wd{config['weight_decay']}_seed{config['seed']}"
+    )
     config["target_transform"] = resolve_target_transform(config)
     spec = validate_config(config)
     if args.epochs is not None:
@@ -806,15 +833,24 @@ def main() -> None:
         "input_normalization": metadata["input_normalization"],
         "derived_target_sha256": data.integrity["derived_target_sha256"],
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+        "wandb_group": args.wandb_group,
+        "wandb_job_type": args.wandb_job_type,
+        "sample_predictions_enabled": not args.skip_sample_predictions,
+        "test_evaluation_enabled": not args.skip_test,
     }
+    tags = ["xrs-only", config["target_column"]]
+    if args.wandb_group:
+        tags.append("lr-wd-sweep")
     wandb_logger = WandbLogger(
         entity=entity,
         project=project,
         name=run_name(config),
+        group=args.wandb_group,
+        job_type=args.wandb_job_type,
         config=log_config,
         save_dir=str(output),
         log_model=False,
-        tags=["xrs-only", config["target_column"]],
+        tags=tags,
     )
     checkpoint = ModelCheckpoint(
         dirpath=output / "checkpoints",
@@ -853,14 +889,6 @@ def main() -> None:
     write_csv(output / "training_log.csv", history.rows)
     plot_curves(output / "learning_curves.svg", history.rows)
 
-    test_results = trainer.test(model, datamodule=data, ckpt_path="best", verbose=True)
-    validation_predictions = trainer.predict(
-        model, dataloaders=data.val_dataloader(), ckpt_path="best"
-    )
-    test_predictions = trainer.predict(
-        model, dataloaders=data.test_dataloader(), ckpt_path="best"
-    )
-    assert validation_predictions is not None and test_predictions is not None
     best_checkpoint = torch.load(
         checkpoint.best_model_path, map_location="cpu", weights_only=False
     )
@@ -868,26 +896,64 @@ def main() -> None:
     best_history = next(
         row for row in history.rows if int(row["epoch"]) == best_epoch
     )
-    write_csv(
-        output / "predictions" / "validation_predictions.csv",
-        prediction_rows(
-            cast(list[torch.Tensor], validation_predictions),
-            data.records["validation"],
-            config,
-            spec,
-        ),
-        PREDICTION_FIELDS,
+    summary_keys = (
+        "validation_pinball_loss",
+        "validation_rmse_q50",
+        "validation_mae_q50",
+        "validation_spearman_q50",
+        "validation_r2_q50_transformed",
+        "validation_interval_coverage_90",
+        "validation_jan_feb_pinball_loss",
+        "validation_jul_aug_pinball_loss",
     )
-    write_csv(
-        output / "predictions" / "test_predictions.csv",
-        prediction_rows(
-            cast(list[torch.Tensor], test_predictions),
-            data.records["test"],
-            config,
-            spec,
-        ),
-        PREDICTION_FIELDS,
+    wandb_logger.experiment.summary.update(
+        {
+            "best_validation_epoch": best_epoch,
+            **{
+                f"best_{key}": best_history[key]
+                for key in summary_keys
+                if key in best_history
+            },
+        }
     )
+    if not args.skip_sample_predictions:
+        validation_predictions = trainer.predict(
+            model, dataloaders=data.val_dataloader(), ckpt_path="best"
+        )
+        if validation_predictions is None:
+            raise RuntimeError("Validation prediction returned no batches")
+        write_csv(
+            output / "predictions" / "validation_predictions.csv",
+            prediction_rows(
+                cast(list[torch.Tensor], validation_predictions),
+                data.records["validation"],
+                config,
+                spec,
+            ),
+            PREDICTION_FIELDS,
+        )
+
+    test_results: Sequence[Mapping[str, float]] = []
+    if not args.skip_test:
+        test_results = trainer.test(
+            model, datamodule=data, ckpt_path="best", verbose=True
+        )
+        if not args.skip_sample_predictions:
+            test_predictions = trainer.predict(
+                model, dataloaders=data.test_dataloader(), ckpt_path="best"
+            )
+            if test_predictions is None:
+                raise RuntimeError("Test prediction returned no batches")
+            write_csv(
+                output / "predictions" / "test_predictions.csv",
+                prediction_rows(
+                    cast(list[torch.Tensor], test_predictions),
+                    data.records["test"],
+                    config,
+                    spec,
+                ),
+                PREDICTION_FIELDS,
+            )
     test_metrics = test_results[0] if test_results else {}
     summary = [
         {
@@ -897,14 +963,16 @@ def main() -> None:
             "mae_q50": best_history["validation_mae_q50"],
             "rmse_q50": best_history["validation_rmse_q50"],
         },
-        {
+    ]
+    if not args.skip_test:
+        test_summary = {
             "split": "test",
             "selected_epoch": best_epoch,
             **{key.removeprefix("test/"): value for key, value in test_metrics.items()},
-        },
-    ]
-    if "mse_q50" in summary[1]:
-        summary[1]["rmse_q50"] = math.sqrt(float(summary[1].pop("mse_q50")))
+        }
+        if "mse_q50" in test_summary:
+            test_summary["rmse_q50"] = math.sqrt(float(test_summary.pop("mse_q50")))
+        summary.append(test_summary)
     write_csv(output / "summary_metrics.csv", summary)
     scheduler_metadata = getattr(model, "scheduler_metadata", {})
     checkpoint_metadata = {
