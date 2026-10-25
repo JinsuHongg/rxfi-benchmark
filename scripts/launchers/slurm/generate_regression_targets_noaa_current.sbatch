@@ -18,7 +18,7 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 
 REVISION=bf474bc1e7752bd529e9707650f9310db8693763
-DERIVED_DIR="$PWD/data/derived_noaa_current"
+DERIVED_DIR="$PWD/data/derived_noaa_g17_v222"
 OUTPUT_DIR="$PWD/outputs/regression_target_experiment"
 
 echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"

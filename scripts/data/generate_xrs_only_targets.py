@@ -59,7 +59,7 @@ TARGET_COLUMNS = (
 PRODUCT_VERSIONS: dict[int, str] = {
     **{satellite: "v2-2-1" for satellite in range(8, 16)},
     16: "v2-2-2",
-    17: "v2-2-1",
+    17: "v2-2-2",
     18: "v2-2-2",
     19: "v2-2-1",
 }

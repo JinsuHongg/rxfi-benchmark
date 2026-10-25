@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=surya_input_stats
-#SBATCH --partition=qGPU24
+#SBATCH --partition=qCPU24
 #SBATCH --output=surya_input_stats_%j.out
 #SBATCH --error=surya_input_stats_%j.err
 #SBATCH --time=24:00:00

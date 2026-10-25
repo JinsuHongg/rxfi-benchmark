@@ -18,8 +18,8 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENV_NAME:-rxfi-benchmark}"
 
 ZARR_PATH=/scratch/users/jhong36/surya-bench-224-interarea.zarr
-TARGET_CSV="$PWD/data/derived_noaa_current/train.csv"
-OUTPUT="$PWD/outputs/target_normalization_stats/noaa_current/train_target_stats.json"
+TARGET_CSV="$PWD/data/derived_noaa_g17_v222/train.csv"
+OUTPUT="$PWD/outputs/target_normalization_stats/noaa_g17_v222/train_target_stats.json"
 
 echo "hostname=$(hostname) job_id=${SLURM_JOB_ID:-unset} cwd=$PWD"
 echo "python=$(command -v python) conda_env=${CONDA_DEFAULT_ENV:-unset}"

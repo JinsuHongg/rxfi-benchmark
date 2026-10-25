@@ -3,7 +3,7 @@
 Scripts for creating and inspecting regression targets from the frozen temporal
 splits and NOAA GOES XRS measurements.
 
-- `generate_xrs_only_targets.py`: reproducibly downloads the four SuryaBench split indexes and NOAA/NCEI science-quality GOES XRS Level 2 one-minute XRS-B files, then adds `max_xflux`, `fluence`, `max_background_deviation`, and `total_background_deviation`. It uses `[s,s+24h)` for prediction and the lower-50% mean from the immediately preceding interval `[s-24h,s)` as background. At each minute it uses a flag-zero sample from the scheduled primary, falling back to the scheduled secondary whenever the primary has no flag-zero sample. If neither satellite has flag-zero data, the minute is skipped and recorded in `missing_xrs_samples.csv`; generation stops before replacing split files only when a required target window has no valid samples. Per-window coverage and source counts record primary and fallback use. Existing catalog-based `*_targets.csv` files are backed up once to `data/derived/legacy_catalog_targets/` before replacement. Run metadata records exact source URLs and SHA-256 hashes.
+- `generate_xrs_only_targets.py`: reproducibly downloads the four SuryaBench split indexes and NOAA/NCEI science-quality GOES XRS Level 2 one-minute XRS-B files, then adds `max_xflux`, `fluence`, `max_background_deviation`, and `total_background_deviation`. It uses `[s,s+24h)` for prediction and the lower-50% mean from the immediately preceding interval `[s-24h,s)` as background. At each minute it uses a flag-zero sample from the scheduled primary, falling back to the scheduled secondary whenever the primary has no flag-zero sample. If neither satellite has flag-zero data, the minute is skipped and recorded in `missing_xrs_samples.csv`. Split rows and timestamps are preserved; target values are blank when their required window has no samples. Per-window coverage and source counts record primary and fallback use. Existing catalog-based `*_targets.csv` files are backed up once to `data/derived/legacy_catalog_targets/` before replacement. Run metadata records exact source URLs and SHA-256 hashes.
 - `generate_regression_targets.py`: generates the ten approved experiment target conditions from the four frozen SuryaBench splits and science-quality one-minute XRS-B. The two base targets are `max_xflux` and unscaled sample-sum `fluence`; the two signed background-deviation targets are generated for 2h/24h windows and lower 10%/50% means. It writes the concise split names `train.csv`, `validation.csv`, `leaky_validation.csv`, and `test.csv` directly under `data/derived/`, without changing `*_targets.csv`. Per-window coverage/QC, source checksums, and config provenance go to `outputs/regression_target_experiment/runs/<run_id>/`.
 - `add_old_max_rxfi_targets.py`: reads the enriched NOAA catalog copy produced by `scripts/background/add_old_background_rxfi_to_catalog.py` and adds `max_old_rxfi` to separate copies of the four XRS-only target splits. Window membership uses catalog `start_time` in `[t,t+24h)`. Windows without a catalog event or without valid old RXFI remain missing, not zero. Per-split counts, source hashes, and the aggregation rule are recorded.
 - `generate_24h_targets.py` (**legacy**): builds the catalog-based peak-flux/RXFI targets from frozen splits, the NOAA flare report, and checksum-pinned XRS-B measurements. For FQ windows it finds the in-window XRS maximum and calculates lower-50% background over the 24 hours ending five minutes before that maximum.
@@ -71,3 +71,51 @@ Run metadata contains each exact annual file URL and SHA-256. See the
 [XRS-only target definition](../../docs/research/xrs_only_target_definitions.md)
 for formulas, sources, and QC fields. Legacy generation is described in the
 [legacy target-generation notes](../../docs/research/24h_target_generation.md).
+
+## Seasonal validation split v2
+
+The split v2 workflow repartitions the existing target CSVs in
+`data/derived_noaa_g17_v222/`. It does not regenerate targets or change the
+test split. Its configuration is
+[`../../configs/preprocessing/noaa_g17_v222_splitv2.json`](../../configs/preprocessing/noaa_g17_v222_splitv2.json),
+and the generated files go to `data/derived_noaa_g17_v222_splitv2/`.
+
+For historical rows through 2019, the clean validation periods are January 15
+through February 14 and July 15 through August 14 in each available year.
+Calibration (`leaky_validation`) periods are the ten calendar days directly
+before and after each clean validation period: January 5–14, February 15–24,
+July 5–14, and August 15–24. All other historical rows remain in training.
+The date ranges are inclusive and apply by UTC timestamp.
+
+Only calibration rows are removed to avoid overlap with usable training or
+clean-validation target windows. A usable core sample has a finite `max_xflux`
+label and a matching image timestamp in the Zarr store. Its target support is
+the half-open interval `[timestamp, timestamp + 24h)`. If a calibration
+sample's interval intersects a usable train or validation interval, that
+calibration row is omitted; train and clean-validation rows are retained.
+Rows with blank target values remain in the CSVs. The manifest records
+per-split row counts, finite `max_xflux` counts, Zarr matches, checksums,
+removed calibration rows, and train/test interval intersections.
+
+The existing `test.csv` is copied byte-for-byte. The audit found 23 usable
+training samples and 21 usable test samples with intersecting 24-hour target
+supports at the 2019–2020 boundary (270 interval pairs); these rows remain in
+their original splits and the overlap is reported in the manifest.
+
+Run the split and audit on the cluster with `rxfi-benchmark`:
+
+```bash
+sbatch scripts/launchers/slurm/repartition_noaa_g17_splitv2.sbatch
+sbatch scripts/launchers/slurm/audit_noaa_g17_splitv2.sbatch
+```
+
+Then compute train-only target and image normalization statistics:
+
+```bash
+sbatch scripts/launchers/slurm/compute_target_stats_splitv2.sbatch
+sbatch scripts/launchers/slurm/compute_input_stats_splitv2.sbatch
+```
+
+Target statistics are saved to
+`outputs/target_normalization_stats/noaa_g17_v222_splitv2/`; input statistics
+are saved to `outputs/input_normalization_stats/noaa_g17_v222_splitv2/`.
