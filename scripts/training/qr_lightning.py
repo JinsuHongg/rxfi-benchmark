@@ -83,6 +83,7 @@ class QuantileRegressionModule(pl.LightningModule):
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
+        self.test_predictions: list[torch.Tensor] = []
         if config["model_name"] in {
             "alexnet",
             "alexnet_small_head",
@@ -179,7 +180,7 @@ class QuantileRegressionModule(pl.LightningModule):
 
     def _shared_step(
         self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], split: str
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute pinball loss and batch-weighted aggregate diagnostics."""
         images, target, period_indices = batch
         prediction = self(images)
@@ -264,7 +265,7 @@ class QuantileRegressionModule(pl.LightningModule):
                 prog_bar=False,
                 sync_dist=False,
             )
-        return loss
+        return loss, prediction
 
     def _log_split_metrics(
         self,
@@ -382,21 +383,29 @@ class QuantileRegressionModule(pl.LightningModule):
     ) -> torch.Tensor:
         """Run one optimization batch and log weighted training metrics."""
         del batch_idx
-        return self._shared_step(batch, "train")
+        loss, _ = self._shared_step(batch, "train")
+        return loss
 
     def validation_step(
         self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Run one validation batch for checkpoint selection."""
         del batch_idx
-        return self._shared_step(batch, "validation")
+        loss, _ = self._shared_step(batch, "validation")
+        return loss
+
+    def on_test_epoch_start(self) -> None:
+        """Clear predictions before the ordered test pass begins."""
+        self.test_predictions.clear()
 
     def test_step(
         self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
         """Evaluate one test batch after training is complete."""
         del batch_idx
-        return self._shared_step(batch, "test")
+        loss, prediction = self._shared_step(batch, "test")
+        self.test_predictions.append(prediction.detach().float().cpu())
+        return loss
 
     def predict_step(
         self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int

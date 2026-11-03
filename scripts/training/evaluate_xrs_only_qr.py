@@ -199,7 +199,6 @@ def evaluate_checkpoint(
             verbose=True,
         )
         save_test_artifacts(
-            trainer,
             model,
             data,
             config,
@@ -213,7 +212,6 @@ def evaluate_checkpoint(
 
 
 def save_test_artifacts(
-    trainer: pl.Trainer,
     model: QuantileRegressionModule,
     data: SuryaDataModule,
     config: dict[str, Any],
@@ -225,13 +223,9 @@ def save_test_artifacts(
     """Write uniquely named per-sample predictions and scalar metrics."""
     if len(test_results) != 1:
         raise RuntimeError("Expected exactly one test metric result")
-    predictions = trainer.predict(
-        model,
-        dataloaders=data.test_dataloader(),
-        ckpt_path=str(args.checkpoint.resolve()),
-    )
-    if predictions is None:
-        raise RuntimeError("Test prediction returned no batches")
+    predictions = model.test_predictions
+    if not predictions:
+        raise RuntimeError("Test evaluation returned no sample predictions")
     filename = prediction_filename(
         str(config["target_column"]),
         int(config["seed"]),
@@ -240,7 +234,7 @@ def save_test_artifacts(
     )
     prediction_path = args.output_root / "predictions" / filename
     rows = prediction_rows(
-        cast(list[torch.Tensor], predictions),
+        predictions,
         data.records["test"],
         config,
         spec,
