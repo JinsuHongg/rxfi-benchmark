@@ -145,8 +145,12 @@ class QuantileRegressionModule(pl.LightningModule):
                 for split in ("train", "validation", "test")
             }
         )
-        self.validation_spearman_q50 = SpearmanCorrCoef()
-        self.validation_r2_q50 = R2Score()
+        self.split_spearman_q50 = torch.nn.ModuleDict(
+            {split: SpearmanCorrCoef() for split in ("validation", "test")}
+        )
+        self.split_r2_q50 = torch.nn.ModuleDict(
+            {split: R2Score() for split in ("validation", "test")}
+        )
         self.validation_period_names = list(config.get("validation_periods", {}))
         self.period_spearman_q50 = torch.nn.ModuleDict(
             {name: SpearmanCorrCoef() for name in self.validation_period_names}
@@ -236,8 +240,9 @@ class QuantileRegressionModule(pl.LightningModule):
             .float()
             .mean(),
         }
+        if split in {"validation", "test"}:
+            self._log_split_metrics(split, prediction, target, batch_size)
         if split == "validation":
-            self._log_validation_metrics(prediction, target, batch_size)
             self._log_validation_period_metrics(
                 prediction, target, period_indices
             )
@@ -261,22 +266,28 @@ class QuantileRegressionModule(pl.LightningModule):
             )
         return loss
 
-    def _log_validation_metrics(
-        self, prediction: torch.Tensor, target: torch.Tensor, batch_size: int
+    def _log_split_metrics(
+        self,
+        split: str,
+        prediction: torch.Tensor,
+        target: torch.Tensor,
+        batch_size: int,
     ) -> None:
-        """Log rank, variance, interval, and raw-unit validation metrics."""
-        self.validation_spearman_q50.update(prediction[:, 1], target)
-        self.validation_r2_q50.update(prediction[:, 1], target)
+        """Log rank, variance, interval, and raw-unit split metrics."""
+        spearman = cast(Metric, self.split_spearman_q50[split])
+        r2 = cast(Metric, self.split_r2_q50[split])
+        spearman.update(prediction[:, 1], target)
+        r2.update(prediction[:, 1], target)
         self.log(
-            "validation/spearman_q50",
-            self.validation_spearman_q50,
+            f"{split}/spearman_q50",
+            spearman,
             on_step=False,
             on_epoch=True,
             sync_dist=True,
         )
         self.log(
-            "validation/r2_q50_transformed",
-            self.validation_r2_q50,
+            f"{split}/r2_q50_transformed",
+            r2,
             on_step=False,
             on_epoch=True,
             sync_dist=True,
@@ -284,13 +295,13 @@ class QuantileRegressionModule(pl.LightningModule):
         target_raw = self.inverse_target(target)
         median_raw = self.inverse_target(prediction[:, 1])
         metrics = {
-            "validation/interval_coverage_90": (
+            f"{split}/interval_coverage_90": (
                 (target >= prediction[:, 0]) & (target <= prediction[:, 2])
             ).float().mean(),
-            "validation/mean_interval_width_90_transformed": (
+            f"{split}/mean_interval_width_90_transformed": (
                 prediction[:, 2] - prediction[:, 0]
             ).mean(),
-            "validation/mae_q50_raw": (target_raw - median_raw).abs().mean(),
+            f"{split}/mae_q50_raw": (target_raw - median_raw).abs().mean(),
         }
         for name, value in metrics.items():
             self.log(

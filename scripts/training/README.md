@@ -7,6 +7,7 @@ Model-fitting entry points and a utility for measuring quantile-regression batch
 - `benchmark_qr_batch_size.py`: measures throughput and memory use across requested QR batch sizes and precision settings.
 - `train_vit_classifier.py`: trains the configured ViT flare-classification model.
 - `train_vit_quantile_regression.py`: trains the configured ViT quantile-regression model.
+- `evaluate_xrs_only_qr.py`: evaluates one saved CompactCNN checkpoint on the XRS-only test split, logs aggregate metrics to the configured W&B test project, and writes a uniquely named per-sample prediction CSV locally.
 
 Run the stats script from the repository root before training:
 
@@ -58,5 +59,13 @@ checkpoints and per-sample prediction CSVs remain local under the configured
 output directory. The trainer evaluates only validation and test splits.
 Authenticate with W&B before submitting a training job; the Conda environment
 sets `WANDB_ENTITY` and `WANDB_PROJECT` from `environment.yml`.
+
+Final checkpoint-only XRS test evaluation uses the preselected 30-row
+`configs/xrs_only/v1_test_checkpoints.csv` manifest and
+`scripts/launchers/slurm/evaluate_xrs_only_qr_array.sbatch`. It runs one
+target/seed checkpoint per task, limits concurrency to three tasks, and sets
+the W&B project to `rxfi-regression-test`. Overall test metrics follow the
+validation metric definitions; individual sample predictions stay local in
+uniquely named files under the shared test-evaluation output directory.
 
 Use the YAML configurations under `configs/`; training commands are documented in the repository [README](../../README.md).
