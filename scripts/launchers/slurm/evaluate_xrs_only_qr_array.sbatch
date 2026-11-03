@@ -16,7 +16,7 @@ mkdir -p logs/xrs_only_final_test
 
 manifest="${XRS_TEST_MANIFEST:-configs/xrs_only/v1_test_checkpoints.csv}"
 task_index="${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required}"
-manifest_row="$(awk -F, -v index="$((task_index + 2))" 'NR == index { print $1 "\t" $2 "\t" $3 "\t" $4 }' "$manifest")"
+manifest_row="$(awk -F, -v row_number="$((task_index + 2))" 'NR == row_number { print $1 "\t" $2 "\t" $3 "\t" $4 }' "$manifest")"
 if [[ -z "$manifest_row" ]]; then
   logger_error="No manifest row for array task ${task_index} in ${manifest}"
   printf '%s\n' "$logger_error" >&2
