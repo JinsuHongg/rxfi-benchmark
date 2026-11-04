@@ -672,6 +672,38 @@ The pooled-calibration ablation tests whether class-specific corrections account
 
 \section{Preliminary Results}
 
+Table~\ref{tab:ocqr-preliminary-results} summarizes the main comparisons at the nominal coverage level of 90\%.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Main results on three ordinal classification tasks. Coverage values are percentages; macro is the mean across classes and worst-class is the minimum class coverage. Mean set size is the number of returned classes. Entries are mean $\pm$ standard deviation across five training seeds. Solar flare results are empirical temporal-extrapolation results and do not establish calibration-test exchangeability.}
+    \label{tab:ocqr-preliminary-results}
+    \begin{tabular}{llrrrr}
+        \toprule
+        Dataset & Method & Marginal & Macro & Worst-class & Mean set size \\
+        \midrule
+        RetinaMNIST & LAC   & $89.7 \pm 1.0$ & $83.2 \pm 1.8$ & $63.0 \pm 6.2$ & $3.36 \pm 0.10$ \\
+        RetinaMNIST & APS   & $99.8 \pm 0.4$ & $99.6 \pm 0.5$ & $98.7 \pm 1.9$ & $4.91 \pm 0.15$ \\
+        RetinaMNIST & OAPS  & $90.0 \pm 1.9$ & $80.3 \pm 2.7$ & $37.0 \pm 17.2$ & $3.19 \pm 0.10$ \\
+        RetinaMNIST & COPOC & $99.2 \pm 0.5$ & $98.5 \pm 1.0$ & $95.0 \pm 3.5$ & $4.74 \pm 0.16$ \\
+        RetinaMNIST & OCQR  & $95.8 \pm 1.2$ & $93.3 \pm 1.3$ & $81.4 \pm 4.7$ & $4.04 \pm 0.18$ \\
+        \addlinespace
+        UTKFace & LAC   & $90.9 \pm 0.4$ & $83.9 \pm 1.6$ & $66.4 \pm 9.0$ & $1.60 \pm 0.04$ \\
+        UTKFace & APS   & $99.8 \pm 0.2$ & $99.6 \pm 0.4$ & $98.8 \pm 1.0$ & $3.41 \pm 0.18$ \\
+        UTKFace & OAPS  & $91.1 \pm 0.4$ & $84.3 \pm 2.2$ & $68.7 \pm 11.6$ & $1.62 \pm 0.05$ \\
+        UTKFace & COPOC & $99.8 \pm 0.1$ & $99.5 \pm 0.4$ & $98.2 \pm 1.6$ & $3.38 \pm 0.07$ \\
+        UTKFace & OCQR  & $98.7 \pm 0.2$ & $98.1 \pm 0.4$ & $96.7 \pm 0.8$ & $2.35 \pm 0.06$ \\
+        \addlinespace
+        Solar flare & LAC   & $87.1 \pm 0.7$ & $73.9 \pm 2.7$ & $10.0 \pm 15.1$ & $1.83 \pm 0.05$ \\
+        Solar flare & APS   & $98.5 \pm 0.1$ & $95.7 \pm 1.5$ & $81.9 \pm 9.0$ & $2.96 \pm 0.04$ \\
+        Solar flare & OAPS  & $86.6 \pm 0.5$ & $72.7 \pm 1.7$ & $5.8 \pm 8.8$ & $1.82 \pm 0.04$ \\
+        Solar flare & COPOC & $97.0 \pm 0.9$ & $90.1 \pm 4.8$ & $55.6 \pm 24.4$ & $3.07 \pm 0.18$ \\
+        Solar flare & OCQR  & $89.6 \pm 5.4$ & $88.4 \pm 6.2$ & $73.0 \pm 17.8$ & $2.60 \pm 0.11$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 Across the three datasets, OCQR occupied an intermediate point in the coverage--set-size tradeoff: it improved worst-class coverage over the more compact LAC and OAPS baselines while producing smaller sets than APS and COPOC in the reported comparisons. On UTKFace, OCQR achieved marginal coverage of \(98.7\%\pm0.2\%\), macro class coverage of \(98.1\%\pm0.4\%\), and worst-class coverage of \(96.7\%\pm0.8\%\), with a mean set size of \(2.35\pm0.06\). LAC and OAPS had mean set sizes near 1.6 classes, but their worst-class coverage was 66.4\% and 68.7\%, respectively.
 
 On RetinaMNIST, OCQR achieved \(95.8\%\pm1.2\%\) marginal, \(93.3\%\pm1.3\%\) macro, and \(81.4\%\pm4.7\%\) worst-class coverage, with mean set size \(4.04\pm0.18\). APS and COPOC achieved higher worst-class coverage (98.7\% and 95.0\%) but had mean set sizes of 4.91 and 4.74 out of five classes. OCQR's class-4 coverage was \(82.0\%\pm5.7\%\), below the nominal target; this empirical value on a fixed test set does not contradict a probabilistic finite-sample guarantee.
