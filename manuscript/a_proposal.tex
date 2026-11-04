@@ -493,35 +493,102 @@ The final comparison will use the common split and validation-based model-select
 
 \section{Motivation}
 
+Chapter~\ref{chap:project1} compared ten continuous X-ray targets and found Fluence to be the most favorable target in that comparison. This chapter fixes Fluence and studies how the input-channel configuration affects its prediction from solar images. Holding the target, model family, data partitions, training protocol, and evaluation timestamps constant makes channel composition the main experimental factor. The study is an exploratory ablation of selected configurations rather than an exhaustive search over all channel subsets.
+
 \section{Research Questions}
+
+This chapter addresses three questions:
+\begin{enumerate}
+    \item How does prediction of Fluence using all 13 image channels compare with AIA-only and HMI-only inputs?
+    \item How do five prespecified single-channel candidates compare with the full-channel baseline?
+    \item Do the modality-level and selected single-channel configurations retain predictive information relative to the 13-channel input under a common training and validation protocol?
+\end{enumerate}
+The five single-channel candidates are selected in advance to represent different observation types. Their results will not establish which of all 13 channels is best individually.
 
 \section{Input Modalities}
 
+The model input consists of SDO images with eight AIA channels and five HMI channels. The experiment compares the complete 13-channel input, the two instrument-level channel groups, and five prespecified single-channel inputs. All conditions use the same timestamp set and image resolution so that each comparison uses matching forecast cases.
+
 \subsection{HMI}
+
+The HMI group contains \texttt{hmi\_m}, \texttt{hmi\_bx}, \texttt{hmi\_by}, \texttt{hmi\_bz}, and \texttt{hmi\_v}. The single-channel candidate is \texttt{hmi\_bz}, representing one magnetic-field product. It is a motivated candidate for this ablation and is not presumed to be the strongest individual channel.
 \subsection{AIA}
+
+The AIA group contains \texttt{aia94}, \texttt{aia131}, \texttt{aia171}, \texttt{aia193}, \texttt{aia211}, \texttt{aia304}, \texttt{aia335}, and \texttt{aia1600}. The single-channel candidates are \texttt{aia94}, \texttt{aia131}, \texttt{aia193}, and \texttt{aia1600}. AIA 94 and 131 represent high-temperature flare emission, AIA 193 represents coronal structure, and AIA 1600 represents ultraviolet emission. These candidates are scientifically motivated but do not have known comparative performance in this experiment.
 \subsection{Single-channel and Multi-channel Configurations}
+
+Table~\ref{tab:project2-input-configurations} defines the eight configurations to be trained in this experiment. The 13-channel condition is the reference baseline. The five single-channel conditions form a prespecified candidate set, not a complete evaluation of every individual channel.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Prespecified image-channel configurations for Fluence prediction.}
+    \label{tab:project2-input-configurations}
+    \begin{tabular}{p{0.22\linewidth}p{0.43\linewidth}p{0.23\linewidth}}
+        \toprule
+        Condition & Input channels & Purpose \\
+        \midrule
+        Full 13-channel & All eight AIA and five HMI channels & Reference baseline \\
+        AIA-only & All eight AIA channels & AIA modality group \\
+        HMI-only & All five HMI channels & HMI modality group \\
+        Single AIA 94 & \texttt{aia94} & Prespecified candidate \\
+        Single AIA 131 & \texttt{aia131} & Prespecified candidate \\
+        Single AIA 193 & \texttt{aia193} & Prespecified candidate \\
+        Single AIA 1600 & \texttt{aia1600} & Prespecified candidate \\
+        Single HMI Bz & \texttt{hmi\_bz} & Prespecified candidate \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \section{Experimental Design}
 
+The channel ablation uses the Fluence target and the V1 experimental protocol. The listed design contains eight input conditions in total: the full 13-channel baseline and seven new configurations. Reusing the existing full-channel Fluence results for seeds 1, 2, and 3 therefore requires 21 new training runs. If those results do not match the stated protocol and the baseline must be rerun, the total becomes 24 runs.
+
 \subsection{Prediction Windows}
 
-% e.g. 8 h, 12 h, 24 h
+The forecast window and issue times remain those defined for Fluence in Chapter~\ref{chap:project1}. Fluence is the unscaled sum of valid one-minute XRS-B flux samples over the existing 24-hour forecast window. No alternate forecast horizons are introduced in this channel ablation. Each configuration uses only timestamps for which both the Fluence target and all required image inputs are valid, producing a common timestamp set across conditions.
 
 \subsection{Image Resolution}
 
-% e.g. 224 x 224 and 512 x 512
+All input conditions use the V1 image resolution of $224\times224$ pixels. The AIA-only, HMI-only, and single-channel inputs are channel subsets of the same aligned 13-channel image stack; the images are not resized differently by condition.
 
 \subsection{Model Capacity}
 
-% Describe the model-size variants included in Project 2's experiments.
+Every condition uses the existing \texttt{compact\_cnn\_v1} architecture and training setup. The architecture and all settings other than input-channel count remain fixed. Because the first convolution receives a different number of channels, its parameter count changes with the input configuration; therefore, the comparison controls the model family and protocol but does not hold the exact parameter count constant.
 
 \subsection{Target Variants}
 
+This experiment uses Fluence only, transformed with the existing \texttt{asinh\_zscore} procedure. The asinh and standardization parameters are taken from the V1 training-split statistics and remain unchanged across channel configurations. Statistics are not recomputed for each input subset. Other target variants are excluded so the comparison isolates input-channel choices for the target selected in Chapter~\ref{chap:project1}.
+
+\subsection{Training and Evaluation Protocol}
+
+Training uses AdamW with learning rate $10^{-6}$ and weight decay $0.03$, a cosine schedule with 10\% warmup, a maximum of 70 epochs, and early-stopping patience of 7. Seeds 1, 2, and 3 are used for each new configuration. Channel normalization uses the per-channel signed-log means and standard deviations calculated from the V1 training split; the existing statistics are selected for the included channels and are not recalculated on a subset.
+
+All conditions use the V1 train, validation, and test partitions. The \texttt{leaky\_validation} split is excluded. Validation pinball loss is the primary condition-selection metric. Secondary validation metrics are Spearman correlation, transformed-domain $R^2$, MAE, MSE, and 90\% interval coverage. For each configuration, results will be reported as the mean and standard deviation across the three seeds, with same-seed changes relative to the 13-channel baseline. With three seeds, the results are descriptive and will not be used to make significance claims.
+
+The input configuration with the lowest mean validation pinball loss is selected before test evaluation. The test set is evaluated only for the selected configuration. Previously obtained 13-channel test results are shown as a reference and are not used to select among channel conditions. New runs are submitted in batches of no more than three.
+
 \section{Preliminary Results}
+
+% TODO (author input): Populate this section after the 21 new runs finish and
+% their configurations, seeds, and prediction artifacts are verified. Report
+% validation metrics for all eight conditions, mean and standard deviation
+% over seeds 1--3, and same-seed differences from the existing 13-channel
+% baseline. Report test metrics only for the configuration selected by
+% validation pinball loss, alongside the prior 13-channel test result as a
+% reference. Do not use test scores to rank the candidate configurations.
 
 \section{Planned Experiments}
 
+The planned run set consists of AIA-only, HMI-only, and five single-channel conditions, each trained with seeds 1, 2, and 3, for 21 new runs. Before submission, the existing full-channel baseline artifacts will be checked against the Fluence target, \texttt{compact\_cnn\_v1}, V1 split, normalization statistics, and training settings. New jobs will be submitted in batches of at most three. After each batch, logs and saved predictions will be checked before the next batch is launched. Validation metrics will be used to select one configuration for test evaluation.
+% TODO (author input): Confirm that the existing 13-channel Fluence runs use
+% the same V1 split, normalization statistics, seeds, and training settings.
+% Reuse them only if those artifacts match; otherwise rerun the baseline,
+% giving 24 runs in total.
+
 \section{Expected Findings}
+
+The experiment will quantify how the complete AIA and HMI groups and the five prespecified single-channel candidates perform for Fluence prediction under a shared protocol. AIA-only versus HMI-only results will provide a modality-group comparison, although the groups contain different numbers of channels and therefore do not isolate modality independently of channel count. The single-channel results will assess only the selected candidates. No ordering of conditions or improvement over the 13-channel baseline is assumed in advance; conclusions will be limited to the tested configurations and validation-led selection procedure.
 
 % ============================================================
 \chapter{Uncertainty Quantification for Ordinal Prediction}
