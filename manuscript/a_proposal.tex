@@ -499,30 +499,33 @@ A point forecast gives one predicted value or class. A probability forecast
 assigns probabilities to possible classes. A prediction set lists classes
 that remain plausible for an observation. Sets can help when a single class
 would hide uncertainty, but their usefulness depends on both whether they
-include the true class and how many classes they contain \cite{TODO}.
+include the true class and how many classes they contain
+\citep{sadinle2019least,romano2020classification}.
 
 Conformal prediction uses a separate calibration sample to set a threshold
 for forming prediction sets. Under an exchangeability assumption, standard
 split conformal methods provide a finite-sample guarantee for overall, or
-marginal, coverage \cite{TODO}. This guarantee concerns the test population
-as a whole. It does not by itself ensure the same coverage for every flare
-class or every type of observation. Forecasting data are ordered in time, so
-the relation between calibration and future samples also needs to be
-considered when interpreting the guarantee \cite{TODO}.
+marginal, coverage \citep{vovk1999cp,romano2020classification}. This
+guarantee concerns the test population as a whole. It does not by itself
+ensure the same coverage for every flare class or every type of observation.
+Forecasting data are ordered in time, so the relation between calibration and
+future samples also needs to be considered when interpreting the guarantee
+\citep{xu2023spci}.
 
 Class-conditional methods form calibration thresholds separately for each
 class. This can target coverage within each class, but the estimate for a
-class depends on the number of its calibration examples \cite{TODO}. Strong
-flares are less common than weak or no-flare cases in many forecasting
+class depends on the number of its calibration examples
+\citep{vovk2005algorithmic,vovk2012conditional,ding2023classconditional}.
+Strong flares are less common than weak or no-flare cases in many forecasting
 datasets. A small number of strong-flare examples can therefore make
-class-specific estimates less stable. This is one reason to report the number
-of examples used for each class when evaluating uncertainty methods.
+class-specific estimates less stable. This is one reason to report the
+number of examples used for each class when evaluating uncertainty methods.
 
 Flare classes have a natural order. Predicting an M-class event as C-class is
 closer in severity than predicting it as an X-class event. Methods that treat
 classes as unrelated labels may return a set with gaps, such as C and X but
 not M. Ordinal conformal methods use the ordering to form contiguous sets or
-intervals of classes \cite{TODO}. Project 3 studies uncertainty sets for
+intervals of classes \citep{lu2022ordinalaps,dey2023copoc}. Project 3 studies uncertainty sets for
 ordered, imbalanced classes. Its method and evaluation are described in
 Chapter~\ref{chap:project3}.
 
