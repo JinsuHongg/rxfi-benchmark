@@ -324,11 +324,41 @@ In both active region-based \cite{ji2020all} or full-disk \cite{pandey2021solar}
 
 \subsection{Ordinal Classification and Prediction Uncertainty}
 
+Ordinal classification predicts a label from an ordered set of categories, such as increasing levels of disease severity or solar flare class. The ordering carries information that a nominal classifier does not represent: predicting an adjacent class and predicting a distant class are different types of error. A single predicted label, however, does not show how many outcomes remain plausible. Set-valued prediction addresses this limitation by returning a subset of labels that is intended to contain the true outcome at a specified rate. For an input $x$, write this set as $C(x)\subseteq\mathcal{Y}$, where $\mathcal{Y}=\{0,1,\ldots,K-1\}$ is ordered from the lowest to the highest category.
+
+The structure of a prediction set matters for ordinal outcomes. A set containing two separated classes while omitting the classes between them is difficult to interpret as a range of plausible severities. An ordinal prediction set is contiguous when it includes every label between its smallest and largest members. Contiguity therefore gives an interval-like summary over the ordered labels, while the set size communicates how many classes remain plausible. These properties describe the output structure; they do not by themselves establish that the set contains the true class at a desired frequency. A statistical coverage procedure is needed for that guarantee.
+
 \subsection{Conformal Prediction}
+
+Conformal prediction (CP) provides a general way to construct prediction sets with finite-sample coverage guarantees. In split CP, the predictive model and any data-dependent choices are first fixed using training data. A separate calibration sample of $n$ examples is then used to compute nonconformity scores $S_i=s(X_i,Y_i)$, which quantify how atypical each calibration example is under the fitted model. For a target error rate $\alpha$, let $S_{(j)}$ denote the $j$-th order statistic of these scores augmented with one $+\infty$ value. The split-conformal threshold is
+\begin{equation}
+  \widehat q_{1-\alpha}=S_{(\lceil(n+1)(1-\alpha)\rceil)}.
+\end{equation}
+For ordinal classification, a score $s(x,k)$ for candidate label $k$ yields the set
+\begin{equation}
+  C_{1-\alpha}(x)=\{k\in\mathcal{Y}:s(x,k)\leq\widehat q_{1-\alpha}\},
+\end{equation}
+where $\widehat q_{1-\alpha}$ is calibrated on held-out examples. Under exchangeability of the calibration examples and a future test example, this construction provides marginal coverage,
+\begin{equation}
+  \Pr\{Y_{n+1}\in C_{1-\alpha}(X_{n+1})\}\geq 1-\alpha,
+\end{equation}
+where the probability averages over the calibration and test data \citep{vovk1999cp,romano2020classification}. The guarantee is distribution-free in the sense that it does not require a parametric model for the data distribution; it still depends on the exchangeability assumption and on keeping the calibration data separate from model fitting.
+
+The choice of nonconformity score affects the size and composition of the resulting set, even when the coverage guarantee holds. For example, the Least Ambiguous set-valued Classifier uses the predicted probability of the candidate class, while Adaptive Prediction Sets accumulate probability mass according to the model's class ranking \citep{sadinle2019least,angelopoulos2020uncertainty,romano2020classification}. These methods can be applied to a fitted classifier, but their standard forms treat labels as nominal. In addition, marginal coverage is averaged over the population: it does not imply coverage conditional on a particular input or class. This distinction matters when class frequencies are highly unequal.
 
 \subsection{Ordinal Conformal Prediction}
 
+Ordinal conformal prediction methods incorporate the ordering of labels into the construction of prediction sets. Ordinal Adaptive Prediction Sets (OAPS) use the order of the classes to form contiguous sets from classifier probabilities \citep{lu2022ordinalaps}. This produces outputs that respect the ordinal structure, while retaining a marginal coverage objective. Conformal Prediction Sets for Ordinal Classification (COPOC) instead uses an ordinal probability construction based on unimodality to form contiguous prediction sets \citep{dey2023copoc}. These methods address the structural mismatch between nominal prediction sets and ordered outcomes, but their marginal coverage target does not guarantee the same coverage separately for each class.
+
+Conformalized Quantile Regression (CQR) provides a related way to use numeric information. It combines quantile regression with conformal calibration to construct prediction intervals for a continuous response \citep{romano2019cqr}. When ordinal categories correspond to ranges of a numeric target, an interval can be related to the ordered label space through the category boundaries. A continuous interval is not, by itself, a discrete ordinal prediction set, however, and standard CQR does not establish class-conditional coverage for those discrete labels. Thus, ordinal prediction raises two distinct design requirements: the output should reflect the order of the labels, and its coverage should be assessed at the population level or separately across classes according to the task.
+
 \subsection{Class-Conditional Coverage}
+
+Marginal coverage can hide differences in performance across classes. If common classes are well covered and rare classes are undercovered, the overall coverage may still meet the nominal target because the aggregate is weighted by class prevalence. Class-conditional coverage instead requires that the true label be included at the target rate within each class. This is a group-level guarantee conditional on the label; it is not a guarantee conditional on every feature vector or every combination of observing conditions.
+
+Mondrian conformal prediction targets group-specific coverage by dividing calibration examples into predefined groups and calibrating a separate threshold within each group \citep{vovk2005algorithmic,vovk2012conditional}. For class-conditional coverage, the groups are defined by the true class labels. Under exchangeability within each class, calibration scores from that class support a finite-sample coverage guarantee for future examples of the same class. The guarantee depends on this within-class exchangeability assumption and does not automatically extend to distribution shifts between calibration and deployment data.
+
+The amount of calibration data in each group affects the informativeness of the result. With few examples in a class, the available score quantiles are coarse; if the requested finite-sample rank exceeds the number of finite calibration scores, a conservative procedure may return an unbounded threshold and include that class for every input. This preserves coverage but can increase prediction-set size. For an ordinal task, class-conditional calibration and contiguous-set construction therefore address complementary needs: the former targets reliability for each class, while the latter ensures that the returned labels form an interpretable range. Our accepted OCQR work combines these objectives by using true-label, class-specific calibration and an ordinal post-processing step that only adds labels to the raw prediction set \citep{hong2026ocqr}. Its coverage claim is tied to the stated within-class exchangeability and target-label consistency assumptions.
 
 
 \section{Chapter Summary}
