@@ -56,9 +56,9 @@
   "count_pixels_per_channel": 3553614848,
   "source": {
     "split": "train",
-    "index_csv": "/scratch/users/jhong36/data/surya_index/train.csv",
+    "index_csv": "SuryaBench v1 train split (external input)",
     "index_csv_sha256": "9c3bac4cfe4a9e290f889cc75697dcc1295f928fe58f18d6b6e0e265e11b11bc",
-    "zarr_path": "/scratch/users/jhong36/surya-bench-224-interarea.zarr",
+    "zarr_path": "SuryaBench 224x224 interarea Zarr store (external input)",
     "training_samples": 70823,
     "training_rows": 74760,
     "missing_training_rows": 3937,

@@ -2,8 +2,8 @@
 
 This repository supports research on how the definition of a solar-flare
 forecasting target affects its learnability and operational relevance. It
-focuses on reproducible target definitions and data preparation for 24-hour
-forecast windows; it does not present model architectures or model results.
+includes reproducible target definitions, data preparation, and CompactCNN v1
+regression results for 24-hour forecast windows.
 
 ## Research targets
 
@@ -27,41 +27,43 @@ are used even when coverage is below 90%; values are missing only when a
 required window has no valid samples. For data preparation details and
 reproduction instructions, see the [data preparation guide](scripts/data/README.md).
 
-The source samples follow the published temporal splits of the
+The v1 source samples follow the published temporal splits of the
 [NASA-IBM SuryaBench flare-forecasting
 dataset](https://huggingface.co/datasets/nasa-ibm-ai4science/surya-bench-flare-forecasting):
 train, validation, leaky validation, and test. Target generation preserves
 those source memberships.
 
-The current derived temporal split assigns historical rows through 2019 to
-train, validation, or calibration (`leaky_validation`). Validation
-uses January 15–February 14 and July 15–August 14 each year. Calibration uses
-the ten days immediately before and after those windows. Only calibration rows
-whose 24-hour target support overlaps a usable train or validation sample
-are removed. Train and validation rows are retained, and the existing
-test CSV is preserved byte-for-byte.
+Training uses the historical rows outside the seasonal holdout windows.
+Validation contains January 15–31 rows for 2011–2019. The separate
+`leaky_validation` split contains January 1–14 and February 1–14 rows for
+2011–2019. Test contains all rows from 2020–2024. The leaky-validation split
+is not used in the v1 model runs.
 
-| Split | Time period (observed CSV bounds and policy) | Usable data* | Share of rows |
+| Split | Time period and policy | CSV rows | Share of rows |
 | --- | --- | ---: | ---: |
-| Train | 2010-05-13–2019-12-31; historical rows outside the holdout windows | 61,224 / 58,007 | 48.36% |
-| Validation | 2010-07-15–2019-08-14; Jan 15–Feb 14 and Jul 15–Aug 14 each year | 14,136 / 13,324 | 11.17% |
-| Leaky validation | 2010-07-05–2019-08-24; 10-day buffers around validation, after overlap filtering | 7,382 / 6,942 | 5.83% |
-| Test | 2020-01-01–2024-12-31 | 43,848 / 41,910 | 34.64% |
+| Train | 2010-05-13–2019-12-31; historical training rows outside holdout windows | 74,760 | 58.26% |
+| Validation | Jan 15–31 each year, 2011–2019 | 3,672 | 2.86% |
+| Leaky validation | Jan 1–14 and Feb 1–14 each year, 2011–2019 | 6,048 | 4.71% |
+| Test | 2020-01-01–2024-12-31; all timestamps | 43,848 | 34.17% |
 
-Shares use 126,590 total CSV rows. *Counts are CSV rows / usable samples.
-Usable samples have a finite `max_xflux` target and a matching image timestamp
-in the Zarr store. The train/test boundary retains 23 train and 21 test
-samples whose 24-hour target supports intersect (270 interval pairs).
+Shares use 128,328 total split CSV rows. These counts precede image matching
+and target-specific missing-value filtering. The final test summary reports
+usable sample counts separately for each target and seed.
+
+The v1 CompactCNN results use the training split for normalization and
+validation for checkpoint selection. The final test metrics for all ten
+targets and three seeds are in the
+[test metrics summary](outputs/xrs_only/v1_test_evaluation/summary/test_metrics_summary.csv).
 
 ## Data sources and methods
 
-The project uses NOAA/NCEI [GOES XRS Level 2 one-minute measurements](https://www.ncei.noaa.gov/products/goes-1-15/space-weather-instruments) and the NOAA/NCEI [GOES XRS flare report](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/multi/l2/data/xrsf-l2-flrpt_science/csv/sci_xrsf-l2-flrpt_geo_s19950103_e20261012_v1-0-1.csv). The ten primary target conditions are constructed from XRS measurements; the additional old-RXFI label is constructed from catalog events enriched with the historical background calculation.
+The project uses NOAA/NCEI [GOES XRS Level 2 one-minute measurements](https://www.ncei.noaa.gov/products/goes-1-15/space-weather-instruments) to construct all ten target conditions.
 
 Detailed formulas, quality filters, source versions, split handling, and
 reproduction commands are documented separately:
 
-- [Background calculation and event-level catalog enrichment](scripts/background/README.md)
 - [Data-generation scripts and commands](scripts/data/README.md)
+- [V1 experiment materials and provenance](docs/proposal/v1_experiment_package.md)
 
 ## Repository layout
 
