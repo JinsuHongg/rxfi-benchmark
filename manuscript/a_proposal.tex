@@ -784,56 +784,370 @@ checked.
 
 \section{Motivation}
 
+Ordinal classifiers predict among categories with a meaningful order, such as
+increasing disease severity, age groups, or solar flare classes. A point
+prediction hides both which alternative classes remain plausible and how far
+those alternatives lie from the predicted class. Prediction sets expose this
+uncertainty, but a useful set for an ordinal task should also respect the
+ordering: a set containing two separated classes while omitting the classes
+between them is difficult to interpret as a range of possible outcomes.
+
+Conformal prediction can provide finite-sample coverage guarantees under
+exchangeability, but standard classification methods target marginal
+coverage and treat labels as nominal. Under class imbalance, their aggregate
+coverage can conceal poor coverage of rare classes. Ordinal conformal methods
+such as OAPS and COPOC account for label order, but their standard guarantees
+are marginal. This project builds on the published Ordinal Conformalized
+Quantile Regression (OCQR) framework, which combines class-specific
+calibration with contiguous prediction sets. The method is designed to
+address both class-wise reliability and ordinal interpretability
+\citep{hong2026ocqr}.
+
 \section{Problem Formulation}
 
-Let
-\[
-Y \in \{0,\ldots,K-1\}
-\]
-denote an ordinal target variable.
-
-Given a trained prediction model and a calibration dataset, the objective is
-to construct a prediction set
-\[
-C(X) \subseteq \{0,\ldots,K-1\}
-\]
-that provides reliable coverage while respecting the ordinal structure of
-the label space.
+Let \((X,Z,Y)\) denote an example, where \(X\in\mathcal{X}\) is the model
+input, \(Z\in\mathbb{R}\) is a numeric target used for quantile regression,
+and \(Y\in\mathcal{Y}=\{0,\ldots,K-1\}\) is the ordinal label. Fixed
+boundaries \(b_1<\cdots<b_{K-1}\) define ordered bins
+\(B_0,\ldots,B_{K-1}\); the first and last bins extend to negative and
+positive infinity. The numeric representation and bin boundaries are fixed
+before calibration. Specifically, \(B_0=(-\infty,b_1)\),
+\(B_k=[b_k,b_{k+1})\) for \(1\leq k<K-1\), and
+\(B_{K-1}=[b_{K-1},+\infty)\). The coverage argument assumes
+target-label consistency:
+\begin{equation}
+Y=k \quad\Longrightarrow\quad Z\in B_k,
+\label{eq:ocqr-target-label-consistency}
+\end{equation}
+for every \(k\in\mathcal{Y}\). The goal is to construct a set
+\(C(X)\subseteq\mathcal{Y}\) that contains the true ordinal class at the
+desired rate within each class and is nonempty and contiguous. A set is
+contiguous if it contains every class between its smallest and largest
+members. The numeric target is used to fit quantiles and compute calibration
+scores; the observed class label defines the ordinal prediction task and the
+true-label calibration group \citep{hong2026ocqr}.
 
 \section{Conformal Prediction Background}
 
 \subsection{Split Conformal Prediction}
+
+Split conformal prediction separates model fitting from uncertainty
+calibration. After fitting the predictive model and fixing other
+data-dependent choices on training and validation data, a held-out calibration
+set is used to calculate nonconformity scores. For scores
+\(S_1,\ldots,S_n\) and target miscoverage \(\alpha\), the split-conformal
+threshold is the order statistic
+\begin{equation}
+\widehat q_{1-\alpha}
+=S_{(\lceil(n+1)(1-\alpha)\rceil)},
+\label{eq:ocqr-split-threshold}
+\end{equation}
+where the calibration scores are augmented with one \(+\infty\) value so the
+requested rank is defined even for small calibration samples. A test label is
+included when its score does not exceed the calibrated threshold. If the
+calibration observations and a future test observation are exchangeable, the
+resulting set has marginal coverage at least \(1-\alpha\). This guarantee
+averages over the population and does not require a parametric model for the
+data distribution \citep{vovk1999cp,romano2020classification}.
+
+For classification, a score is computed for each candidate class, and the
+prediction set contains the classes whose scores pass the threshold. LAC and
+APS are examples of such methods. Their usual forms treat the labels as
+nominal, so a valid set may include separated classes while omitting an
+intermediate class \citep{sadinle2019least,angelopoulos2020uncertainty,
+romano2020classification}.
+
 \subsection{Class-conditional Coverage}
+
+Marginal coverage does not ensure that each class has the same coverage. A
+class-conditional procedure instead targets
+\(\Pr\{Y\in C(X)\mid Y=k\}\geq 1-\alpha\) for each class \(k\). Mondrian
+conformal prediction obtains group-specific guarantees by splitting the
+calibration observations into groups and estimating a separate threshold
+within each group. When the groups are defined by true labels, this is
+class-conditional calibration. Under exchangeability within each class, the
+class-specific threshold gives a finite-sample coverage guarantee for a
+future observation from that class \citep{vovk2005algorithmic,
+vovk2012conditional}.
+
 \subsection{Challenges Under Class Imbalance}
+
+Class-specific calibration uses only the calibration examples belonging to
+the class being evaluated. Rare classes therefore have fewer scores from
+which to estimate a quantile. The finite-sample rank can exceed the number of
+finite class-specific scores; in that case the augmented order statistic is
+\(+\infty\), and the class is included for every input. This conservative
+behavior preserves the coverage construction but can enlarge prediction
+sets. It also makes class counts and per-class coverage necessary parts of
+the evaluation, alongside marginal coverage and set size
+\citep{ding2023classconditional}.
 
 \section{Proposed Method}
 
-% Insert the current canonical OCQR / ordinal UQ method here.
+OCQR combines quantile regression with true-label Mondrian calibration. At
+inference, it evaluates every candidate class using that class's own
+conformal correction, maps the resulting numeric acceptance region to the
+candidate's ordinal bin, and then closes the accepted labels into a
+nonempty contiguous interval. The method does not require an
+ordinal-specific output layer in the predictive backbone \citep{hong2026ocqr}.
 
 \subsection{Quantile Regression}
+
+For target miscoverage \(\alpha\), OCQR estimates lower and upper conditional
+quantiles of \(Z\), at levels \(\tau_L=\alpha/2\) and
+\(\tau_U=1-\alpha/2\). Quantile regression is fitted with the pinball loss
+\begin{equation}
+\rho_{\tau}(r)=\max\{\tau r,(\tau-1)r\},
+\label{eq:ocqr-pinball-loss}
+\end{equation}
+where \(r=z-\widehat q_{\tau}(x)\). To handle quantile crossing, the
+predicted endpoints are ordered as
+\begin{equation}
+\widehat\ell(x)=\min\{\widehat q_{\tau_L}(x),\widehat q_{\tau_U}(x)\},
+\qquad
+\widehat u(x)=\max\{\widehat q_{\tau_L}(x),\widehat q_{\tau_U}(x)\}.
+\label{eq:ocqr-ordered-endpoints}
+\end{equation}
+The conformalized-quantile-regression score is
+\begin{equation}
+s(x,z)=\max\{\widehat\ell(x)-z,\;z-\widehat u(x)\}.
+\label{eq:ocqr-score}
+\end{equation}
+For a correction \(q\), its numeric acceptance region is
+\(A_q(x)=\{z:s(x,z)\leq q\}\). For finite \(q\), this is
+\([\widehat\ell(x)-q,\widehat u(x)+q]\) when the lower endpoint does not
+exceed the upper endpoint, and is empty otherwise. For \(q=+\infty\), it
+is defined as \(\mathbb{R}\) \citep{romano2019cqr,hong2026ocqr}.
+
 \subsection{Calibration}
+
+Let \(\mathcal{D}_{\mathrm{cal}}=\{(X_i,Z_i,Y_i)\}_{i=1}^n\) be the
+calibration set. For class \(k\), define
+\(\mathcal{I}_k=\{i:Y_i=k\}\) and \(N_k=|\mathcal{I}_k|\). The calibration
+scores for that class are \(S_{k,i}=s(X_i,Z_i)\), for
+\(i\in\mathcal{I}_k\). OCQR computes the finite-sample rank and class-specific
+correction as
+\begin{equation}
+r_k=\left\lceil(N_k+1)(1-\alpha)\right\rceil,
+\qquad
+q_k=\widetilde S_{k,(r_k)},
+\label{eq:ocqr-class-correction}
+\end{equation}
+where \(\widetilde S_{k,(r_k)}\) is the \(r_k\)-th order statistic of the
+class-\(k\) scores augmented with \(+\infty\). The model, target
+representation, bin boundaries, and method choices are fixed before this
+calibration step; calibration data are used only to estimate the corrections.
+When the class has too few calibration observations to support the requested
+finite rank, \(q_k=+\infty\), so the corresponding class is always retained.
+This rule prioritizes the finite-sample coverage construction over set-size
+efficiency for classes with very limited calibration support
+\citep{hong2026ocqr}.
+
 \subsection{Ordinal Contiguity}
+
+At test time, the true class is unknown, so OCQR tests each candidate \(k\)
+with its own correction \(q_k\). Its raw set is
+\begin{equation}
+C_{\mathrm{raw}}(x)
+=\{k\in\mathcal{Y}:A_{q_k}(x)\cap B_k\neq\varnothing\}.
+\label{eq:ocqr-raw-set}
+\end{equation}
+Thus a candidate is accepted when its calibrated numeric region intersects
+the numeric bin associated with that class. The resulting set may have gaps.
+OCQR first replaces an empty raw set by the full label set, then fills every
+class between the smallest and largest accepted labels:
+\begin{equation}
+C(x)=\{j\in\mathcal{Y}:\min\widetilde C_{\mathrm{raw}}(x)
+\leq j\leq\max\widetilde C_{\mathrm{raw}}(x)\},
+\label{eq:ocqr-final-set}
+\end{equation}
+where \(\widetilde C_{\mathrm{raw}}(x)=C_{\mathrm{raw}}(x)\) when the raw
+set is nonempty and \(\mathcal{Y}\) otherwise. The fallback and ordinal hull
+only add labels, so the final set is nonempty and contiguous and contains the
+raw set \citep{hong2026ocqr}.
+
 \subsection{Rare-class Handling}
+
+OCQR does not pool or borrow calibration scores across distinct classes in
+its canonical class-conditional procedure. Each class receives its own
+correction, and the augmented order statistic handles insufficient support
+conservatively. A pooled correction is included as an ablation, but does not
+provide the same class-specific calibration argument. Accordingly, the
+evaluation reports the calibration and test counts for every class, the
+per-class coverage estimates, and the size of the resulting sets. When a
+class-specific correction is infinite, its guaranteed inclusion can make
+sets less informative; this is a limitation of sparse calibration support,
+not a reason to interpret the class as well resolved
+\citep{ding2023classconditional,hong2026ocqr}.
 
 \section{Theoretical Properties}
 
-% Add proposition / theorem environments later if needed.
-% Focus the proposal on:
-% - assumptions
-% - desired coverage guarantee
-% - finite-sample argument
-% - conditions under which borrowing / structure is valid
+Let \(\mathcal{F}\) contain all information used to fit or select the
+procedure before calibration, including the fitted model, target
+representation, bin boundaries, hyperparameters, Mondrian groups, and
+post-processing rules. Assume these components are fixed without using
+calibration or test observations. For each class \(k\), assume that the
+class-\(k\) calibration scores and the corresponding test score are
+exchangeable conditional on \(\mathcal{F}\), and assume
+\cref{eq:ocqr-target-label-consistency}.
+
+\noindent\textbf{Theorem (Class-conditional coverage).}
+Under these assumptions, the OCQR prediction set satisfies, for every
+\(k\in\mathcal{Y}\),
+\begin{equation}
+\Pr\{Y_{n+1}\in C(X_{n+1})\mid\mathcal{F},Y_{n+1}=k\}
+\geq 1-\alpha.
+\label{eq:ocqr-conditional-coverage}
+\end{equation}
+Consequently,
+\begin{equation}
+\Pr\{Y_{n+1}\in C(X_{n+1})\mid Y_{n+1}=k\}
+\geq 1-\alpha.
+\label{eq:ocqr-marginalized-conditional-coverage}
+\end{equation}
+The final set is nonempty and contiguous.
+
+\noindent\textit{Argument.}
+Conditional on \(\mathcal{F}\), the class count, and test class \(k\), the
+augmented split-conformal rank gives
+\(s(X_{n+1},Z_{n+1})\leq q_k\) with probability at least
+\(1-\alpha\). Therefore \(Z_{n+1}\in A_{q_k}(X_{n+1})\). By
+target-label consistency, \(Z_{n+1}\in B_k\), so the two sets intersect and
+\(k\in C_{\mathrm{raw}}(X_{n+1})\). The fallback and ordinal hull only add
+labels, preserving this inclusion and proving the stated coverage. Averaging
+over the class-specific calibration count and over \(\mathcal{F}\) yields
+the two displayed guarantees. The guarantee depends on within-class
+exchangeability and target-label consistency; it does not assert conditional
+coverage for every input \(X=x\) \citep{hong2026ocqr}.
 
 \section{Experimental Evaluation}
 
+The published evaluation compares OCQR with nominal and ordinal conformal
+baselines on three five-class tasks. It uses fixed train, validation,
+calibration, and test partitions, keeps those partitions unchanged across
+five training seeds, and sets the nominal coverage to \(1-\alpha=0.9\).
+The evaluation reports coverage and set efficiency so rare-class reliability
+is not obscured by a single population average \citep{hong2026ocqr}.
+
 \subsection{Datasets}
+
+The evaluation uses UTKFace for age estimation, RetinaMNIST for
+diabetic-retinopathy severity grading, and SuryaBench for solar flare
+forecasting \citep{utkface-zhifei2017cvpr,medmnistv2,roy2026suryabench}.
+UTKFace uses chronological age in years as its numeric target and five fixed
+age bins: below 20, 20--39, 40--59, 60--79, and 80 years or older. Its
+23,708 images are split into 14,224 training, 2,371 validation, 4,742
+calibration, and 2,371 test examples. The split is at the image level, not
+the subject level.
+
+RetinaMNIST provides five ordered severity labels but no continuous
+measurement. It therefore uses the fixed class-index embedding \(Z=Y\), with
+bin boundaries at 0.5, 1.5, 2.5, and 3.5. Its official validation and test
+partitions contain 120 and 400 images; the official 1,080-image training
+partition is further divided into 756 training and 324 calibration examples.
+
+The solar flare task uses a 13-channel SDO image stack to predict maximum
+GOES X-ray flux over the following 24 hours. Its numeric target is
+\(Z=\log_{10}(\texttt{max\_intensity})+9\), with ordered classes FQ/A, B, C,
+M, and X and transformed bin boundaries 2, 3, 4, and 5. Within each year
+from 2010 to 2019, observations from January 1--14 and February 1--14 are
+used for calibration, January 15--31 for validation, and February 15--
+December 31 for training. The future test set contains retained observations
+from 2020--2024. This chronology makes the solar test a temporal-extrapolation
+evaluation; it does not establish exchangeability between calibration and
+future test observations \citep{roy2026suryabench,hong2026ocqr}.
+
 \subsection{Baselines}
+
+OCQR is compared with the Least Ambiguous set-valued Classifier (LAC),
+Adaptive Prediction Sets (APS), Ordinal Adaptive Prediction Sets (OAPS),
+and Conformal Prediction Sets for Ordinal Classification (COPOC)
+\citep{sadinle2019least,angelopoulos2020uncertainty,
+romano2020classification,lu2022ordinalaps,dey2023copoc}. LAC, APS, and OAPS
+use ResNet-18 Softmax classifiers; COPOC uses a separately trained
+ResNet-18 with its ordinal-specific unimodal output. Five OCQR ablations
+isolate the contribution of pooled rather than class-specific calibration,
+the ordinal hull, the empty-set fallback, the combination of hull and
+fallback, and replacing negative conformity scores by zero
+\citep{hong2026ocqr}.
+
 \subsection{Evaluation Metrics}
+
+For class \(k\), empirical class-conditional coverage is
+\begin{equation}
+\widehat{\mathrm{Cov}}_k=
+\frac{1}{n_k}\sum_{i:Y_i=k}\mathbf{1}\{Y_i\in C(X_i)\},
+\label{eq:ocqr-empirical-class-coverage}
+\end{equation}
+where \(n_k\) is the number of test examples in that class. The evaluation
+reports marginal coverage, macro coverage (the mean of the class-specific
+estimates), worst-class coverage (their minimum), mean set size, and the
+fraction of examples receiving the full label set. It also reports empty-set
+and fragmented-set rates for the ablations. Results are means and standard
+deviations across five training seeds; the fixed splits mean these standard
+deviations describe training-seed variation, not variability across
+alternative partitions \citep{hong2026ocqr}.
+
 \subsection{Ablation Studies}
+
+The pooled-calibration ablation tests whether class-specific corrections
+account for rare-class performance. The no-hull and raw-set ablations test
+whether ordinal closure changes contiguity, while the no-fallback and raw-set
+ablations test whether the fallback prevents empty predictions. The
+nonnegative-score variant tests sensitivity to the signed CQR score. These
+ablations are evaluated on all three datasets using the same primary metrics
+and additionally record empty and fragmented-set rates \citep{hong2026ocqr}.
 
 \section{Preliminary Results}
 
+Across the three datasets, OCQR occupied an intermediate point in the
+coverage--set-size tradeoff: it improved worst-class coverage over the more
+compact LAC and OAPS baselines while producing smaller sets than APS and
+COPOC in the reported comparisons. On UTKFace, OCQR achieved marginal
+coverage of \(98.7\%\pm0.2\%\), macro class coverage of
+\(98.1\%\pm0.4\%\), and worst-class coverage of \(96.7\%\pm0.8\%\), with a
+mean set size of \(2.35\pm0.06\). LAC and OAPS had mean set sizes near 1.6
+classes, but their worst-class coverage was 66.4\% and 68.7\%, respectively.
+
+On RetinaMNIST, OCQR achieved \(95.8\%\pm1.2\%\) marginal,
+\(93.3\%\pm1.3\%\) macro, and \(81.4\%\pm4.7\%\) worst-class coverage,
+with mean set size \(4.04\pm0.18\). APS and COPOC achieved higher
+worst-class coverage (98.7\% and 95.0\%) but had mean set sizes of 4.91 and
+4.74 out of five classes. OCQR's class-4 coverage was \(82.0\%\pm5.7\%\),
+below the nominal target; this empirical value on a fixed test set does not
+contradict a probabilistic finite-sample guarantee.
+
+On the chronological solar test period, OCQR achieved
+\(89.6\%\pm5.4\%\) marginal, \(88.4\%\pm6.2\%\) macro, and
+\(73.0\%\pm17.8\%\) worst-class coverage, with mean set size
+\(2.60\pm0.11\). Its X-class coverage was \(86.1\%\pm6.6\%\), while
+LAC and OAPS attained 10.0\% and 5.8\%, respectively. OCQR's weakest solar
+class was B, at \(73.2\%\pm18.2\%\). These results are empirical under
+temporal extrapolation and are not evidence that the exchangeability
+assumption holds between the calibration and test periods.
+
+In the pooled-calibration ablation, worst-class coverage decreased from
+81.4\% to 53.0\% on RetinaMNIST, from 96.7\% to 87.2\% on UTKFace, and
+from 73.0\% to 43.9\% on solar forecasting. Removing the ordinal hull
+produced fragmented sets at \(0.7\%\pm1.0\%\) on RetinaMNIST, whereas the
+canonical hull eliminated those cases. No empty sets occurred in the reported
+experiments, so removing the fallback did not change the observed metrics.
+The results support the role of class-specific calibration in worst-class
+coverage and of the hull and fallback as structural safeguards
+\citep{hong2026ocqr}.
+
 \section{Remaining Theoretical and Experimental Work}
+
+% TODO (author input): Specify which dissertation contributions remain beyond
+% the published OCQR method and experiments. The source paper identifies
+% additional nominal coverage levels, alternative target representations,
+% more distribution-shift settings, and additional ordinal tasks as future
+% directions, but it does not establish which of these are part of this
+% proposal's committed work plan.
+% TODO (author input): State whether the dissertation will study guarantees
+% for temporally dependent or shifted solar data. The reported chronological
+% solar results are empirical temporal-extrapolation results and do not
+% verify the exchangeability assumption behind the finite-sample guarantee.
 
 % ============================================================
 \chapter{Integrated Discussion}
