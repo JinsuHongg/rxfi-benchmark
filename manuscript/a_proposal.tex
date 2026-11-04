@@ -285,251 +285,248 @@ This chapter reviews the background and related work relevant to the dissertatio
 
 \section{Solar Flare Forecasting and Target Definitions}
 
-\subsection{Solar Flare Classification and GOES X-ray Measurements}
+\subsection{Space Weather, Solar Flares, and GOES Measurements}
 
-The Geostationary Operational Environmental Satellites (GOES), operated by the National Oceanic and Atmospheric Administration (NOAA), provide X-ray flux measurements that are widely used to detect and classify solar flares. The GOES X-ray Sensor (XRS) measures solar X-ray flux, allowing NOAA to identify flare events based on changes in the observed flux. In the NOAA event detection procedure, the start of a flare is identified by a sustained increase in X-ray flux, while the peak is determined by the maximum measured flux. The end of the event is identified when the flux decreases to a specified level relative to the peak and the pre-flare background \cite{noaa_goes_xray_flux}.
+Space weather refers to changing conditions caused by solar activity and their
+effects in the space around Earth. Solar flares, coronal mass ejections, and
+energetic particles can affect radio communication, satellite operations,
+navigation, and power systems \citep{noaa_space_weather,
+noaa_space_weather_impacts}. This dissertation focuses on solar flares and
+flare-related X-ray measurements; forecasting CME arrival or geomagnetic
+storms is outside its scope.
 
-NOAA also maintains historical records of solar flares detected using GOES observations, with X-ray flare records dating back to 1975. These records include flare classes, peak X-ray flux, and temporal information such as start, peak, and end times. Additional information, including flare locations and associated NOAA active region numbers, is available for some events \cite{Angryk2020}. Solar active regions are areas of concentrated magnetic activity where many solar flares originate.
+The Geostationary Operational Environmental Satellites (GOES), operated by
+the National Oceanic and Atmospheric Administration (NOAA), carry an X-ray
+Sensor (XRS) that measures solar X-ray flux. NOAA event-detection procedures
+identify flare start, peak, and end times from sustained changes in the
+measured flux \citep{noaa_goes_xray_flux}. Historical GOES records include
+flare classes, peak flux, and event times, as well as locations and active
+region associations for some events \citep{Angryk2020}. Solar flares are
+classified by peak flux in the 0.1--0.8 nm band into A, B, C, M, and X
+classes. Each successive class begins at a flux ten times higher than the
+preceding class; a numerical multiplier further specifies the flux within a
+class \citep{Fletcher2011,noaa_solar_flares}.
 
-Solar flares are classified based on their observed peak X-ray flux in the $0.1$--$0.8\,\mathrm{nm}$ wavelength band. The GOES classification system divides solar flares into five major classes: A, B, C, M, and X \cite{Fletcher2011}. These classes follow a logarithmic scale, with the minimum X-ray flux of each successive class being ten times higher than that of the previous class. X-class flares have peak fluxes of at least $10^{-4}\,\mathrm{W\,m^{-2}}$ at Earth. Each class is further divided according to a numerical multiplier, typically ranging from 1.0 to 9.9, except for X-class flares, which can exceed X9.9. For instance, a C5.7 flare corresponds to a peak X-ray flux of approximately $5.7 \times 10^{-6}\,\mathrm{W\,m^{-2}}$.
+\subsection{Forecast Tasks and Window-based Targets}
 
-\subsection{Forecasting Tasks and Target Definitions}
+A forecasting task uses observations available at an issue time to predict
+activity over a defined future interval. That interval is commonly called
+the prediction window. Classification tasks may label a window according to
+whether the maximum flare intensity exceeds a chosen threshold, or assign a
+flare class when an event occurs. A quiet label may be used when no event is
+detected. The resulting labels depend on the forecast horizon, event
+threshold, and prediction unit, such as the full visible disk or an
+individual active region \citep{barnes2016comparison,cinto2020framework}.
 
-When constructing datasets for data-driven solar flare forecasting, a fixed-length future interval, known as the prediction window, is commonly used to define the forecasting target. Within this window, the maximum flare intensity is often used to assign a categorical label, while a flare-quiet label may be assigned if no flare is detected. Binary classification tasks commonly use thresholds such as M1.0 or C5.0 to distinguish between flaring and non-flaring instances. The assigned label depends on whether the maximum flare intensity within the prediction window exceeds the selected threshold.
-
-In addition to classification, solar flare forecasting can be formulated as a regression problem, where the target is a continuous measurement of future solar activity. Unlike categorical labels, continuous targets preserve differences in X-ray flux values. However, different continuous targets may represent different aspects of solar activity, such as maximum flux, accumulated flux, or changes relative to background conditions. Therefore, the choice of target determines which aspect of future solar activity a model is trained to predict.
+Forecasts can also target a continuous quantity measured over the future
+window. Maximum X-ray flux captures the strongest activity, while accumulated
+flux or deviations from a background level describe other properties of the
+window. These targets answer different questions and should not be treated as
+interchangeable. A classification label can group windows with different
+flux values into one category; continuous regression preserves the measured
+magnitude but does not remove forecast error.
 
 \subsection{Related Work on Solar Flare Prediction Targets}
 
-Many previous studies have formulated solar flare forecasting as a classification problem. These studies typically predict whether a flare exceeding a specified intensity threshold will occur within a future prediction window. Binary classification targets, such as the occurrence of M-class or stronger flares within 24 hours, have been widely used to evaluate flare forecasting methods \citep{barnes2016comparison,cinto2020framework, pandey2025ordinal,pandey2024embedding,ji2024towards,hong2023enhancing,hong2023innovative}.
+Many forecasting studies use binary classification, including thresholds such
+as M1.0 or C5.0 within a 24-hour window \citep{barnes2016comparison,
+cinto2020framework,pandey2025ordinal,pandey2024embedding,ji2024towards,
+hong2023enhancing,hong2023innovative}. Other work predicts continuous flare
+intensity. Muranushi et al. forecast the maximum GOES soft X-ray flux over
+the next 24 hours \citep{muranushi2015ufcorin}; Jiao et al. predicted maximum
+flare intensity using GOES records and active-region magnetic parameters
+under several forecast horizons \citep{jiao2020solar}. Their prediction
+units, target constructions, and horizons differ.
 
-Other studies have formulated solar flare forecasting as a regression problem to predict continuous measures of future solar activity. Muranushi et al. \citep{muranushi2015ufcorin} developed a regression-based forecasting system to predict the maximum GOES soft X-ray flux over the next 24 hours. Their target was defined as the maximum value of the continuous GOES X-ray flux measurements within the prediction window. Jiao et al. \citep{jiao2020solar} investigated the prediction of maximum flare intensity using GOES flare records and magnetic parameters from solar active regions. They used 24-hour prediction windows with different forecast horizons, including 0--24, 6--30, 12--36, and 24--48 hours. Although both studies predicted continuous flare intensity, their target definitions and prediction units differed.
-
-Although previous studies have investigated continuous regression targets, the choice of target remains an important consideration. For example, maximum X-ray flux represents the strongest observed activity within a prediction window, while cumulative flux and changes relative to background conditions describe other characteristics of solar activity. Previous work also explored alternative flare labels based on relative X-ray increases and cumulative activity \citep{hong2023innovative,hong2023beyond,hong2023enhancing}. However, differences in target definitions and evaluation settings make it difficult to directly compare the predictability of different targets across studies. This dissertation investigates how target definitions affect predictability by evaluating multiple continuous X-ray targets under a common experimental setting.
+Prior work also introduced data-driven labels based on relative X-ray
+increases and cumulative activity, and evaluated them for active-region and
+full-disk prediction settings \citep{hong2023innovative,hong2023beyond,
+hong2023enhancing}. These labels capture information not represented by the
+maximum flare class alone. The studies nevertheless used classification
+tasks. Project 1 builds on this context by comparing continuous XRS
+measurements aggregated over a forecast window, including maximum flux,
+fluence, and background deviations, under a common evaluation protocol.
+These measured targets are distinct from thresholded event labels and from a
+separately defined solar-physics flare index.
 
 \section{Solar Observations and Data-Driven Forecasting}
 
-\subsection{Solar Imaging and Magnetic Field Observations}
+\subsection{Solar Imaging, Prediction Units, and Observability}
 
-In the field of solar flare forecasting, two main approaches are commonly used. The first one is referred to as active region-based models, which focus on data from active regions, represented as point-in-time vectors\cite{ahmadzadeh2019challenges}, time series \cite{ji2022solar}, or images\cite{abed2021automated}. In this approach, time series classification techniques are often employed, and flares are labeled based on their association with specific active regions \cite{ji2020all}. The second approach involves full-disk models, which provide predictions for the entire solar disk. In full-disk models, all flares are considered, regardless of their association with active regions \cite{pandey2021solar}. Hybrid approaches also exist in the literature \cite{pandey2022towards}. In these approaches, the primary objective is to predict the occurrence of significant flaring events within a defined prediction window, typically spanning 12, 24, or 48 hours.
+Solar forecasting draws on observations from several instruments. The Solar
+Dynamics Observatory (SDO) provides images from the Atmospheric Imaging
+Assembly (AIA) and magnetic-field observations from the Helioseismic and
+Magnetic Imager (HMI). GOES XRS measures disk-integrated soft X-ray flux
+rather than producing solar images. These instruments describe different
+aspects of solar activity and must be aligned in time for a forecasting
+system \citep{nasa_sdo_instruments}.
 
-In both active region-based \cite{ji2020all} or full-disk \cite{pandey2021solar} predictions, each instance is labeled with the maximum intensity flare in the prediction window, and previous studies in solar flare prediction primarily focus on labels derived from GOES classification, which can overlook pertinent information within the prediction windows. In \cite{Hong2023}, we presented a framework to create data-driven flare indices and introduced an extended dataset of flares with their associated data-driven labels. In this study, we employ these labels to predict flaring activity under both active region-based and full-disk flare prediction modes with different threshold settings. As part of our methodology, we integrate new machine learning-ready datasets and create new individual and cumulative labels associated with both active regions and full-disk data instances. We explore the performance and operational feasibility of these new labels with active region-based and full-disk predictions, considering a wide spectrum of threshold values and class weights. 
+Image-based studies commonly use either full-disk observations or
+active-region inputs. Active-region models focus on localized areas of
+magnetic activity and may represent them as feature vectors, time series, or
+images \citep{ahmadzadeh2019challenges,ji2022solar,abed2021automated}. Full-disk
+models predict over the visible solar disk and include flares whether or not
+they are associated with a tracked active region \citep{pandey2021solar}.
+Hybrid approaches combine these prediction units \citep{pandey2022towards}.
+The choices affect both the model input and the meaning of its target.
+
+Remote observations are constrained by instrument resolution and cadence,
+viewing geometry, and data availability. An Earth-facing full-disk image does
+not directly show the far-side hemisphere. SDO provides full-disk HMI
+coverage and multi-wavelength AIA observations, but that coverage is not a
+simultaneous view of the entire solar sphere
+\citep{nasa_sdo_instruments,nasa_sun_farside}.
 
 \subsection{Machine Learning for Solar Flare Forecasting}
 
-Machine-learning (ML) flare forecasts learn a mapping from observations available at a forecast issue time to an event label or other target defined over a future window. As described above, studies vary in their prediction units, labels, and forecast windows; they also differ in how they represent the solar observations supplied to a model. Early ML systems commonly summarized active-region magnetograms with manually defined physical parameters before fitting a classifier. Bobra and Couvidat, for example, used an SVM with 25 parameters derived from SDO/HMI vector magnetic-field data for active-region flare prediction \citep{bobra2015solarflare}.
+Machine-learning flare forecasts map observations available at the issue
+time to a future event label or measurement. Early systems often summarized
+active-region magnetograms using manually defined physical parameters.
+Bobra and Couvidat, for example, used an SVM with 25 parameters derived from
+SDO/HMI vector magnetic-field data \citep{bobra2015solarflare}.
 
-Deep-learning methods have used both image and time-series representations. Huang et al. trained a CNN directly on line-of-sight magnetograms from SOHO/MDI and SDO/HMI, allowing the model to learn image features without a separate hand-crafted feature-extraction stage \citep{huang2018flarelos}. By contrast, Liu et al. used an LSTM to model temporal sequences of SHARP magnetic parameters and flare-history features; their study was not a CNN operating on raw magnetogram images \citep{liu2019flarelstm}. Park et al. applied CNNs to full-disk magnetograms, using SOHO/MDI observations for earlier years and SDO/HMI observations for later years \citep{park2018fulldiskcnn}. These examples illustrate that architecture and input representation are separate design choices: CNNs can learn spatial patterns from image data, while recurrent models can represent temporal sequences of engineered features.
+Deep-learning studies use both image and time-series representations. Huang
+et al. trained a CNN directly on line-of-sight magnetograms from SOHO/MDI and
+SDO/HMI \citep{huang2018flarelos}. Liu et al. used an LSTM over temporal
+sequences of SHARP magnetic parameters and flare-history features
+\citep{liu2019flarelstm}. Park et al. applied CNNs to full-disk magnetograms,
+using SOHO/MDI for earlier years and SDO/HMI for later years
+\citep{park2018fulldiskcnn}. These examples illustrate that input
+representation and model architecture are separate design choices: CNNs can
+learn spatial patterns from images, while recurrent models can represent
+temporal sequences of derived features.
 
-Deep Flare Net (DeFN) is an example of a deep neural network built on extracted active-region features. Its features combine magnetic-field information with ultraviolet, extreme-ultraviolet, and X-ray measurements, and the operational version uses near-real-time data products \citep{nishizuka2018defn,nishizuka2021defn}. Because these systems differ in whether they model image pixels, derived physical features, or feature sequences, their results should be interpreted together with the data source, forecast unit, target definition, and evaluation split. A score difference alone does not isolate the effect of the model architecture.
+Deep Flare Net (DeFN) is a neural network built on extracted active-region
+features. Its feature sets combine magnetic-field information with
+ultraviolet, extreme-ultraviolet, and X-ray measurements; the operational
+version uses near-real-time data products
+\citep{nishizuka2018defn,nishizuka2021defn}. Comparisons across systems must
+account for the input data, prediction unit, target definition, and
+evaluation split as well as the model architecture
+\citep{barnes2016comparison,cinto2020framework}.
 
 \subsection{Multi-channel Learning and Related Work}
 
-Solar observations provide complementary measurements rather than interchangeable image channels. HMI measures photospheric magnetic fields, including line-of-sight and vector products; AIA records ultraviolet and extreme-ultraviolet images at multiple wavelengths; and GOES XRS measures disk-integrated soft X-ray flux. Combining these sources can expose a model to magnetic structure, atmospheric emission, and X-ray activity, but it also requires the inputs to be aligned in time and space and made available under the intended forecasting latency \citep{nasa_sdo_instruments}.
+HMI measures photospheric magnetic fields, including line-of-sight and
+vector products; AIA records ultraviolet and extreme-ultraviolet images at
+multiple wavelengths; and GOES XRS measures soft X-ray flux. Combining these
+sources can provide magnetic, atmospheric-emission, and X-ray information,
+but requires alignment by time and space and attention to the latency of the
+intended forecast \citep{nasa_sdo_instruments}.
 
-Jonas et al. developed image-derived features from SDO observations spanning the photosphere, chromosphere, transition region, and corona, and combined them with flare-history and physically motivated features for active-region prediction \citep{jonas2018flare}. Their results showed that the utility of additional inputs depended on the evaluation metric: photospheric vector-field data combined with flare history performed best for TSS, whereas the full collection of inputs helped for area under the precision-recall curve. DeFN provides another multi-source example. Its operational input includes HMI line-of-sight and vector magnetograms, AIA 131~\AA{} and 1600~\AA{} measurements, and GOES 1--8~\AA{} X-ray emission. The AIA 193~\AA{} and 304~\AA{} images are also shown for context in the operational system, so they should not be described as model inputs without specifying the version and feature set \citep{nishizuka2018defn,nishizuka2021defn}.
+Jonas et al. combined image-derived features from SDO observations spanning
+the photosphere, chromosphere, transition region, and corona with flare
+history and physically motivated features for active-region prediction
+\citep{jonas2018flare}. Their results varied by evaluation metric: photospheric
+vector-field data with flare history performed best for TSS, whereas using
+the full set of inputs helped for area under the precision-recall curve.
+DeFN provides another multi-source example. Its operational inputs include
+HMI line-of-sight and vector magnetograms, AIA 131 and 1600 \AA{} data, and
+GOES 1--8 \AA{} X-ray emission. Other AIA channels shown by the operational
+system should not be described as model inputs without specifying the
+version and feature set \citep{nishizuka2018defn,nishizuka2021defn}.
 
-Recent heliophysics foundation models extend this direction beyond a single forecasting task. Surya is a spatiotemporal foundation model pretrained on multi-instrument SDO observations, including eight AIA channels and five HMI products; its reported downstream tasks include solar-flare forecasting \citep{roy2025surya}. It is therefore a multi-instrument model, not a single-channel AIA 171~\AA{} or HMI baseline. More generally, channel count alone does not specify a model's information content: the selected observables, their temporal context, the fusion procedure, and the prediction target all matter. Project~2 addresses these choices by comparing input channels alongside forecast windows, image resolution, and model capacity.
-
+Surya is a heliophysics foundation model pretrained on multi-instrument SDO
+observations, including eight AIA channels and five HMI products; reported
+downstream tasks include solar-flare forecasting \citep{roy2025surya}. It is
+therefore a multi-instrument model rather than a single-channel AIA 171 \AA{}
+or HMI baseline. More generally, channel count alone does not specify the
+information available to a model: the observables, temporal context, fusion
+procedure, and forecast target also matter. Project 2 studies these choices
+by comparing input channels alongside forecast windows, image resolution,
+and model capacity.
 
 \section{Uncertainty Quantification for Ordinal Classification}
 
 \subsection{Ordinal Classification and Prediction Uncertainty}
 
-Ordinal classification predicts a label from an ordered set of categories, such as increasing levels of disease severity or solar flare class. The ordering carries information that a nominal classifier does not represent: predicting an adjacent class and predicting a distant class are different types of error. A single predicted label, however, does not show how many outcomes remain plausible. Set-valued prediction addresses this limitation by returning a subset of labels that is intended to contain the true outcome at a specified rate. For an input $x$, write this set as $C(x)\subseteq\mathcal{Y}$, where $\mathcal{Y}=\{0,1,\ldots,K-1\}$ is ordered from the lowest to the highest category.
-
-The structure of a prediction set matters for ordinal outcomes. A set containing two separated classes while omitting the classes between them is difficult to interpret as a range of plausible severities. An ordinal prediction set is contiguous when it includes every label between its smallest and largest members. Contiguity therefore gives an interval-like summary over the ordered labels, while the set size communicates how many classes remain plausible. These properties describe the output structure; they do not by themselves establish that the set contains the true class at a desired frequency. A statistical coverage procedure is needed for that guarantee.
+Ordinal classification predicts a label from ordered categories, such as
+disease severity levels or solar flare classes. Predicting an adjacent class
+and predicting a distant class are different errors, but a point prediction
+does not communicate which other outcomes remain plausible. A set-valued
+prediction returns a subset of labels intended to contain the true outcome
+at a specified rate. For \(\mathcal{Y}=\{0,1,\ldots,K-1\}\), a set is
+contiguous when it includes every class between its smallest and largest
+members. Contiguity makes the set interpretable as a range, but does not by
+itself guarantee that the true class is included at a desired frequency.
 
 \subsection{Conformal Prediction}
 
-Conformal prediction (CP) provides a general way to construct prediction sets with finite-sample coverage guarantees. In split CP, the predictive model and any data-dependent choices are first fixed using training data. A separate calibration sample of $n$ examples is then used to compute nonconformity scores $S_i=s(X_i,Y_i)$, which quantify how atypical each calibration example is under the fitted model. For a target error rate $\alpha$, let $S_{(j)}$ denote the $j$-th order statistic of these scores augmented with one $+\infty$ value. The split-conformal threshold is
+Split conformal prediction fixes the predictive model and data-dependent
+choices before using a separate calibration sample. Given nonconformity
+scores \(S_1,\ldots,S_n\) and target miscoverage \(\alpha\), the calibrated
+threshold is
 \begin{equation}
-  \widehat q_{1-\alpha}=S_{(\lceil(n+1)(1-\alpha)\rceil)}.
+  \widehat q_{1-\alpha}=S_{(\lceil(n+1)(1-\alpha)\rceil)},
 \end{equation}
-For ordinal classification, a score $s(x,k)$ for candidate label $k$ yields the set
+where the scores are augmented by one \(+\infty\) value. For a candidate
+class score \(s(x,k)\), the prediction set is
 \begin{equation}
-  C_{1-\alpha}(x)=\{k\in\mathcal{Y}:s(x,k)\leq\widehat q_{1-\alpha}\},
+  C_{1-\alpha}(x)=\{k\in\mathcal{Y}:s(x,k)\leq\widehat q_{1-\alpha}\}.
 \end{equation}
-where $\widehat q_{1-\alpha}$ is calibrated on held-out examples. Under exchangeability of the calibration examples and a future test example, this construction provides marginal coverage,
-\begin{equation}
-  \Pr\{Y_{n+1}\in C_{1-\alpha}(X_{n+1})\}\geq 1-\alpha,
-\end{equation}
-where the probability averages over the calibration and test data \citep{vovk1999cp,romano2020classification}. The guarantee is distribution-free in the sense that it does not require a parametric model for the data distribution; it still depends on the exchangeability assumption and on keeping the calibration data separate from model fitting.
+When the calibration observations and a future test observation are
+exchangeable, this procedure provides marginal coverage of at least
+\(1-\alpha\). The guarantee is distribution-free with respect to the data
+distribution, but it depends on exchangeability and on keeping calibration
+data separate from model fitting \citep{vovk1999cp,
+romano2020classification}.
 
-The choice of nonconformity score affects the size and composition of the resulting set, even when the coverage guarantee holds. For example, the Least Ambiguous set-valued Classifier uses the predicted probability of the candidate class, while Adaptive Prediction Sets accumulate probability mass according to the model's class ranking \citep{sadinle2019least,angelopoulos2020uncertainty,romano2020classification}. These methods can be applied to a fitted classifier, but their standard forms treat labels as nominal. In addition, marginal coverage is averaged over the population: it does not imply coverage conditional on a particular input or class. This distinction matters when class frequencies are highly unequal.
+LAC uses the predicted probability of a candidate class, while APS
+accumulates predicted probability in class-ranking order
+\citep{sadinle2019least,angelopoulos2020uncertainty,
+romano2020classification}. Their standard forms treat labels as nominal.
+Consequently, an otherwise valid set may contain nonadjacent classes while
+omitting an intermediate label.
 
 \subsection{Ordinal Conformal Prediction}
 
-Ordinal conformal prediction methods incorporate the ordering of labels into the construction of prediction sets. Ordinal Adaptive Prediction Sets (OAPS) use the order of the classes to form contiguous sets from classifier probabilities \citep{lu2022ordinalaps}. This produces outputs that respect the ordinal structure, while retaining a marginal coverage objective. Conformal Prediction Sets for Ordinal Classification (COPOC) instead uses an ordinal probability construction based on unimodality to form contiguous prediction sets \citep{dey2023copoc}. These methods address the structural mismatch between nominal prediction sets and ordered outcomes, but their marginal coverage target does not guarantee the same coverage separately for each class.
-
-Conformalized Quantile Regression (CQR) provides a related way to use numeric information. It combines quantile regression with conformal calibration to construct prediction intervals for a continuous response \citep{romano2019cqr}. When ordinal categories correspond to ranges of a numeric target, an interval can be related to the ordered label space through the category boundaries. A continuous interval is not, by itself, a discrete ordinal prediction set, however, and standard CQR does not establish class-conditional coverage for those discrete labels. Thus, ordinal prediction raises two distinct design requirements: the output should reflect the order of the labels, and its coverage should be assessed at the population level or separately across classes according to the task.
+Ordinal conformal methods use the class order when constructing prediction
+sets. Ordinal Adaptive Prediction Sets (OAPS) expand sets through neighboring
+classes to produce contiguous outputs, while retaining a marginal coverage
+objective \citep{lu2022ordinalaps}. Conformal Prediction Sets for Ordinal
+Classification (COPOC) uses an ordinal probability construction based on
+unimodality to form contiguous sets \citep{dey2023copoc}. Conformalized
+Quantile Regression (CQR) instead combines quantile regression and conformal
+calibration to produce intervals for continuous responses
+\citep{romano2019cqr}. A numeric interval can be related to ordered labels
+using fixed category boundaries, but standard CQR alone does not define a
+discrete ordinal set or guarantee coverage separately for each class.
 
 \subsection{Class-Conditional Coverage}
 
-Marginal coverage can hide differences in performance across classes. If common classes are well covered and rare classes are undercovered, the overall coverage may still meet the nominal target because the aggregate is weighted by class prevalence. Class-conditional coverage instead requires that the true label be included at the target rate within each class. This is a group-level guarantee conditional on the label; it is not a guarantee conditional on every feature vector or every combination of observing conditions.
+Marginal coverage is averaged across the population and can conceal
+undercoverage of rare classes. Class-conditional coverage instead requires
+the target inclusion rate within each class. Mondrian conformal prediction
+forms groups from a predefined taxonomy and calibrates a separate threshold
+for each group; using true labels as groups targets class-conditional
+coverage under within-class exchangeability
+\citep{vovk2005algorithmic,vovk2012conditional}. This guarantee is
+conditional on the class label, not on every feature vector or observing
+condition.
 
-Mondrian conformal prediction targets group-specific coverage by dividing calibration examples into predefined groups and calibrating a separate threshold within each group \citep{vovk2005algorithmic,vovk2012conditional}. For class-conditional coverage, the groups are defined by the true class labels. Under exchangeability within each class, calibration scores from that class support a finite-sample coverage guarantee for future examples of the same class. The guarantee depends on this within-class exchangeability assumption and does not automatically extend to distribution shifts between calibration and deployment data.
-
-The amount of calibration data in each group affects the informativeness of the result. With few examples in a class, the available score quantiles are coarse; if the requested finite-sample rank exceeds the number of finite calibration scores, a conservative procedure may return an unbounded threshold and include that class for every input. This preserves coverage but can increase prediction-set size. For an ordinal task, class-conditional calibration and contiguous-set construction therefore address complementary needs: the former targets reliability for each class, while the latter ensures that the returned labels form an interpretable range. Our accepted OCQR work combines these objectives by using true-label, class-specific calibration and an ordinal post-processing step that only adds labels to the raw prediction set \citep{hong2026ocqr}. Its coverage claim is tied to the stated within-class exchangeability and target-label consistency assumptions.
-
+A class-specific threshold is estimated from only the calibration examples
+in that class. With few examples, the available score quantiles are coarse;
+if the required finite-sample rank exceeds the number of finite scores, the
+augmented threshold is infinite and the class is included for every input.
+This preserves the coverage construction but can make sets larger
+\citep{ding2023classconditional}. OAPS and COPOC address ordinal set
+structure under marginal coverage, while the accepted OCQR work combines
+true-label class-specific calibration with an ordinal post-processing step
+that only adds labels to the raw set \citep{hong2026ocqr}. Its guarantee
+requires within-class exchangeability and target-label consistency and does
+not automatically extend to distribution shift.
 
 \section{Chapter Summary}
 
+This chapter reviewed solar-flare targets and forecasting approaches, the
+observations used by image-based and multi-channel models, and uncertainty
+quantification for ordered labels. Forecast target and prediction-unit
+choices determine what a model is asked to predict, while class imbalance
+makes aggregate performance insufficient to characterize reliability for
+rare flare classes. The following project chapters build on this background
+by studying continuous X-ray target definitions, multi-channel forecasting,
+and class-conditional uncertainty sets for ordinal prediction.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\section{Solar Flare Forecasting and Target Labels}
-
-\subsection{Space Weather and Solar Flare Forecasting}
-
-Space weather refers to changing conditions caused by solar activity and their effects in the space around Earth. The Sun produces a steady flow of charged particles called the solar wind. It also produces solar flares and large clouds of magnetized material called coronal mass ejections, and can accelerate energetic particles. These events
-can disturb radio communication, satellite operations, navigation, and power systems \citep{noaa_space_weather,noaa_space_weather_impacts}. National forecasting services monitor solar activity and issue forecasts, watches, and warnings for potential effects at Earth \citep{noaa_space_weather}.
-
-Solar flares are one part of space weather. A flare releases energy in the Sun's atmosphere and can produce a rapid increase in soft X-ray radiation. This radiation provides a measurable signal for flare forecasting \citep{noaa_solar_flares}. The present dissertation studies forecasts of flare-related X-ray outcomes and flare classes. Broader forecasts, such as the arrival of coronal mass ejections or the timing of geomagnetic storms, are outside its scope.
-
-The Geostationary Operational Environmental Satellites (GOES) carry an X-ray Sensor (XRS) that records this radiation. Flare classes are based on peak X-ray flux and are ordered from weaker to stronger events \citep{noaa_solar_flares}. These measurements support forecasts about both whether an event will occur and how strong the measured flux will become.
-
-Many forecasting studies turn future activity into a category. A binary task asks whether activity will cross a chosen threshold during a forecast window. A class-prediction task assigns the window to a flare class. Both tasks make the result easy to state, but the label does not preserve every detail of the future flux. For example, two windows on the same side of a threshold receive the same binary label even if their peak fluxes differ. Values close to a threshold can also receive different labels when they fall on opposite sides. This follows from the label definition; it does not show that a classifier's errors are concentrated near that boundary.
-
-\subsection{Forecast Targets and Window-based Labels}
-
-Forecasting studies define their targets over an explicit future window, but the value assigned to that window varies by task. Common formulations include whether the maximum flare intensity crosses a class threshold, the class or peak X-ray flux of the strongest event, and an aggregate of activity across the window. For example, a recent benchmark compares labels based on maximum and cumulative flare intensity over a 24-hour window \citep{roy2026suryabench}. Studies also differ in forecast horizon, latency, event magnitude threshold, and whether the forecast unit is the whole visible Sun or an individual active region; these choices affect the meaning and comparability of reported performance \citep{barnes2016comparison,
-cinto2020framework}. This dissertation uses the term ``forecast target'' for these window-defined quantities. It distinguishes them from a solar-physics flare index unless a cited study explicitly defines such an index.
-
-GOES X-ray Sensor (XRS) measurements provide a common basis for detecting and
-classifying flares by peak soft X-ray flux. A detection or cataloging rule
-identifies an event from measured flux, whereas a forecasting target uses
-observations available before a future window to predict an event or a
-window-level quantity. These are related but distinct tasks. The continuous
-XRS-B outcomes in Project 1, including maximum flux, fluence, and background
-deviations, are direct measurements aggregated over the forecast window;
-they are not interchangeable with thresholded event labels or a separately
-defined flare index.
-
-Earlier work in this project developed flare metadata and alternative labels
-based on relative X-ray increases and cumulative activity. These studies
-evaluated the labels as classification targets \citep{hong2023innovative,
-hong2023beyond,hong2023enhancing}. They also discussed limits of using only
-the maximum flare class, since that label leaves out background flux and
-activity accumulated across a forecast window \citep{hong2023beyond,
-hong2023enhancing}. The metadata and labels were released as a separate
-dataset \citep{hong2023data}. Those studies provide the background for the
-present work, but they did not evaluate the ten continuous regression targets
-defined in Chapter~\ref{chap:project1}.
-
-Regression keeps the target as a measured value rather than converting it to
-an event category. The result depends on which value is chosen. A forecast of
-the maximum flux answers a different question from a forecast of total flux
-or change from a background level. Regression does not remove forecast error;
-it makes the size of the predicted quantity part of the task. Chapter~\ref{chap:project1}
-defines and compares the continuous targets used in this dissertation.
-
-\section{Solar Observations and Image-based Forecasting}
-
-Solar forecasting studies use measurements from several instruments. The
-Solar Dynamics Observatory (SDO) provides images from the Atmospheric Imaging
-Assembly (AIA) and magnetic-field observations from the Helioseismic and
-Magnetic Imager (HMI). The GOES XRS instrument measures soft X-ray flux rather
-than producing solar images. These data describe different aspects of solar
-activity, so a forecasting system must align observations by time and define
-which channels it will use \citep{nasa_sdo_instruments}.
-
-Image-based studies commonly use either full-disk observations or
-active-region-based inputs. A full-disk image covers the visible solar disk,
-while an active-region approach identifies and models a localized region;
-these designs therefore differ in their prediction unit and input context
-\citep{cinto2020framework}. Because these are remote measurements made from a
-spacecraft at a finite distance from the Sun, the observed data are also
-constrained by instrument resolution and cadence, viewing geometry, and data
-availability. In particular, a single Earth-facing view does not directly
-show the far-side hemisphere. SDO provides full-disk HMI coverage and
-multi-wavelength AIA images at high cadence, but full-disk coverage should not
-be interpreted as simultaneous observation of the entire solar sphere
-\citep{nasa_sdo_instruments,nasa_sun_farside}.
-
-Image-based models learn patterns from these observations. A convolutional
-neural network applies filters across nearby image pixels and combines the
-resulting features across layers. Researchers have used such models with
-solar images and magnetic-field maps for flare forecasting
-\citep{bobra2015solarflare,jonas2018flare}. A
-model can also receive several image channels together. The selected channels,
-image resolution, and forecast window can change what information is available
-to the model. Published results can be hard to compare when studies differ in
-these choices, as well as in their data partitions and evaluation procedures
-\citep{barnes2016comparison,cinto2020framework}.
-
-Transformer-based models have also been applied to solar flare forecasting.
-Some studies use attention-based image encoders for magnetograms; others
-combine image, video, or time-series models
-\citep{pelkumdonahue2024transformer}. This work reviews
-those studies as part of the field, but does not evaluate a vision-transformer
-backbone. Project 2 instead studies the effect of input channels, forecast
-windows, image resolution, and model capacity within its planned comparison.
-
-Solar flares, coronal mass ejections (CMEs), and solar energetic particles
-(SEPs) are related space-weather phenomena, but they are distinct prediction
-targets. Prior work has separately studied whether a flare is associated with
-a CME or SEP \citep{inceoglu2018cme_sep}. This dissertation focuses on
-flare-related X-ray outcomes and flare classes; it does not claim to forecast
-CME or SEP occurrence.
-
-\section{Uncertainty for Ordered Flare Classes}
-
-A point forecast gives one predicted value or class. A probability forecast
-assigns probabilities to possible classes. A prediction set lists classes
-that remain plausible for an observation. Sets can help when a single class
-would hide uncertainty, but their usefulness depends on both whether they
-include the true class and how many classes they contain
-\citep{sadinle2019least,romano2020classification}.
-
-Conformal prediction uses a separate calibration sample to set a threshold
-for forming prediction sets. Under an exchangeability assumption, standard
-split conformal methods provide a finite-sample guarantee for overall, or
-marginal, coverage \citep{vovk1999cp,romano2020classification}. This
-guarantee concerns the test population as a whole. It does not by itself
-ensure the same coverage for every flare class or every type of observation.
-Forecasting data are ordered in time, so the relation between calibration and
-future samples also needs to be considered when interpreting the guarantee
-\citep{xu2023spci}.
-
-Class-conditional methods form calibration thresholds separately for each
-class. This can target coverage within each class, but the estimate for a
-class depends on the number of its calibration examples
-\citep{vovk2005algorithmic,vovk2012conditional,ding2023classconditional}.
-Strong flares are less common than weak or no-flare cases in many forecasting
-datasets. A small number of strong-flare examples can therefore make
-class-specific estimates less stable. This is one reason to report the
-number of examples used for each class when evaluating uncertainty methods.
-
-Flare classes have a natural order. Predicting an M-class event as C-class is
-closer in severity than predicting it as an X-class event. Methods that treat
-classes as unrelated labels may return a set with gaps, such as C and X but
-not M. Ordinal conformal methods use the ordering to form contiguous sets or
-intervals of classes \citep{lu2022ordinalaps,dey2023copoc}. Project 3 studies uncertainty sets for
-ordered, imbalanced classes. Its method and evaluation are described in
-Chapter~\ref{chap:project3}.
-
-% ============================================================
 \chapter{Solar Flare Target Formulation and Predictability}
 \label{chap:project1}
 
