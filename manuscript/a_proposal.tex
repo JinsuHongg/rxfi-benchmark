@@ -443,45 +443,73 @@ Together, $(W,q)\in\{(2,10),(2,50),(24,10),(24,50)\}$ yields eight background-de
 
 \subsection{Multi-Channel Image Model}
 
-The model uses eight AIA channels and five HMI channels, each resampled to $224\times224$ pixels. The target comparisons use the same compact convolutional neural network architecture. Input normalization is estimated using training data only. Candidate hyperparameter settings are compared under the common validation procedure; the selected settings and number of independent training runs will be reported with the results.
+The model uses the eight AIA and five HMI channels, each resampled to $224\times224$ pixels, with the same compact convolutional neural network architecture for all ten targets. Input normalization is estimated from training data only. For each target, nine learning-rate and weight-decay combinations are evaluated with seeds 1--3. Within each run, the checkpoint with the lowest validation pinball loss averaged over $q_{0.05}$, $q_{0.50}$, and $q_{0.95}$ is retained; early stopping monitors the same loss from epoch 4 with patience 7, up to 70 epochs. The target-specific learning-rate and weight-decay combination is selected by the lowest mean validation $q_{0.50}$ pinball loss across the three seeds. The selected checkpoint for each seed is then evaluated on the test split.
 
 \subsection{Quantile Regression}
 
-The model predicts the $0.05$, $0.50$, and $0.95$ conditional quantiles using the pinball loss. Target values are transformed using an inverse-hyperbolic- sine transformation followed by standardization; both transformations are estimated from training data only. Predictions are converted back to the target's original scale before evaluation. Model selection uses validation data, and test labels are reserved for final evaluation.
+The model predicts the $0.05$, $0.50$, and $0.95$ conditional quantiles using the pinball loss. Target values are transformed using an inverse-hyperbolic-sine transformation followed by standardization, with both transformations estimated from training data only. The tables report MAE, MSE, RMSE, and $R^2$ in the standardized transformed target domain; Spearman's rank correlation is computed from the median predictions. Inverse-transformed predictions are retained for interpretation in the original target units. Model selection uses validation data, and test labels are reserved for final evaluation.
 
 \subsection{Evaluation Metrics}
 
-The primary point-prediction metrics are mean absolute error (MAE), mean squared error (MSE), root mean squared error (RMSE), Spearman rank correlation, and coefficient of determination ($R^2$), calculated from the predicted median ($q_{0.50}$). The pinball loss remains the model's training objective, but is not a reported comparison metric. Binary skill metrics will not be used as primary regression metrics; any threshold-based event analysis will be reported separately with its threshold and event denominator.
+The point-prediction metrics are mean absolute error (MAE), mean squared error (MSE), root mean squared error (RMSE), Spearman rank correlation, and coefficient of determination ($R^2$), calculated from the predicted median ($q_{0.50}$). The overall three-quantile pinball loss selects the checkpoint within each run, while validation $q_{0.50}$ pinball loss selects the target-specific learning-rate and weight-decay combination; the latter is reported in the validation table. Table entries summarize seeds 1--3 as the mean and sample standard deviation. Binary skill metrics are not used as primary regression metrics; any threshold-based event analysis will be reported separately with its threshold and event denominator.
 
 \section{Preliminary Results}
 
-The final comparison will use the common split and validation-based model-selection protocol described above. The table below is a reporting template; values will be populated from saved test-prediction artifacts only after test evaluation artifacts are available and their run provenance is checked.
+For each target, the learning-rate and weight-decay combination was selected by mean validation $q_{0.50}$ pinball loss across seeds 1--3. The test registry uses the corresponding minimum-loss combination, including ties at the reported precision. Validation and test results below are the mean and sample standard deviation across the same three seeds; the test split was not used for model or hyperparameter selection.
 
 \begin{table}[ht]
     \centering
-    \caption{Planned comparison of regression performance across the ten target conditions.}
-    \label{tab:target-comparison}
-    \footnotesize
-    \begin{tabular}{>{\raggedright\arraybackslash}p{0.34\linewidth}ccccc}
+    \caption{Validation performance for the target-specific learning-rate and weight-decay combinations selected by mean $q_{0.50}$ pinball loss across seeds 1--3. Error metrics and $R^2$ are in the standardized transformed target domain.}
+    \label{tab:target-validation-comparison}
+    \scriptsize
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.23\linewidth}p{0.13\linewidth}cccccc}
         \toprule
-        Target condition & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
+        Target condition & LR / WD & $q_{0.50}$ pinball & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
         \midrule
-        Maximum XRS-B flux & -- & -- & -- & -- & -- \\
-        Fluence & -- & -- & -- & -- & -- \\
-        Max. deviation (2 h, 10\%) & -- & -- & -- & -- & -- \\
-        Total deviation (2 h, 10\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (2 h, 50\%) & -- & -- & -- & -- & -- \\
-        Total deviation (2 h, 50\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (24 h, 10\%) & -- & -- & -- & -- & -- \\
-        Total deviation (24 h, 10\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (24 h, 50\%) & -- & -- & -- & -- & -- \\
-        Total deviation (24 h, 50\%) & -- & -- & -- & -- & -- \\
+        Maximum XRS-B flux & $10^{-6}/0.10$ & $0.204\pm0.002$ & $0.408\pm0.004$ & $0.403\pm0.014$ & $0.635\pm0.011$ & $0.823\pm0.003$ & $0.527\pm0.016$ \\
+        Fluence & $10^{-6}/0.03$ & $0.126\pm0.002$ & $0.253\pm0.004$ & $0.193\pm0.006$ & $0.439\pm0.007$ & $0.950\pm0.003$ & $0.802\pm0.006$ \\
+        Max. deviation (2 h, 10\%) & $10^{-6}/0.05$ & $0.227\pm0.001$ & $0.454\pm0.002$ & $0.489\pm0.008$ & $0.699\pm0.006$ & $0.753\pm0.002$ & $0.434\pm0.010$ \\
+        Total deviation (2 h, 10\%) & $10^{-6}/0.03$ & $0.286\pm0.0005$ & $0.573\pm0.001$ & $0.910\pm0.010$ & $0.954\pm0.005$ & $0.493\pm0.002$ & $0.144\pm0.009$ \\
+        Max. deviation (2 h, 50\%) & $10^{-6}/0.10$ & $0.231\pm0.001$ & $0.462\pm0.002$ & $0.517\pm0.008$ & $0.719\pm0.006$ & $0.738\pm0.002$ & $0.406\pm0.009$ \\
+        Total deviation (2 h, 50\%) & $10^{-6}/0.10$ & $0.301\pm0.002$ & $0.603\pm0.004$ & $0.992\pm0.048$ & $0.996\pm0.024$ & $0.432\pm0.016$ & $0.062\pm0.046$ \\
+        Max. deviation (24 h, 10\%) & $5\times10^{-7}/0.05$ & $0.221\pm0.001$ & $0.441\pm0.001$ & $0.436\pm0.009$ & $0.660\pm0.007$ & $0.786\pm0.004$ & $0.493\pm0.010$ \\
+        Total deviation (24 h, 10\%) & $10^{-6}/0.10$ & $0.240\pm0.002$ & $0.480\pm0.004$ & $0.527\pm0.008$ & $0.726\pm0.006$ & $0.693\pm0.006$ & $0.481\pm0.008$ \\
+        Max. deviation (24 h, 50\%) & $5\times10^{-7}/0.03$ & $0.224\pm0.002$ & $0.448\pm0.003$ & $0.452\pm0.013$ & $0.672\pm0.010$ & $0.777\pm0.004$ & $0.477\pm0.015$ \\
+        Total deviation (24 h, 50\%) & $10^{-6}/0.03$ & $0.285\pm0.002$ & $0.569\pm0.004$ & $0.735\pm0.006$ & $0.857\pm0.004$ & $0.539\pm0.010$ & $0.312\pm0.006$ \\
         \bottomrule
     \end{tabular}
     \normalsize
     \par\smallskip
-    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level.
+    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level. Entries are mean $\pm$ sample standard deviation over three seeds.
 \end{table}
+
+\begin{table}[ht]
+    \centering
+    \caption{Test performance for the same target-specific configurations selected using validation data. Error metrics and $R^2$ are in the standardized transformed target domain.}
+    \label{tab:target-test-comparison}
+    \footnotesize
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.30\linewidth}ccccc}
+        \toprule
+        Target condition & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
+        \midrule
+        Maximum XRS-B flux & $0.484\pm0.023$ & $0.522\pm0.051$ & $0.722\pm0.035$ & $0.867\pm0.006$ & $0.603\pm0.039$ \\
+        Fluence & $0.373\pm0.024$ & $0.337\pm0.033$ & $0.580\pm0.029$ & $0.951\pm0.002$ & $0.790\pm0.021$ \\
+        Max. deviation (2 h, 10\%) & $0.514\pm0.020$ & $0.578\pm0.047$ & $0.760\pm0.031$ & $0.836\pm0.006$ & $0.552\pm0.036$ \\
+        Total deviation (2 h, 10\%) & $0.631\pm0.006$ & $1.251\pm0.055$ & $1.118\pm0.025$ & $0.637\pm0.008$ & $0.179\pm0.036$ \\
+        Max. deviation (2 h, 50\%) & $0.517\pm0.018$ & $0.593\pm0.041$ & $0.770\pm0.027$ & $0.828\pm0.006$ & $0.539\pm0.032$ \\
+        Total deviation (2 h, 50\%) & $0.704\pm0.005$ & $1.456\pm0.011$ & $1.207\pm0.005$ & $0.519\pm0.008$ & $0.062\pm0.007$ \\
+        Max. deviation (24 h, 10\%) & $0.508\pm0.021$ & $0.563\pm0.039$ & $0.750\pm0.027$ & $0.848\pm0.007$ & $0.564\pm0.030$ \\
+        Total deviation (24 h, 10\%) & $0.508\pm0.029$ & $0.573\pm0.046$ & $0.757\pm0.030$ & $0.824\pm0.008$ & $0.598\pm0.032$ \\
+        Max. deviation (24 h, 50\%) & $0.517\pm0.006$ & $0.572\pm0.031$ & $0.756\pm0.021$ & $0.843\pm0.006$ & $0.556\pm0.024$ \\
+        Total deviation (24 h, 50\%) & $0.631\pm0.042$ & $0.961\pm0.022$ & $0.980\pm0.011$ & $0.673\pm0.005$ & $0.341\pm0.015$ \\
+        \bottomrule
+    \end{tabular}
+    \normalsize
+    \par\smallskip
+    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level. Entries are mean $\pm$ sample standard deviation over three seeds.
+\end{table}
+
+On the test split, Fluence has the highest Spearman correlation ($0.951\pm0.002$) and $R^2$ ($0.790\pm0.021$), while total deviation with the 2-hour, 50\% background setting has the lowest test $R^2$ ($0.062\pm0.007$). These summaries are descriptive across three seeds and do not support significance claims.
 
 \section{Discussion}
 
