@@ -459,23 +459,23 @@ For each target, the learning-rate and weight-decay combination was selected by 
 
 \begin{table}[ht]
     \centering
-    \caption{Validation performance for the target-specific learning-rate and weight-decay combinations selected by mean $q_{0.50}$ pinball loss across seeds 1--3. Error metrics and $R^2$ are in the standardized transformed target domain.}
+    \caption{Validation performance for the target-specific configurations selected by mean $q_{0.50}$ pinball loss across seeds 1--3. Error metrics and $R^2$ are in the standardized transformed target domain.}
     \label{tab:target-validation-comparison}
     \scriptsize
-    \begin{tabular}{>{\raggedright\arraybackslash}p{0.23\linewidth}p{0.13\linewidth}cccccc}
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.32\linewidth}ccccc}
         \toprule
-        Target condition & LR / WD & $q_{0.50}$ pinball & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
+        Target condition & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
         \midrule
-        Maximum XRS-B flux & $10^{-6}/0.10$ & $0.204\pm0.002$ & $0.408\pm0.004$ & $0.403\pm0.014$ & $0.635\pm0.011$ & $0.823\pm0.003$ & $0.527\pm0.016$ \\
-        Fluence & $10^{-6}/0.03$ & $0.126\pm0.002$ & $0.253\pm0.004$ & $0.193\pm0.006$ & $0.439\pm0.007$ & $0.950\pm0.003$ & $0.802\pm0.006$ \\
-        Max. deviation (2 h, 10\%) & $10^{-6}/0.05$ & $0.227\pm0.001$ & $0.454\pm0.002$ & $0.489\pm0.008$ & $0.699\pm0.006$ & $0.753\pm0.002$ & $0.434\pm0.010$ \\
-        Total deviation (2 h, 10\%) & $10^{-6}/0.03$ & $0.286\pm0.0005$ & $0.573\pm0.001$ & $0.910\pm0.010$ & $0.954\pm0.005$ & $0.493\pm0.002$ & $0.144\pm0.009$ \\
-        Max. deviation (2 h, 50\%) & $10^{-6}/0.10$ & $0.231\pm0.001$ & $0.462\pm0.002$ & $0.517\pm0.008$ & $0.719\pm0.006$ & $0.738\pm0.002$ & $0.406\pm0.009$ \\
-        Total deviation (2 h, 50\%) & $10^{-6}/0.10$ & $0.301\pm0.002$ & $0.603\pm0.004$ & $0.992\pm0.048$ & $0.996\pm0.024$ & $0.432\pm0.016$ & $0.062\pm0.046$ \\
-        Max. deviation (24 h, 10\%) & $5\times10^{-7}/0.05$ & $0.221\pm0.001$ & $0.441\pm0.001$ & $0.436\pm0.009$ & $0.660\pm0.007$ & $0.786\pm0.004$ & $0.493\pm0.010$ \\
-        Total deviation (24 h, 10\%) & $10^{-6}/0.10$ & $0.240\pm0.002$ & $0.480\pm0.004$ & $0.527\pm0.008$ & $0.726\pm0.006$ & $0.693\pm0.006$ & $0.481\pm0.008$ \\
-        Max. deviation (24 h, 50\%) & $5\times10^{-7}/0.03$ & $0.224\pm0.002$ & $0.448\pm0.003$ & $0.452\pm0.013$ & $0.672\pm0.010$ & $0.777\pm0.004$ & $0.477\pm0.015$ \\
-        Total deviation (24 h, 50\%) & $10^{-6}/0.03$ & $0.285\pm0.002$ & $0.569\pm0.004$ & $0.735\pm0.006$ & $0.857\pm0.004$ & $0.539\pm0.010$ & $0.312\pm0.006$ \\
+        Maximum XRS-B flux & $0.408\pm0.004$ & $0.403\pm0.014$ & $0.635\pm0.011$ & $0.823\pm0.003$ & $0.527\pm0.016$ \\
+        Fluence & $0.253\pm0.004$ & $0.193\pm0.006$ & $0.439\pm0.007$ & $0.950\pm0.003$ & $0.802\pm0.006$ \\
+        Max. deviation (2 h, 10\%) & $0.454\pm0.002$ & $0.489\pm0.008$ & $0.699\pm0.006$ & $0.753\pm0.002$ & $0.434\pm0.010$ \\
+        Total deviation (2 h, 10\%) & $0.573\pm0.001$ & $0.910\pm0.010$ & $0.954\pm0.005$ & $0.493\pm0.002$ & $0.144\pm0.009$ \\
+        Max. deviation (2 h, 50\%) & $0.462\pm0.002$ & $0.517\pm0.008$ & $0.719\pm0.006$ & $0.738\pm0.002$ & $0.406\pm0.009$ \\
+        Total deviation (2 h, 50\%) & $0.603\pm0.004$ & $0.992\pm0.048$ & $0.996\pm0.024$ & $0.432\pm0.016$ & $0.062\pm0.046$ \\
+        Max. deviation (24 h, 10\%) & $0.441\pm0.001$ & $0.436\pm0.009$ & $0.660\pm0.007$ & $0.786\pm0.004$ & $0.493\pm0.010$ \\
+        Total deviation (24 h, 10\%) & $0.480\pm0.004$ & $0.527\pm0.008$ & $0.726\pm0.006$ & $0.693\pm0.006$ & $0.481\pm0.008$ \\
+        Max. deviation (24 h, 50\%) & $0.448\pm0.003$ & $0.452\pm0.013$ & $0.672\pm0.010$ & $0.777\pm0.004$ & $0.477\pm0.015$ \\
+        Total deviation (24 h, 50\%) & $0.569\pm0.004$ & $0.735\pm0.006$ & $0.857\pm0.004$ & $0.539\pm0.010$ & $0.312\pm0.006$ \\
         \bottomrule
     \end{tabular}
     \normalsize
