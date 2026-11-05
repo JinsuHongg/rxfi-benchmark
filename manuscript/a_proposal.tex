@@ -381,7 +381,7 @@ The input observations are multi-channel images from NASA's Solar Dynamics Obser
 
 \subsection{GOES XRS Measurements and Quality Control}
 
-The ten primary regression targets are computed from one-minute GOES XRS-B measurements rather than from individual entries in the NOAA flare catalog. For each minute, the target-generation procedure uses a finite, positive measurement that passes the instrument quality flag, preferring the scheduled primary satellite and falling back to the scheduled secondary satellite when needed \cite{TODO}. Missing minutes are not interpolated. A prediction window uses all available valid samples, including when coverage is incomplete; a target is missing only when its required prediction or background interval contains no valid samples. Event-catalog labels are outside the scope of the ten primary regression outcomes; any event-based skill analysis will be reported separately.
+The ten primary regression targets are computed from NOAA/NCEI science-quality one-minute GOES XRS-B measurements rather than from individual entries in the NOAA flare catalog \citep{machol2026goesrxs,machol2025xrsusersguide}. For each minute, the target-generation procedure uses a finite, positive measurement that passes the instrument quality flag, preferring the scheduled primary satellite and falling back to the scheduled secondary satellite when needed \citep{lucas2025goesflarereport}. Missing minutes are not interpolated. A prediction window uses all available valid samples, including when coverage is incomplete; a target is missing only when its required prediction or background interval contains no valid samples. Event-catalog labels are outside the scope of the ten primary regression outcomes; any event-based skill analysis will be reported separately.
 
 \subsection{Data Splits}
 
@@ -453,15 +453,11 @@ The model predicts the $0.05$, $0.50$, and $0.95$ conditional quantiles using th
 
 The point-prediction metrics are mean absolute error (MAE), mean squared error (MSE), root mean squared error (RMSE), Spearman rank correlation, and coefficient of determination ($R^2$), calculated from the predicted median ($q_{0.50}$). The tables report MAE and RMSE rather than MSE because RMSE is its square root; they also report Spearman rank correlation and $R^2$. The overall three-quantile pinball loss selects the checkpoint within each run, while validation $q_{0.50}$ pinball loss selects the target-specific learning-rate and weight-decay combination. Table entries summarize seeds 1--3 as the mean and sample standard deviation. Binary skill metrics are not used as primary regression metrics; any threshold-based event analysis will be reported separately with its threshold and event denominator.
 
-\section{Preliminary Results}
-
-For each target, the learning-rate and weight-decay combination was selected by mean validation $q_{0.50}$ pinball loss across seeds 1--3. The test registry uses the corresponding minimum-loss combination, including ties at the reported precision. Validation and test results below are the mean and sample standard deviation across the same three seeds; the test split was not used for model or hyperparameter selection.
-
-\begin{table}[ht]
+\begin{table}[t]
     \centering
     \caption{Validation performance for the target-specific configurations selected by mean $q_{0.50}$ pinball loss across seeds 1--3. Error metrics and $R^2$ are in the standardized transformed target domain.}
     \label{tab:target-validation-comparison}
-    \scriptsize
+    \footnotesize
     \begin{tabular}{>{\raggedright\arraybackslash}p{0.32\linewidth}cccc}
         \toprule
         Target condition & MAE & RMSE & Spearman $\rho$ & $R^2$ \\
@@ -483,7 +479,11 @@ For each target, the learning-rate and weight-decay combination was selected by 
     \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level. Entries are mean $\pm$ sample standard deviation over three seeds.
 \end{table}
 
-\begin{table}[ht]
+\section{Preliminary Results}
+
+For each target, the learning-rate and weight-decay combination was selected by mean validation $q_{0.50}$ pinball loss across seeds 1--3. The test registry uses the corresponding minimum-loss combination, including ties at the reported precision. Validation and test results below are the mean and sample standard deviation across the same three seeds; the test split was not used for model or hyperparameter selection.
+
+\begin{table}[t]
     \centering
     \caption{Test performance for the same target-specific configurations selected using validation data. Error metrics and $R^2$ are in the standardized transformed target domain.}
     \label{tab:target-test-comparison}
