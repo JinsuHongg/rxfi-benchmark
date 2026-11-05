@@ -30,7 +30,14 @@ SCRIPT_MOVES = {
     "project2/audit_project2_channels.py": "analysis/project2/audit_project2_channels.py",
     "plot_four_24h_targets_noaa.py": "visualization/plot_four_24h_targets_noaa.py",
     "plot_four_24h_targets_xrs_1min.py": "visualization/plot_four_24h_targets_xrs_1min.py",
-    "plot_project1_severe_event_metrics.py": "visualization/plot_project1_severe_event_metrics.py",
+    "plot_four_target_distribution_slide.py": "visualization/plot_four_target_class_distribution_slide.py",
+    "plot_noaa_flare_summary_class_distribution.py": "visualization/plot_noaa_flare_class_distribution.py",
+    "plot_project1_binary_decision_metrics.py": "visualization/plot_binary_decision_metrics.py",
+    "plot_project1_m_plus_curves.py": "visualization/plot_m_plus_precision_recall_roc_curves.py",
+    "plot_project2_classification_metrics.py": "visualization/plot_channel_classification_metrics.py",
+    "plot_project2_qr_metrics.py": "visualization/plot_channel_quantile_regression_metrics.py",
+    "plot_target_class_distribution.py": "visualization/plot_split_target_class_distribution.py",
+    "visualization/plot_project1_severe_event_metrics.py": "visualization/plot_severe_event_metrics.py",
     "plot_single_flare_classification.py": "visualization/plot_single_flare_classification.py",
     "benchmark_qr_batch_size.py": "training/benchmark_qr_batch_size.py",
     "train_vit_classifier.py": "training/train_vit_classifier.py",
@@ -49,7 +56,7 @@ SCRIPT_MOVES = {
 
 
 def test_all_script_files_are_moved_once_to_the_approved_topic_paths():
-    assert len(SCRIPT_MOVES) == 33
+    assert len(SCRIPT_MOVES) == 40
     for old_relative, new_relative in SCRIPT_MOVES.items():
         assert (SCRIPT_ROOT / new_relative).is_file(), new_relative
         assert not (SCRIPT_ROOT / old_relative).exists(), old_relative

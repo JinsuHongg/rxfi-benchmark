@@ -10,11 +10,11 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "visualization" / "plot_project1_severe_event_metrics.py"
+SCRIPT = ROOT / "scripts" / "visualization" / "plot_severe_event_metrics.py"
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("plot_project1_severe_event_metrics", SCRIPT)
+    spec = importlib.util.spec_from_file_location("plot_severe_event_metrics", SCRIPT)
     assert spec and spec.loader, "proposal plotting script must be importable"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
