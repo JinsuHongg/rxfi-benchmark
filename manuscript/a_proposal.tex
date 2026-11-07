@@ -381,7 +381,7 @@ The input observations are multi-channel images from NASA's Solar Dynamics Obser
 
 \subsection{GOES XRS Measurements and Quality Control}
 
-The ten primary regression targets are computed from one-minute GOES XRS-B measurements rather than from individual entries in the NOAA flare catalog. For each minute, the target-generation procedure uses a finite, positive measurement that passes the instrument quality flag, preferring the scheduled primary satellite and falling back to the scheduled secondary satellite when needed \cite{TODO}. Missing minutes are not interpolated. A prediction window uses all available valid samples, including when coverage is incomplete; a target is missing only when its required prediction or background interval contains no valid samples. Event-catalog labels are outside the scope of the ten primary regression outcomes; any event-based skill analysis will be reported separately.
+The ten primary regression targets are computed from NOAA/NCEI science-quality one-minute GOES XRS-B measurements rather than from individual entries in the NOAA flare catalog \citep{machol2026goesrxs,machol2025xrsusersguide}. For each minute, the target-generation procedure uses a finite, positive measurement that passes the instrument quality flag, preferring the scheduled primary satellite and falling back to the scheduled secondary satellite when needed \citep{lucas2025goesflarereport}. Missing minutes are not interpolated. A prediction window uses all available valid samples, including when coverage is incomplete; a target is missing only when its required prediction or background interval contains no valid samples. Event-catalog labels are outside the scope of the ten primary regression outcomes; any event-based skill analysis will be reported separately.
 
 \subsection{Data Splits}
 
@@ -443,45 +443,73 @@ Together, $(W,q)\in\{(2,10),(2,50),(24,10),(24,50)\}$ yields eight background-de
 
 \subsection{Multi-Channel Image Model}
 
-The model uses eight AIA channels and five HMI channels, each resampled to $224\times224$ pixels. The target comparisons use the same compact convolutional neural network architecture. Input normalization is estimated using training data only. Candidate hyperparameter settings are compared under the common validation procedure; the selected settings and number of independent training runs will be reported with the results.
+The model uses the eight AIA and five HMI channels, each resampled to $224\times224$ pixels, with the same compact convolutional neural network architecture for all ten targets. Input normalization is estimated from training data only. For each target, nine learning-rate and weight-decay combinations are evaluated with seeds 1--3. Within each run, the checkpoint with the lowest validation pinball loss averaged over $q_{0.05}$, $q_{0.50}$, and $q_{0.95}$ is retained; early stopping monitors the same loss from epoch 4 with patience 7, up to 70 epochs. The target-specific learning-rate and weight-decay combination is selected by the lowest mean validation $q_{0.50}$ pinball loss across the three seeds. The selected checkpoint for each seed is then evaluated on the test split.
 
 \subsection{Quantile Regression}
 
-The model predicts the $0.05$, $0.50$, and $0.95$ conditional quantiles using the pinball loss. Target values are transformed using an inverse-hyperbolic- sine transformation followed by standardization; both transformations are estimated from training data only. Predictions are converted back to the target's original scale before evaluation. Model selection uses validation data, and test labels are reserved for final evaluation.
+The model predicts the $0.05$, $0.50$, and $0.95$ conditional quantiles using the pinball loss. Target values are transformed using an inverse-hyperbolic-sine transformation followed by standardization, with both transformations estimated from training data only. The tables report MAE, RMSE, and $R^2$ in the standardized transformed target domain; Spearman's rank correlation is computed from the median predictions. Inverse-transformed predictions are retained for interpretation in the original target units. Model selection uses validation data, and test labels are reserved for final evaluation.
 
 \subsection{Evaluation Metrics}
 
-The primary point-prediction metrics are mean absolute error (MAE), mean squared error (MSE), root mean squared error (RMSE), Spearman rank correlation, and coefficient of determination ($R^2$), calculated from the predicted median ($q_{0.50}$). The pinball loss remains the model's training objective, but is not a reported comparison metric. Binary skill metrics will not be used as primary regression metrics; any threshold-based event analysis will be reported separately with its threshold and event denominator.
+The point-prediction metrics are mean absolute error (MAE), mean squared error (MSE), root mean squared error (RMSE), Spearman rank correlation, and coefficient of determination ($R^2$), calculated from the predicted median ($q_{0.50}$). The tables report MAE and RMSE rather than MSE because RMSE is its square root; they also report Spearman rank correlation and $R^2$. The overall three-quantile pinball loss selects the checkpoint within each run, while validation $q_{0.50}$ pinball loss selects the target-specific learning-rate and weight-decay combination. Table entries summarize seeds 1--3 as the mean and sample standard deviation. Binary skill metrics are not used as primary regression metrics; any threshold-based event analysis will be reported separately with its threshold and event denominator.
 
-\section{Preliminary Results}
-
-The final comparison will use the common split and validation-based model-selection protocol described above. The table below is a reporting template; values will be populated from saved test-prediction artifacts only after test evaluation artifacts are available and their run provenance is checked.
-
-\begin{table}[ht]
+\begin{table}[t]
     \centering
-    \caption{Planned comparison of regression performance across the ten target conditions.}
-    \label{tab:target-comparison}
+    \caption{Validation performance for the target-specific configurations selected by mean $q_{0.50}$ pinball loss across seeds 1--3. Error metrics and $R^2$ are in the standardized transformed target domain.}
+    \label{tab:target-validation-comparison}
     \footnotesize
-    \begin{tabular}{>{\raggedright\arraybackslash}p{0.34\linewidth}ccccc}
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.32\linewidth}cccc}
         \toprule
-        Target condition & MAE & MSE & RMSE & Spearman $\rho$ & $R^2$ \\
+        Target condition & MAE & RMSE & Spearman $\rho$ & $R^2$ \\
         \midrule
-        Maximum XRS-B flux & -- & -- & -- & -- & -- \\
-        Fluence & -- & -- & -- & -- & -- \\
-        Max. deviation (2 h, 10\%) & -- & -- & -- & -- & -- \\
-        Total deviation (2 h, 10\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (2 h, 50\%) & -- & -- & -- & -- & -- \\
-        Total deviation (2 h, 50\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (24 h, 10\%) & -- & -- & -- & -- & -- \\
-        Total deviation (24 h, 10\%) & -- & -- & -- & -- & -- \\
-        Max. deviation (24 h, 50\%) & -- & -- & -- & -- & -- \\
-        Total deviation (24 h, 50\%) & -- & -- & -- & -- & -- \\
+        Maximum XRS-B flux & $0.408\pm0.004$ & $0.635\pm0.011$ & $0.823\pm0.003$ & $0.527\pm0.016$ \\
+        Fluence & $0.253\pm0.004$ & $0.439\pm0.007$ & $0.950\pm0.003$ & $0.802\pm0.006$ \\
+        Max. deviation (2 h, 10\%) & $0.454\pm0.002$ & $0.699\pm0.006$ & $0.753\pm0.002$ & $0.434\pm0.010$ \\
+        Total deviation (2 h, 10\%) & $0.573\pm0.001$ & $0.954\pm0.005$ & $0.493\pm0.002$ & $0.144\pm0.009$ \\
+        Max. deviation (2 h, 50\%) & $0.462\pm0.002$ & $0.719\pm0.006$ & $0.738\pm0.002$ & $0.406\pm0.009$ \\
+        Total deviation (2 h, 50\%) & $0.603\pm0.004$ & $0.996\pm0.024$ & $0.432\pm0.016$ & $0.062\pm0.046$ \\
+        Max. deviation (24 h, 10\%) & $0.441\pm0.001$ & $0.660\pm0.007$ & $0.786\pm0.004$ & $0.493\pm0.010$ \\
+        Total deviation (24 h, 10\%) & $0.480\pm0.004$ & $0.726\pm0.006$ & $0.693\pm0.006$ & $0.481\pm0.008$ \\
+        Max. deviation (24 h, 50\%) & $0.448\pm0.003$ & $0.672\pm0.010$ & $0.777\pm0.004$ & $0.477\pm0.015$ \\
+        Total deviation (24 h, 50\%) & $0.569\pm0.004$ & $0.857\pm0.004$ & $0.539\pm0.010$ & $0.312\pm0.006$ \\
         \bottomrule
     \end{tabular}
     \normalsize
     \par\smallskip
-    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level.
+    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level. Entries are mean $\pm$ sample standard deviation over three seeds.
 \end{table}
+
+\section{Preliminary Results}
+
+For each target, the learning-rate and weight-decay combination was selected by mean validation $q_{0.50}$ pinball loss across seeds 1--3. The test registry uses the corresponding minimum-loss combination, including ties at the reported precision. Validation and test results below are the mean and sample standard deviation across the same three seeds; the test split was not used for model or hyperparameter selection.
+
+\begin{table}[t]
+    \centering
+    \caption{Test performance for the same target-specific configurations selected using validation data. Error metrics and $R^2$ are in the standardized transformed target domain.}
+    \label{tab:target-test-comparison}
+    \footnotesize
+    \begin{tabular}{>{\raggedright\arraybackslash}p{0.30\linewidth}cccc}
+        \toprule
+        Target condition & MAE & RMSE & Spearman $\rho$ & $R^2$ \\
+        \midrule
+        Maximum XRS-B flux & $0.484\pm0.023$ & $0.722\pm0.035$ & $0.867\pm0.006$ & $0.603\pm0.039$ \\
+        Fluence & $0.373\pm0.024$ & $0.580\pm0.029$ & $0.951\pm0.002$ & $0.790\pm0.021$ \\
+        Max. deviation (2 h, 10\%) & $0.514\pm0.020$ & $0.760\pm0.031$ & $0.836\pm0.006$ & $0.552\pm0.036$ \\
+        Total deviation (2 h, 10\%) & $0.631\pm0.006$ & $1.118\pm0.025$ & $0.637\pm0.008$ & $0.179\pm0.036$ \\
+        Max. deviation (2 h, 50\%) & $0.517\pm0.018$ & $0.770\pm0.027$ & $0.828\pm0.006$ & $0.539\pm0.032$ \\
+        Total deviation (2 h, 50\%) & $0.704\pm0.005$ & $1.207\pm0.005$ & $0.519\pm0.008$ & $0.062\pm0.007$ \\
+        Max. deviation (24 h, 10\%) & $0.508\pm0.021$ & $0.750\pm0.027$ & $0.848\pm0.007$ & $0.564\pm0.030$ \\
+        Total deviation (24 h, 10\%) & $0.508\pm0.029$ & $0.757\pm0.030$ & $0.824\pm0.008$ & $0.598\pm0.032$ \\
+        Max. deviation (24 h, 50\%) & $0.517\pm0.006$ & $0.756\pm0.021$ & $0.843\pm0.006$ & $0.556\pm0.024$ \\
+        Total deviation (24 h, 50\%) & $0.631\pm0.042$ & $0.980\pm0.011$ & $0.673\pm0.005$ & $0.341\pm0.015$ \\
+        \bottomrule
+    \end{tabular}
+    \normalsize
+    \par\smallskip
+    \footnotesize For deviation targets, the first value is the background-window duration and the second is the lower-tail percentage used to estimate the background level. Entries are mean $\pm$ sample standard deviation over three seeds.
+\end{table}
+
+On the test split, Fluence has the highest Spearman correlation ($0.951\pm0.002$) and $R^2$ ($0.790\pm0.021$), while total deviation with the 2-hour, 50\% background setting has the lowest test $R^2$ ($0.062\pm0.007$). These summaries are descriptive across three seeds and do not support significance claims.
 
 \section{Discussion}
 
@@ -719,9 +747,19 @@ RetinaMNIST provides five ordered severity labels but no continuous measurement.
 
 The solar flare task uses a 13-channel SDO image stack to predict maximum GOES X-ray flux over the following 24 hours. Its numeric target is \(Z=\log_{10}(\texttt{max\_intensity})+9\), with ordered classes FQ/A, B, C, M, and X and transformed bin boundaries 2, 3, 4, and 5. Within each year from 2010 to 2019, observations from January 1--14 and February 1--14 are used for calibration, January 15--31 for validation, and February 15-- December 31 for training. The future test set contains retained observations from 2020--2024. This chronology makes the solar test a temporal-extrapolation evaluation; it does not establish exchangeability between calibration and future test observations \citep{roy2026suryabench,hong2026ocqr}.
 
+The dissertation will add three ordinal prediction tasks. EyePACS contains 35,126 labeled retinal images graded on five ordered levels of diabetic-retinopathy severity. It overlaps in medical domain with RetinaMNIST, but provides a substantially larger image task with a long-tailed class distribution; the rarest severity levels will therefore be examined separately \citep{eyepacs_kaggle_2015,zhang2026mincps}. The split will keep images from the same patient, including left- and right-eye images where identifiable, in one partition.
+
+The Avocado Prices dataset contains 18,249 weekly records across regions and product types. Average price will be the target. Ordered price-bin boundaries will be estimated from the training portion only and fixed before calibration and test evaluation. All records from the same week will be assigned to the same split to prevent date overlap across partitions \citep{kiggins2018avocado,zhang2026mincps}.
+
+The Electric Motor Temperature dataset contains approximately 1.3 million multivariate sensor observations sampled at 2 Hz across measurement profiles. The target will be the permanent-magnet temperature (\texttt{pm}). It will be converted to ordered temperature categories using documented operating ranges where available; otherwise, bin boundaries will be estimated from the training portion only and treated as a surrogate ordinal representation. Sensor inputs will exclude the target and any measurements unavailable at the prediction time. Entire measurement profiles will be assigned to a single split \citep{kirchgassner2021benchmark,zhang2026mincps}.
+
+These tasks will be introduced in stages. The Avocado Prices and Electric Motor Temperature experiments will be prepared first. EyePACS will follow an initial storage and preprocessing assessment because its high-resolution images require substantially more storage than the tabular datasets. The proposal will report class counts in every calibration and test partition. Since weekly market records and motor observations have temporal or profile structure, their empirical coverage will be distinguished from finite-sample conformal guarantees; the guarantees require the stated exchangeability assumptions to hold for the evaluation units.
+
 \subsection{Baselines}
 
-OCQR is compared with the Least Ambiguous set-valued Classifier (LAC), Adaptive Prediction Sets (APS), Ordinal Adaptive Prediction Sets (OAPS), and Conformal Prediction Sets for Ordinal Classification (COPOC) \citep{sadinle2019least,angelopoulos2020uncertainty,romano2020classification,lu2022ordinalaps,dey2023copoc}. LAC, APS, and OAPS use ResNet-18 Softmax classifiers; COPOC uses a separately trained ResNet-18 with its ordinal-specific unimodal output. Five OCQR ablations isolate the contribution of pooled rather than class-specific calibration, the ordinal hull, the empty-set fallback, the combination of hull and fallback, and replacing negative conformity scores by zero \citep{hong2026ocqr}.
+The marginal-coverage baselines are LAC, APS, OAPS, and COPOC \citep{sadinle2019least,angelopoulos2020uncertainty,romano2020classification,lu2022ordinalaps,dey2023copoc}. The class-conditional baselines are Mondrian-calibrated versions of LAC, APS, and OAPS, together with clustered conformal prediction. Mondrian calibration estimates a separate threshold for each true class; clustered conformal prediction groups classes with similar conformity-score behavior to address limited calibration data per class \citep{vovk2005algorithmic,vovk2012conditional,ding2023classconditional}.
+
+The published experiments on UTKFace, RetinaMNIST, and solar flare forecasting used ResNet-18 models; these results are preliminary for the dissertation. The solar-flare experiment will be repeated with the compact convolutional neural network used in Project~\ref{chap:project1} in place of ResNet-18. The new runs will use the same data partitions and calibration protocol and will evaluate the expanded comparison set, with method-specific output heads on the shared image-model architecture. For Avocado Prices and Electric Motor Temperature, the proposed base predictor is a compact multilayer perceptron with two hidden layers of 64 and 32 units. The motor-temperature input will include a fixed window of sensor history, using only measurements available before the target time. The added tabular and sensor methods will use this same backbone, with output layers and losses required by each method. Within each dataset, LAC, APS, OAPS, their Mondrian variants, and clustered conformal prediction will use the same fitted probability model and conformity scores where the method permits; this controls the predictor while changing the calibration procedure. COPOC will retain its ordinal output formulation. All methods will use the same train, validation, calibration, and test partitions within each dataset. The comparison will report marginal and per-class coverage, prediction-set size, and calibration counts. The five OCQR ablations reported in the conference study will be treated as prior results rather than new baselines \citep{hong2026ocqr}.
 
 \subsection{Evaluation Metrics}
 
@@ -731,7 +769,9 @@ For class \(k\), empirical class-conditional coverage is
 \frac{1}{n_k}\sum_{i:Y_i=k}\mathbf{1}\{Y_i\in C(X_i)\},
 \label{eq:ocqr-empirical-class-coverage}
 \end{equation}
-where \(n_k\) is the number of test examples in that class. The evaluation reports marginal coverage, macro coverage (the mean of the class-specific estimates), worst-class coverage (their minimum), mean set size, and the fraction of examples receiving the full label set. It also reports empty-set and fragmented-set rates for the ablations. Results are means and standard deviations across five training seeds; the fixed splits mean these standard deviations describe training-seed variation, not variability across alternative partitions \citep{hong2026ocqr}.
+where \(n_k\) is the number of test examples in that class. The dissertation evaluation will use nominal coverage levels of 80\%, 90\%, and 95\%, corresponding to \(\alpha\) values of 0.20, 0.10, and 0.05. At each level, methods will be calibrated separately on the calibration split and evaluated on the same held-out test split. The evaluation will report marginal coverage, macro coverage (the mean of the class-specific estimates), and worst-class coverage (the minimum class-specific estimate). Per-class results will include the test count \(n_k\), empirical coverage, and a 95\% uncertainty interval. For grouped or sequential data, interval estimation will respect the data structure rather than treating correlated rows as independent. These empirical summaries will be distinguished from the methods' theoretical coverage guarantees, which depend on their stated assumptions.
+
+Prediction-set efficiency will be reported with the mean, median, and interquartile range of set size, along with the fraction of examples receiving the full label set. Empty-set and fragmented-set rates will be reported where applicable. A coverage--set-size plot will show the empirical marginal coverage and mean set size for each method at all three nominal levels. When methods are evaluated on different numbers of labels, set size will also be reported as a fraction of the label set. If model training is repeated with different seeds, mean and standard deviation across seeds will describe training variability; these values will be reported separately from test-set uncertainty intervals.
 
 \subsection{Ablation Studies}
 
@@ -739,7 +779,7 @@ The pooled-calibration ablation tests whether class-specific corrections account
 
 \section{Preliminary Results}
 
-Table~\ref{tab:ocqr-preliminary-results} summarizes the main comparisons at the nominal coverage level of 90\%.
+The results in Table~\ref{tab:ocqr-preliminary-results} are preliminary ResNet-18-based results from the conference study, reported at the nominal coverage level of 90\%. The solar-flare results will be replaced in the dissertation evaluation by results from the additional experiments using the Project~\ref{chap:project1} compact convolutional neural network. The current values provide an initial reference and are not the final solar-flare comparison.
 
 \begin{table}[htbp]
     \centering
@@ -781,16 +821,13 @@ In the pooled-calibration ablation, worst-class coverage decreased from 81.4\% t
 
 \section{Remaining Theoretical and Experimental Work}
 
-% TODO (author input): Specify which dissertation contributions remain beyond
-% the published OCQR method and experiments. The source paper identifies
-% additional nominal coverage levels, alternative target representations,
-% more distribution-shift settings, and additional ordinal tasks as future
-% directions, but it does not establish which of these are part of this
-% proposal's committed work plan.
-% TODO (author input): State whether the dissertation will study guarantees
-% for temporally dependent or shifted solar data. The reported chronological
-% solar results are empirical temporal-extrapolation results and do not
-% verify the exchangeability assumption behind the finite-sample guarantee.
+The remaining Project 3 work will complete the presentation and evaluation of the published OCQR framework. The dissertation will state the conference-paper theorem, assumptions, and proof in full and explain their scope. It will not claim a stronger coverage guarantee or a new theoretical result beyond that work.
+
+The experimental work has three parts. First, the EyePACS, Avocado Prices, and Electric Motor Temperature data protocols will be finalized. EyePACS images from the same patient will be kept in one split where patient identity can be recovered. Avocado price-bin boundaries will be estimated from training data only, with all records from a given week assigned to one split. Electric Motor Temperature will use permanent-magnet temperature as its target, with full measurement profiles assigned to single splits. Calibration and test class counts will be checked before model training.
+
+Second, the solar-flare evaluation will be repeated with the compact convolutional neural network used in Project~\ref{chap:project1}, replacing the preliminary ResNet-18 model. The comparison will include marginal-coverage methods (LAC, APS, OAPS, and COPOC) and class-conditional methods (Mondrian LAC, APS, and OAPS, and clustered conformal prediction). The additional Avocado Prices and Electric Motor Temperature experiments will use the compact multilayer perceptron specified above.
+
+Third, each method will be evaluated at nominal coverage levels of 80\%, 90\%, and 95\%. Results will include marginal and per-class coverage, class counts, uncertainty intervals for per-class coverage, and prediction-set size distributions. Grouped or temporal dependence will be reflected in uncertainty estimation and in the interpretation of coverage. In particular, chronological solar-flare results will remain empirical temporal-extrapolation results and will not be presented as evidence that calibration and future observations are exchangeable.
 
 % ============================================================
 \chapter{Integrated Discussion}
@@ -814,10 +851,10 @@ In the pooled-calibration ablation, worst-class coverage decreased from 81.4\% t
 
 \begin{enumerate}
     \item Complete additional forecasting-window experiments.
-    \item Complete multi-channel and higher-resolution experiments.
-    \item Finalize the ordinal uncertainty quantification method.
-    \item Complete theoretical analysis.
-    \item Run full benchmark and ablation experiments.
+    \item Complete the planned multi-channel solar-flare experiments.
+    \item Finalize Project 3 data targets, bin boundaries, and group-aware splits.
+    \item Present the OCQR conference-paper guarantee and proof in full, without extending its theoretical claims.
+    \item Run the expanded Project 3 baseline comparisons and coverage-level evaluation.
     \item Prepare dissertation manuscripts and final dissertation.
 \end{enumerate}
 
@@ -832,12 +869,12 @@ In the pooled-calibration ablation, worst-class coverage decreased from 81.4\% t
         Period & Planned Work \\
         \midrule
         Fall 2026 &
-        Dissertation proposal; complete core solar-flare experiments;
-        finalize Project 3 methodology. \\
+        Dissertation proposal; finalize Project 3 target and split protocols;
+        prepare the compact-CNN solar uncertainty experiments. \\
 
         Spring 2027 &
-        Complete Project 2 and Project 3 experiments; prepare manuscripts;
-        integrate dissertation chapters. \\
+        Complete Project 2 experiments and expanded Project 3 comparisons;
+        evaluate 80\%, 90\%, and 95\% coverage levels; prepare manuscripts. \\
 
         Summer 2027 &
         Complete dissertation writing, committee review, and dissertation
@@ -848,11 +885,32 @@ In the pooled-calibration ablation, worst-class coverage decreased from 81.4\% t
 
 \section{Risks and Contingency Plans}
 
-% Optional but useful in a proposal:
-% - compute constraints
-% - data limitations
-% - theoretical assumptions
-% - fallback experimental scope
+\begin{table}[ht]
+    \centering
+    \small
+    \caption{Risks to the proposed work and planned responses.}
+    \label{tab:project-risks}
+    \begin{tabular}{p{0.28\linewidth}p{0.62\linewidth}}
+        \toprule
+        Risk & Planned response \\
+        \midrule
+        EyePACS storage and preprocessing cost &
+        Assess storage and preprocessing on a small sample before full runs;
+        process images at the resolution selected for the shared model. \\
+        Sparse classes after binning &
+        Report class counts in every split. Define bin boundaries before
+        calibration and test evaluation; if a class has too little calibration
+        support, report the resulting conservative sets and limit the claims. \\
+        Temporal or profile dependence &
+        Keep weeks and motor profiles intact across splits. Treat empirical
+        coverage on these data separately from guarantees that require
+        exchangeability. \\
+        Added comparison workload &
+        Run Avocado Prices and Electric Motor Temperature first, then assess
+        EyePACS feasibility before launching its full comparison. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 % ============================================================
 \chapter{Conclusion}
