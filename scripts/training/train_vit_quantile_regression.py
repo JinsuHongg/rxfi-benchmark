@@ -902,6 +902,10 @@ def main() -> None:
         "validation_mae_q50",
         "validation_spearman_q50",
         "validation_r2_q50_transformed",
+        "validation_mae_q50_raw",
+        "validation_rmse_q50_raw",
+        "validation_spearman_q50_raw",
+        "validation_r2_q50_raw",
         "validation_interval_coverage_90",
         "validation_jan_feb_pinball_loss",
         "validation_jul_aug_pinball_loss",
@@ -962,6 +966,14 @@ def main() -> None:
             "pinball_loss": best_history["validation_pinball_loss"],
             "mae_q50": best_history["validation_mae_q50"],
             "rmse_q50": best_history["validation_rmse_q50"],
+            "spearman_q50": best_history["validation_spearman_q50"],
+            "r2_q50_transformed": best_history[
+                "validation_r2_q50_transformed"
+            ],
+            "mae_q50_raw": best_history["validation_mae_q50_raw"],
+            "rmse_q50_raw": best_history["validation_rmse_q50_raw"],
+            "spearman_q50_raw": best_history["validation_spearman_q50_raw"],
+            "r2_q50_raw": best_history["validation_r2_q50_raw"],
         },
     ]
     if not args.skip_test:

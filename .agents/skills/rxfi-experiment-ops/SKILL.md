@@ -31,14 +31,17 @@ Use the experiment-designer skill when the research design itself is still open.
 - Invert the target transform and normalization using parameters fitted on
   training targets only. Never fit or adjust them on validation or test.
 - Use full transformed-space validation pinball loss, averaged over q05,
-  q50, and q95, for checkpoint and LR/WD selection. Keep epoch-level
-  monitoring in transformed space.
-- After checkpoint selection, report these q50 metrics on validation and
-  test:
+  q50, and q95, for checkpoint and LR/WD selection. Keep training metrics
+  and selection criteria in transformed space.
+- At every validation epoch, also calculate original-space q50 MAE, RMSE,
+  Spearman, and R². Include them in the epoch log and selected-checkpoint
+  validation summary. Calculate the same original-space metrics on test
+  only after checkpoint and LR/WD selection.
+- Report these q50 metrics for the selected checkpoint:
   - Transformed space: q50 pinball loss, MAE, RMSE, Spearman, and R².
   - Original target space: MAE, RMSE, Spearman, and R².
-- Do not calculate original-space metrics every epoch or raw-space q50
-  pinball loss unless the approved experiment plan requests them.
+- Do not calculate original-space q50 pinball loss unless the approved
+  experiment plan requests it.
 - Save sample predictions in both spaces. Report results by target, seed,
   and split; do not combine original-unit errors across targets with
   different units.

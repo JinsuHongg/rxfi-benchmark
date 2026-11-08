@@ -152,6 +152,18 @@ class QuantileRegressionModule(pl.LightningModule):
         self.split_r2_q50 = torch.nn.ModuleDict(
             {split: R2Score() for split in ("validation", "test")}
         )
+        self.raw_rmse_q50_metrics = torch.nn.ModuleDict(
+            {
+                f"{split}_split": MeanSquaredError(squared=False)
+                for split in ("validation", "test")
+            }
+        )
+        self.raw_spearman_q50_metrics = torch.nn.ModuleDict(
+            {split: SpearmanCorrCoef() for split in ("validation", "test")}
+        )
+        self.raw_r2_q50_metrics = torch.nn.ModuleDict(
+            {split: R2Score() for split in ("validation", "test")}
+        )
         self.validation_period_names = list(config.get("validation_periods", {}))
         self.period_spearman_q50 = torch.nn.ModuleDict(
             {name: SpearmanCorrCoef() for name in self.validation_period_names}
@@ -295,6 +307,7 @@ class QuantileRegressionModule(pl.LightningModule):
         )
         target_raw = self.inverse_target(target)
         median_raw = self.inverse_target(prediction[:, 1])
+        self._log_raw_q50_metrics(split, median_raw, target_raw, batch_size)
         metrics = {
             f"{split}/interval_coverage_90": (
                 (target >= prediction[:, 0]) & (target <= prediction[:, 2])
@@ -302,7 +315,6 @@ class QuantileRegressionModule(pl.LightningModule):
             f"{split}/mean_interval_width_90_transformed": (
                 prediction[:, 2] - prediction[:, 0]
             ).mean(),
-            f"{split}/mae_q50_raw": (target_raw - median_raw).abs().mean(),
         }
         for name, value in metrics.items():
             self.log(
@@ -313,6 +325,42 @@ class QuantileRegressionModule(pl.LightningModule):
                 batch_size=batch_size,
                 sync_dist=True,
             )
+
+    def _log_raw_q50_metrics(
+        self,
+        split: str,
+        median_raw: torch.Tensor,
+        target_raw: torch.Tensor,
+        batch_size: int,
+    ) -> None:
+        """Log q50 regression metrics in the original target units."""
+        raw_rmse = cast(Metric, self.raw_rmse_q50_metrics[f"{split}_split"])
+        raw_spearman = cast(Metric, self.raw_spearman_q50_metrics[split])
+        raw_r2 = cast(Metric, self.raw_r2_q50_metrics[split])
+        raw_rmse.update(median_raw, target_raw)
+        raw_spearman.update(median_raw, target_raw)
+        raw_r2.update(median_raw, target_raw)
+        raw_metrics = {
+            "rmse_q50_raw": raw_rmse,
+            "spearman_q50_raw": raw_spearman,
+            "r2_q50_raw": raw_r2,
+        }
+        for name, value in raw_metrics.items():
+            self.log(
+                f"{split}/{name}",
+                value,
+                on_step=False,
+                on_epoch=True,
+                sync_dist=True,
+            )
+        self.log(
+            f"{split}/mae_q50_raw",
+            (target_raw - median_raw).abs().mean(),
+            on_step=False,
+            on_epoch=True,
+            batch_size=batch_size,
+            sync_dist=True,
+        )
 
     def _log_validation_period_metrics(
         self,
