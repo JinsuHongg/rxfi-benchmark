@@ -23,6 +23,28 @@ Use the experiment-designer skill when the research design itself is still open.
   comparisons exploratory.
 - Do not use leaky validation unless the user explicitly includes it.
 
+## Evaluate requested targets
+
+- For each requested target, including any of the project's ten targets,
+  evaluate the same eligible records in transformed and original target
+  spaces. Track sample counts per target and split.
+- Invert the target transform and normalization using parameters fitted on
+  training targets only. Never fit or adjust them on validation or test.
+- Use full transformed-space validation pinball loss, averaged over q05,
+  q50, and q95, for checkpoint and LR/WD selection. Keep epoch-level
+  monitoring in transformed space.
+- After checkpoint selection, report these q50 metrics on validation and
+  test:
+  - Transformed space: q50 pinball loss, MAE, RMSE, Spearman, and R².
+  - Original target space: MAE, RMSE, Spearman, and R².
+- Do not calculate original-space metrics every epoch or raw-space q50
+  pinball loss unless the approved experiment plan requests them.
+- Save sample predictions in both spaces. Report results by target, seed,
+  and split; do not combine original-unit errors across targets with
+  different units.
+- Before submission, verify that the evaluator supports this protocol.
+  Surface any implementation gap before running the evaluation.
+
 ## Submit and monitor
 
 - Submit Slurm jobs only after the user directs execution.
