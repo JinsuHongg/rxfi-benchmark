@@ -1,0 +1,60 @@
+experiment_name: xrs_only_compact_cnn_v1_fluence_lr2e-06_wd0.1_seed1
+output_dir: outputs/xrs_only/v1_sweeps/fluence/compact_cnn/lrwd_grid/lr2e-6_wd0p1_seed1_4730297_24
+zarr_path: /scratch/users/jhong36/surya-bench-224-interarea.zarr
+target_split_dir: data/derived_noaa_g17_v222
+target_stats_path: outputs/target_normalization_stats/noaa_g17_v222/train_target_stats.json
+target_column: fluence
+target_transform:
+  name: asinh_zscore
+  n_train: 70699
+  scale_s: 0.000451774771506
+  raw_min: 7.79440145759e-09
+  raw_max: 0.0656104779043
+  transformed_mean: 1.0777774069187447
+  transformed_std_population: 0.9936255989689539
+image_size: 224
+in_chans: 13
+channels: 13
+channel_order:
+- aia94
+- aia131
+- aia171
+- aia193
+- aia211
+- aia304
+- aia335
+- aia1600
+- hmi_m
+- hmi_bx
+- hmi_by
+- hmi_bz
+- hmi_v
+normalization: signed_log1p_train_channel_zscore
+normalization_stats_path: outputs/xrs_only/v1_channel_ablation/train_channel_stats_used.json
+model_name: compact_cnn_v1
+cnn_channels:
+- 32
+- 64
+- 128
+- 192
+cnn_stem_kernel_size: 7
+cnn_dropout: 0.2
+pretrained: false
+quantiles:
+- 0.05
+- 0.5
+- 0.95
+optimizer: adamw
+learning_rate: 2.0e-06
+weight_decay: 0.1
+lr_policy: cosine_warmup
+warmup_ratio: 0.1
+epochs: 70
+early_stopping_start_epoch: 4
+early_stopping_patience: 7
+batch_size: 32
+gradient_accumulation_steps: 1
+num_workers: 4
+precision: '32'
+seed: 1
+checkpoint_metric: validation_pinball_loss
