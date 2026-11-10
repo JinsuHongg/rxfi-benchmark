@@ -83,7 +83,9 @@ class QuantileRegressionModule(pl.LightningModule):
         self.save_hyperparameters(config)
         self.config = config
         self.scheduler_metadata: dict[str, Any] = {}
+        self.validation_predictions: list[torch.Tensor] = []
         self.test_predictions: list[torch.Tensor] = []
+        self.collect_validation_predictions = False
         if config["model_name"] in {
             "alexnet",
             "alexnet_small_head",
@@ -439,7 +441,9 @@ class QuantileRegressionModule(pl.LightningModule):
     ) -> torch.Tensor:
         """Run one validation batch for checkpoint selection."""
         del batch_idx
-        loss, _ = self._shared_step(batch, "validation")
+        loss, prediction = self._shared_step(batch, "validation")
+        if self.collect_validation_predictions:
+            self.validation_predictions.append(prediction.detach().float().cpu())
         return loss
 
     def on_test_epoch_start(self) -> None:

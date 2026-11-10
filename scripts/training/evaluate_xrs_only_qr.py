@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate one saved XRS quantile-regression checkpoint on test data."""
+"""Evaluate one saved XRS quantile-regression checkpoint on a frozen split."""
 from __future__ import annotations
 
 import argparse
@@ -38,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb-group", required=True)
     parser.add_argument("--expected-target", required=True)
     parser.add_argument("--expected-seed", required=True, type=int)
+    parser.add_argument("--split", choices=("validation", "test"), default="test")
     parser.add_argument("--task-index", default=os.environ.get("SLURM_ARRAY_TASK_ID", "local"))
     parser.add_argument("--precision", choices=("32", "16-mixed", "bf16-mixed"))
     parser.add_argument("--batch-size", type=int)
@@ -46,7 +47,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def prediction_filename(
-    target: str, seed: int, job_id: str, task_index: str
+    target: str, seed: int, job_id: str, task_index: str, split: str
 ) -> str:
     """Create a flat CSV filename unique to a target and Slurm task."""
     safe_target = re.sub(r"[^A-Za-z0-9_-]", "_", target)
@@ -54,7 +55,7 @@ def prediction_filename(
     safe_task_index = re.sub(r"[^A-Za-z0-9_-]", "_", task_index)
     return (
         f"{safe_target}_seed{seed}_job{safe_job_id}_task{safe_task_index}"
-        "_test_predictions.csv"
+        f"_{split}_predictions.csv"
     )
 
 
@@ -90,14 +91,14 @@ def load_run_config(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str,
     return config, spec
 
 
-def build_run_name(config: dict[str, Any]) -> str:
+def build_run_name(config: dict[str, Any], split: str) -> str:
     """Build a distinct UTC W&B name for one target and seed."""
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M")
     learning_rate = f"{float(config['learning_rate']):.0e}"
     learning_rate = learning_rate.replace("e-0", "e-").replace("e+0", "e+")
     weight_decay = f"{float(config['weight_decay']):g}"
     return (
-        f"{timestamp}-test-{config['model_name']}-{config['target_column']}"
+        f"{timestamp}-{split}-{config['model_name']}-{config['target_column']}"
         f"-lr{learning_rate}-wd{weight_decay}-seed{config['seed']}"
     )
 
@@ -120,8 +121,9 @@ def make_wandb_logger(
     config: dict[str, Any],
     data: SuryaDataModule,
     run_metadata: dict[str, Any],
+    split: str,
 ) -> WandbLogger:
-    """Create a W&B run containing config and test cohort provenance."""
+    """Create a W&B run containing config and split cohort provenance."""
     entity = os.environ.get("WANDB_ENTITY")
     if not entity:
         raise RuntimeError("WANDB_ENTITY must be set")
@@ -130,12 +132,12 @@ def make_wandb_logger(
         "checkpoint_path": str(args.checkpoint.resolve()),
         "checkpoint_selection_split": run_metadata["selection_split"],
         "best_validation_epoch": run_metadata["best_validation_epoch"],
-        "test_cohort": data.cohort["test"],
-        "test_split_csv": str(
-            Path(config["target_split_dir"]) / "test.csv"
+        f"{split}_cohort": data.cohort[split],
+        f"{split}_split_csv": str(
+            Path(config["target_split_dir"]) / f"{split}.csv"
         ),
-        "test_prediction_export_enabled": True,
-        "test_prediction_csv": str(
+        f"{split}_prediction_export_enabled": True,
+        f"{split}_prediction_csv": str(
             args.output_root
             / "predictions"
             / prediction_filename(
@@ -143,6 +145,7 @@ def make_wandb_logger(
                 int(config["seed"]),
                 slurm_job_id(),
                 str(args.task_index),
+                split,
             )
         ),
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
@@ -151,13 +154,13 @@ def make_wandb_logger(
     return WandbLogger(
         entity=entity,
         project=args.wandb_project,
-        name=build_run_name(config),
+        name=build_run_name(config, split),
         group=args.wandb_group,
-        job_type="final-test-evaluation",
+        job_type=f"{split}-checkpoint-evaluation",
         config=logged_config,
         save_dir=str(args.output_root),
         log_model=False,
-        tags=["xrs-only", "compact-cnn-v1", "final-test", config["target_column"]],
+        tags=["xrs-only", "compact-cnn-v1", split, config["target_column"]],
     )
 
 
@@ -177,9 +180,10 @@ def evaluate_checkpoint(
     data: SuryaDataModule,
     run_metadata: dict[str, Any],
 ) -> None:
-    """Run test metrics and sample predictions from the selected checkpoint."""
+    """Run split metrics and sample predictions from the selected checkpoint."""
+    split = args.split
     args.output_root.mkdir(parents=True, exist_ok=True)
-    wandb_logger = make_wandb_logger(args, config, data, run_metadata)
+    wandb_logger = make_wandb_logger(args, config, data, run_metadata, split)
     model = QuantileRegressionModule(config)
     trainer = pl.Trainer(
         accelerator="gpu",
@@ -192,61 +196,74 @@ def evaluate_checkpoint(
         num_sanity_val_steps=0,
     )
     try:
-        test_results = trainer.test(
-            model,
-            dataloaders=data.test_dataloader(),
-            ckpt_path=str(args.checkpoint.resolve()),
-            verbose=True,
-        )
-        save_test_artifacts(
-            model,
+        if split == "validation":
+            model.validation_predictions.clear()
+            model.collect_validation_predictions = True
+            results = trainer.validate(
+                model,
+                dataloaders=data.val_dataloader(),
+                ckpt_path=str(args.checkpoint.resolve()),
+                verbose=True,
+            )
+            predictions = model.validation_predictions
+        else:
+            results = trainer.test(
+                model,
+                dataloaders=data.test_dataloader(),
+                ckpt_path=str(args.checkpoint.resolve()),
+                verbose=True,
+            )
+            predictions = model.test_predictions
+        save_evaluation_artifacts(
             data,
             config,
             spec,
             args,
             run_metadata,
-            test_results,
+            results,
+            predictions,
         )
     finally:
         wandb_logger.experiment.finish()
 
 
-def save_test_artifacts(
-    model: QuantileRegressionModule,
+def save_evaluation_artifacts(
     data: SuryaDataModule,
     config: dict[str, Any],
     spec: dict[str, Any],
     args: argparse.Namespace,
     run_metadata: dict[str, Any],
-    test_results: Sequence[Mapping[str, float]],
+    evaluation_results: Sequence[Mapping[str, float]] | None,
+    predictions: list[torch.Tensor],
 ) -> None:
-    """Write uniquely named per-sample predictions and scalar metrics."""
-    if len(test_results) != 1:
-        raise RuntimeError("Expected exactly one test metric result")
-    predictions = model.test_predictions
+    """Write uniquely named split predictions and scalar metrics."""
+    if evaluation_results is None or len(evaluation_results) != 1:
+        raise RuntimeError("Expected exactly one split metric result")
     if not predictions:
-        raise RuntimeError("Test evaluation returned no sample predictions")
+        raise RuntimeError("Split evaluation returned no sample predictions")
+    split = args.split
     filename = prediction_filename(
         str(config["target_column"]),
         int(config["seed"]),
         slurm_job_id(),
         str(args.task_index),
+        split,
     )
     prediction_path = args.output_root / "predictions" / filename
     rows = prediction_rows(
         predictions,
-        data.records["test"],
+        data.records[split],
         config,
         spec,
     )
     write_csv(prediction_path, rows, PREDICTION_FIELDS)
-    save_test_metrics(
-        args, config, run_metadata, test_results[0], len(rows), filename
+    save_evaluation_metrics(
+        args, config, run_metadata, evaluation_results[0], len(rows), filename
     )
-    logger.info("Saved {} test predictions to {}", len(rows), prediction_path)
+    logger.info("Saved {} {} predictions to {}", len(rows), split, prediction_path)
 
 
-def save_test_metrics(
+def save_evaluation_metrics(
     args: argparse.Namespace,
     config: dict[str, Any],
     run_metadata: dict[str, Any],
@@ -254,14 +271,17 @@ def save_test_metrics(
     sample_count: int,
     prediction_file: str,
 ) -> None:
-    """Store one row of target, checkpoint, cohort, and test metric data."""
+    """Store one row of target, checkpoint, cohort, and split metric data."""
+    split = args.split
     metric_values = {
-        key.removeprefix("test/"): float(value)
+        key.removeprefix(f"{split}/"): float(value)
         for key, value in metrics.items()
     }
     job_id = slurm_job_id()
     task_id = str(args.task_index)
-    output_name = prediction_file.replace("_test_predictions.csv", "_test_metrics.csv")
+    output_name = prediction_file.replace(
+        f"_{split}_predictions.csv", f"_{split}_metrics.csv"
+    )
     row = {
         "target": config["target_column"],
         "model": config["model_name"],
@@ -271,7 +291,7 @@ def save_test_metrics(
         "checkpoint_path": str(args.checkpoint.resolve()),
         "checkpoint_selection_split": run_metadata["selection_split"],
         "best_validation_epoch": run_metadata["best_validation_epoch"],
-        "test_sample_count": sample_count,
+        f"{split}_sample_count": sample_count,
         "prediction_file": prediction_file,
         "slurm_job_id": job_id,
         "slurm_task_id": task_id,
@@ -283,15 +303,15 @@ def save_test_metrics(
 
 
 def main() -> None:
-    """Run one checkpoint-only test evaluation and local exports."""
+    """Run one checkpoint-only split evaluation and local exports."""
     args = parse_args()
     config, spec = load_run_config(args)
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required; refusing CPU fallback")
     run_metadata = checkpoint_metadata(args.checkpoint)
     data = SuryaDataModule(config, spec)
-    data.setup("test")
-    logger.info("Prepared test cohort: {}", data.cohort["test"])
+    data.setup(args.split)
+    logger.info("Prepared {} cohort: {}", args.split, data.cohort[args.split])
     evaluate_checkpoint(args, config, spec, data, run_metadata)
 
 
