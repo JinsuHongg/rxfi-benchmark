@@ -1,0 +1,4 @@
+target,seed,config_path,checkpoint_path
+fluence,1,outputs/xrs_only/v1_operational_skill/manifests/configs/fluence_seed1_all13_validation.yaml,outputs/xrs_only/v1_sweeps/fluence/compact_cnn/lrwd_grid/lr1e-6_wd0p03_seed1_4723066_9/checkpoints/best-epochepoch=007.ckpt
+fluence,2,outputs/xrs_only/v1_operational_skill/manifests/configs/fluence_seed2_all13_validation.yaml,outputs/xrs_only/v1_sweeps/fluence/compact_cnn/lrwd_grid/lr1e-6_wd0p03_seed2_4723068_10/checkpoints/best-epochepoch=020.ckpt
+fluence,3,outputs/xrs_only/v1_operational_skill/manifests/configs/fluence_seed3_all13_validation.yaml,outputs/xrs_only/v1_sweeps/fluence/compact_cnn/lrwd_grid/lr1e-6_wd0p03_seed3_4723070_11/checkpoints/best-epochepoch=007.ckpt

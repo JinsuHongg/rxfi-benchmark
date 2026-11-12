@@ -1,0 +1,12 @@
+{
+  "label_definition": "max_goes_class >= M1.0; validated against label_max",
+  "score_column": "q50_raw",
+  "threshold_selection": "per-run validation CSS maximum; ties: TSS, HSS, POD, higher threshold",
+  "css": "0 if TSS or HSS is negative; otherwise sqrt(TSS * HSS)",
+  "target_runs": 30,
+  "channel_ablation_runs": 27,
+  "physical_max_xflux_threshold": 1e-05,
+  "physical_threshold_units": "W/m^2",
+  "leaky_validation_used": false,
+  "test_used_for_threshold_selection": false
+}
