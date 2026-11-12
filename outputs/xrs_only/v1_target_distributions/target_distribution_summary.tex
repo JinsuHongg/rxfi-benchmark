@@ -1,0 +1,23 @@
+% Requires \usepackage{booktabs,siunitx}
+\begin{table*}[t]
+\centering
+\small
+\caption{Training-split distributions of the ten XRS targets in original target space. Statistics use finite target values among the 70,823 training rows whose timestamps match the input Zarr; missing percentages use these matched rows as the denominator. Background-deviation targets retain negative values. Sample sums are unscaled sums of one-minute observations.}
+\label{tab:v1-target-distributions}
+\begin{tabular}{l l r r r r r r r}
+\toprule
+Target & Scale & $N$ & Missing (\%) & $p_{25}$ & Median & $p_{75}$ & $p_{99}$ & Negative (\%) \\
+\midrule
+Maximum X-ray flux & $\mathrm{W\,m^{-2}}$ & 70699 & 0.18 & \num{1.4796e-07} & \num{1.2609e-06} & \num{5.3666e-06} & \num{1.8539e-04} & 0.00 \\
+Fluence & sample sum & 70699 & 0.18 & \num{6.2372e-05} & \num{4.5177e-04} & \num{1.3081e-03} & \num{1.0530e-02} & 0.00 \\
+Max background deviation, 24 h, q10 & $\mathrm{W\,m^{-2}}$ & 70594 & 0.32 & \num{1.0259e-07} & \num{9.8152e-07} & \num{4.7978e-06} & \num{1.8443e-04} & 0.03 \\
+Max background deviation, 24 h, q50 & $\mathrm{W\,m^{-2}}$ & 70594 & 0.32 & \num{9.2465e-08} & \num{9.3575e-07} & \num{4.6938e-06} & \num{1.8417e-04} & 0.22 \\
+Max background deviation, 2 h, q10 & $\mathrm{W\,m^{-2}}$ & 70235 & 0.83 & \num{9.4488e-08} & \num{9.1929e-07} & \num{4.6634e-06} & \num{1.8438e-04} & 0.26 \\
+Max background deviation, 2 h, q50 & $\mathrm{W\,m^{-2}}$ & 70235 & 0.83 & \num{8.6849e-08} & \num{8.8724e-07} & \num{4.5917e-06} & \num{1.8434e-04} & 0.54 \\
+Total background deviation, 24 h, q10 & sample sum & 70594 & 0.32 & \num{1.2011e-05} & \num{1.0725e-04} & \num{4.8920e-04} & \num{8.5665e-03} & 4.66 \\
+Total background deviation, 24 h, q50 & sample sum & 70594 & 0.32 & \num{2.8182e-06} & \num{5.6450e-05} & \num{3.7451e-04} & \num{8.1513e-03} & 15.04 \\
+Total background deviation, 2 h, q10 & sample sum & 70235 & 0.83 & \num{5.5550e-06} & \num{5.9880e-05} & \num{3.5533e-04} & \num{7.7744e-03} & 11.67 \\
+Total background deviation, 2 h, q50 & sample sum & 70235 & 0.83 & \num{1.1166e-06} & \num{3.4406e-05} & \num{2.8147e-04} & \num{7.3891e-03} & 19.93 \\
+\bottomrule
+\end{tabular}
+\end{table*}

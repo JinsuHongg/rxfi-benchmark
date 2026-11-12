@@ -1,0 +1,52 @@
+{
+  "fit_split": "train",
+  "train_csv": "data/derived_noaa_g17_v222/train.csv",
+  "train_csv_sha256": "f7714579ef9e969d37dd7c173dee7c128f5e86eed2c8af2c71f4779905a4c9a8",
+  "stats_json": "outputs/xrs_only/v1_test_evaluation/summary/train_target_stats.json",
+  "stats_json_sha256": "63503bd74b67915ed4896e3b2b9841bcff732d6bf88fbd41333cd2f9373a8618",
+  "zarr_time_sha256_by_year": {
+    "2010": "68980d8725bfdb69c0ea42c0474e1d451c04396f7f9854232040ac860256dd1b",
+    "2011": "58512a76307a7db8c2993be7d200dfce2c350bcbfdd1c9ff8041fe4e5b5ef7ed",
+    "2012": "aa23ce542c39e728fad0f37b3ffada962e45714c1151e60c53b74868ce4b11d2",
+    "2013": "f50167af143c6e72a12838c44678d1813eefd1c34826571d37ea6d975787292b",
+    "2014": "ca6ce71a16a1ec5823da6d5cea7a8214f00d491109030e6a24cbb690922d910e",
+    "2015": "80aa43ef7e51f172b699eec692ba06e6e4057c4d8a96b55a33055b43449d0921",
+    "2016": "87dd12c68bce87ae632092a0423f10453b598e6c7ba06ba60fe57156fccab04d",
+    "2017": "f262a09d0641244bd66404c321db1ebbbf20b64f643090d2e12f99dc1583d7fe",
+    "2018": "015e23bc3a84e00a19cd9a121019aec17589bf8a69c2253e1c2555941dadd5aa",
+    "2019": "8f561de3dc272557186b7913b25f702c34da599c34a6188084c66f0b0a034b47"
+  },
+  "cohort_rule": "finite target value and timestamp present in Zarr time array, independently per target",
+  "cohort_counts": {
+    "train_rows": 74760,
+    "input_timestamp_matches": 70823,
+    "missing_input_timestamp_rows": 3937,
+    "target_valid_rows": {
+      "max_xflux": 70699,
+      "fluence": 70699,
+      "max_background_deviation_24h_q10": 70594,
+      "max_background_deviation_24h_q50": 70594,
+      "max_background_deviation_2h_q10": 70235,
+      "max_background_deviation_2h_q50": 70235,
+      "total_background_deviation_24h_q10": 70594,
+      "total_background_deviation_24h_q50": 70594,
+      "total_background_deviation_2h_q10": 70235,
+      "total_background_deviation_2h_q50": 70235
+    },
+    "target_missing_rows": {
+      "max_xflux": 124,
+      "fluence": 124,
+      "max_background_deviation_24h_q10": 229,
+      "max_background_deviation_24h_q50": 229,
+      "max_background_deviation_2h_q10": 588,
+      "max_background_deviation_2h_q50": 588,
+      "total_background_deviation_24h_q10": 229,
+      "total_background_deviation_24h_q50": 229,
+      "total_background_deviation_2h_q10": 588,
+      "total_background_deviation_2h_q50": 588
+    }
+  },
+  "plot": "10-panel empirical CDF of asinh(y / s), before per-target z-score normalization",
+  "summary_table_space": "original target space; finite values only",
+  "test_or_validation_data_used": false
+}
