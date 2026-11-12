@@ -1,0 +1,32 @@
+% Requires \usepackage{booktabs,graphicx,siunitx}
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Test-set q50 regression performance for the ten v1 targets. Each entry is the mean $\pm$ sample standard deviation across three seeds. For each target, the LR/WD condition was selected by mean validation pinball loss across seeds, and each seed's checkpoint was selected by the same full pinball loss averaged over $q_{05}$, $q_{50}$, and $q_{95}$. Test metrics were not used for selection.}
+\label{tab:v1-target-test-results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r c c c c c c c c c}
+\toprule
+& & \multicolumn{5}{c}{Transformed target space} & \multicolumn{4}{c}{Original target space} \\
+\cmidrule(lr){3-7} \cmidrule(lr){8-11}
+Target & $N_{\mathrm{test}}$ & Pinball ($q_{50}$) & MAE & RMSE & Spearman ($\rho$) & $R^2$ & MAE & RMSE & Spearman ($\rho$) & $R^2$ \\
+\midrule
+Maximum X-ray flux & 41910 & $\num{0.242} \pm \num{0.0115}$ & $\num{0.484} \pm \num{0.0231}$ & $\num{0.722} \pm \num{0.0357}$ & $\num{0.867} \pm \num{0.00598}$ & $\num{0.603} \pm \num{0.0389}$ & $\num{2.38e-05} \pm \num{6.3e-06}$ & $\num{0.000212} \pm \num{6.37e-05}$ & $\num{0.867} \pm \num{0.00598}$ & $\num{-15.5} \pm \num{9.59}$ \\
+Fluence & 41910 & $\num{0.19} \pm \num{0.0282}$ & $\num{0.381} \pm \num{0.0565}$ & $\num{0.583} \pm \num{0.0829}$ & $\num{0.952} \pm \num{0.0028}$ & $\num{0.785} \pm \num{0.0585}$ & $\num{0.00285} \pm \num{0.00135}$ & $\num{0.0156} \pm \num{0.00771}$ & $\num{0.952} \pm \num{0.0028}$ & $\num{-20.5} \pm \num{19.8}$ \\
+Max. background dev. (24 h, $q_{10}$) & 41910 & $\num{0.254} \pm \num{0.00992}$ & $\num{0.509} \pm \num{0.0198}$ & $\num{0.749} \pm \num{0.0316}$ & $\num{0.846} \pm \num{0.00832}$ & $\num{0.566} \pm \num{0.0362}$ & $\num{2.14e-05} \pm \num{3.94e-06}$ & $\num{0.00024} \pm \num{0.000138}$ & $\num{0.846} \pm \num{0.00832}$ & $\num{-23.6} \pm \num{22.1}$ \\
+Max. background dev. (24 h, $q_{50}$) & 41910 & $\num{0.257} \pm \num{0.0101}$ & $\num{0.514} \pm \num{0.0203}$ & $\num{0.755} \pm \num{0.0322}$ & $\num{0.842} \pm \num{0.00837}$ & $\num{0.557} \pm \num{0.0373}$ & $\num{2.12e-05} \pm \num{3.87e-06}$ & $\num{0.00024} \pm \num{0.00014}$ & $\num{0.842} \pm \num{0.00837}$ & $\num{-23.9} \pm \num{22.7}$ \\
+Max. background dev. (2 h, $q_{10}$) & 41904 & $\num{0.257} \pm \num{0.00981}$ & $\num{0.514} \pm \num{0.0196}$ & $\num{0.76} \pm \num{0.0313}$ & $\num{0.836} \pm \num{0.00645}$ & $\num{0.552} \pm \num{0.0364}$ & $\num{1.87e-05} \pm \num{3.41e-06}$ & $\num{0.000129} \pm \num{5.34e-05}$ & $\num{0.836} \pm \num{0.00645}$ & $\num{-5.53} \pm \num{4.28}$ \\
+Max. background dev. (2 h, $q_{50}$) & 41904 & $\num{0.259} \pm \num{0.0091}$ & $\num{0.517} \pm \num{0.0182}$ & $\num{0.769} \pm \num{0.027}$ & $\num{0.828} \pm \num{0.00592}$ & $\num{0.54} \pm \num{0.032}$ & $\num{1.92e-05} \pm \num{2.25e-06}$ & $\num{0.000134} \pm \num{2.22e-05}$ & $\num{0.828} \pm \num{0.00592}$ & $\num{-5.51} \pm \num{2.02}$ \\
+Total background dev. (24 h, $q_{10}$) & 41910 & $\num{0.253} \pm \num{0.0068}$ & $\num{0.506} \pm \num{0.0136}$ & $\num{0.755} \pm \num{0.00894}$ & $\num{0.825} \pm \num{0.00384}$ & $\num{0.6} \pm \num{0.0095}$ & $\num{0.00149} \pm \num{0.000367}$ & $\num{0.0158} \pm \num{0.00602}$ & $\num{0.825} \pm \num{0.00384}$ & $\num{-35.1} \pm \num{23}$ \\
+Total background dev. (24 h, $q_{50}$) & 41910 & $\num{0.318} \pm \num{0.0188}$ & $\num{0.635} \pm \num{0.0376}$ & $\num{0.996} \pm \num{0.00289}$ & $\num{0.673} \pm \num{0.00385}$ & $\num{0.319} \pm \num{0.00395}$ & $\num{0.00134} \pm \num{0.000212}$ & $\num{0.011} \pm \num{0.0012}$ & $\num{0.673} \pm \num{0.00385}$ & $\num{-17.4} \pm \num{3.89}$ \\
+Total background dev. (2 h, $q_{10}$) & 41904 & $\num{0.316} \pm \num{0.00463}$ & $\num{0.631} \pm \num{0.00926}$ & $\num{1.12} \pm \num{0.015}$ & $\num{0.636} \pm \num{0.00529}$ & $\num{0.173} \pm \num{0.0222}$ & $\num{0.00113} \pm \num{4.43e-05}$ & $\num{0.0045} \pm \num{0.000843}$ & $\num{0.636} \pm \num{0.00529}$ & $\num{-1.82} \pm \num{1.09}$ \\
+Total background dev. (2 h, $q_{50}$) & 41904 & $\num{0.352} \pm \num{0.00412}$ & $\num{0.705} \pm \num{0.00825}$ & $\num{1.21} \pm \num{0.0122}$ & $\num{0.519} \pm \num{0.00747}$ & $\num{0.0614} \pm \num{0.0189}$ & $\num{8.68e+11} \pm \num{1.5e+12}$ & $\num{1.78e+14} \pm \num{3.08e+14}$ & $\num{0.519} \pm \num{0.00747}$ & $\num{-1.08e+34} \pm \num{1.86e+34}$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{1mm}
+\begin{minipage}{\textwidth}
+\footnotesize $N_{\mathrm{test}}$ is the number of eligible test samples. All metrics use the predicted median ($q_{50}$). Original-space metrics use the inverse-transformed, un-clipped sample predictions. The test set had been inspected in earlier analyses, so these results are descriptive rather than independent confirmatory estimates.
+\end{minipage}
+\end{table*}

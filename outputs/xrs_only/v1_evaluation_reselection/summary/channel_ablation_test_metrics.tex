@@ -1,0 +1,39 @@
+% Requires \usepackage{booktabs,graphicx,siunitx}
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Test-set fluence performance for 17 v1 input-channel conditions. Each entry is the mean $\pm$ sample standard deviation across three seeds. Within each input condition, the LR/WD setting was selected by mean validation pinball loss across seeds, and each seed's checkpoint was selected by the same full pinball loss averaged over $q_{05}$, $q_{50}$, and $q_{95}$. Test metrics were not used for selection.}
+\label{tab:v1-channel-ablation-test-results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r r c c c c c c c c c}
+\toprule
+Input condition & $C$ & $N_{\mathrm{test}}$ & \multicolumn{5}{c}{Transformed target space} & \multicolumn{4}{c}{Original target space} \\
+\cmidrule(lr){4-8} \cmidrule(lr){9-12}
+& & & Pinball ($q_{50}$) & MAE & RMSE & Spearman ($\rho$) & $R^2$ & MAE & RMSE & Spearman ($\rho$) & $R^2$ \\
+\midrule
+All 13 channels & 13 & 41910 & $\num{0.19} \pm \num{0.0283}$ & $\num{0.381} \pm \num{0.0566}$ & $\num{0.584} \pm \num{0.0832}$ & $\num{0.952} \pm \num{0.0028}$ & $\num{0.785} \pm \num{0.0587}$ & $\num{0.00285} \pm \num{0.00135}$ & $\num{0.0156} \pm \num{0.00775}$ & $\num{0.952} \pm \num{0.0028}$ & $\num{-20.6} \pm \num{20}$ \\
+AIA 8 channels & 8 & 41910 & $\num{0.18} \pm \num{0.0296}$ & $\num{0.359} \pm \num{0.0593}$ & $\num{0.538} \pm \num{0.0701}$ & $\num{0.952} \pm \num{0.00231}$ & $\num{0.817} \pm \num{0.0489}$ & $\num{0.00128} \pm \num{0.000169}$ & $\num{0.00566} \pm \num{0.00215}$ & $\num{0.952} \pm \num{0.00231}$ & $\num{-1.67} \pm \num{1.75}$ \\
+HMI 5 channels & 5 & 41910 & $\num{0.211} \pm \num{0.0124}$ & $\num{0.422} \pm \num{0.0247}$ & $\num{0.601} \pm \num{0.0404}$ & $\num{0.919} \pm \num{0.00352}$ & $\num{0.774} \pm \num{0.0297}$ & $\num{0.00194} \pm \num{0.000265}$ & $\num{0.00555} \pm \num{0.000918}$ & $\num{0.919} \pm \num{0.00352}$ & $\num{-1.39} \pm \num{0.776}$ \\
+Single AIA 131 & 1 & 41910 & $\num{0.193} \pm \num{0.014}$ & $\num{0.386} \pm \num{0.0281}$ & $\num{0.543} \pm \num{0.0319}$ & $\num{0.932} \pm \num{0.00134}$ & $\num{0.816} \pm \num{0.0219}$ & $\num{0.00169} \pm \num{0.000212}$ & $\num{0.0064} \pm \num{0.00142}$ & $\num{0.932} \pm \num{0.00134}$ & $\num{-2.22} \pm \num{1.37}$ \\
+Single AIA 171 & 1 & 41910 & $\num{0.199} \pm \num{0.00224}$ & $\num{0.398} \pm \num{0.00448}$ & $\num{0.605} \pm \num{0.00522}$ & $\num{0.909} \pm \num{0.000863}$ & $\num{0.772} \pm \num{0.00395}$ & $\num{0.00123} \pm \num{5.13e-06}$ & $\num{0.0031} \pm \num{1.43e-05}$ & $\num{0.909} \pm \num{0.000863}$ & $\num{0.268} \pm \num{0.00677}$ \\
+Single AIA 193 & 1 & 41910 & $\num{0.486} \pm \num{0.0343}$ & $\num{0.971} \pm \num{0.0685}$ & $\num{1.25} \pm \num{0.0816}$ & $\num{0.912} \pm \num{0.0016}$ & $\num{0.0246} \pm \num{0.129}$ & $\num{0.00912} \pm \num{0.00214}$ & $\num{0.0252} \pm \num{0.0106}$ & $\num{0.912} \pm \num{0.0016}$ & $\num{-53.3} \pm \num{43.6}$ \\
+Single AIA 211 & 1 & 41910 & $\num{0.558} \pm \num{0.0273}$ & $\num{1.12} \pm \num{0.0546}$ & $\num{1.4} \pm \num{0.0836}$ & $\num{0.91} \pm \num{0.00475}$ & $\num{-0.226} \pm \num{0.146}$ & $\num{0.0121} \pm \num{0.00329}$ & $\num{0.0332} \pm \num{0.0137}$ & $\num{0.91} \pm \num{0.00475}$ & $\num{-92.5} \pm \num{68.3}$ \\
+Single AIA 1600 & 1 & 41910 & $\num{0.682} \pm \num{0.0568}$ & $\num{1.36} \pm \num{0.114}$ & $\num{1.74} \pm \num{0.124}$ & $\num{0.779} \pm \num{0.171}$ & $\num{-0.901} \pm \num{0.274}$ & $\num{0.0022} \pm \num{5.42e-05}$ & $\num{0.00418} \pm \num{4.36e-05}$ & $\num{0.779} \pm \num{0.171}$ & $\num{-0.334} \pm \num{0.0279}$ \\
+Single HMI M & 1 & 41910 & $\num{0.177} \pm \num{0.00406}$ & $\num{0.354} \pm \num{0.00811}$ & $\num{0.524} \pm \num{0.00839}$ & $\num{0.927} \pm \num{0.0012}$ & $\num{0.829} \pm \num{0.00551}$ & $\num{0.00134} \pm \num{7.85e-05}$ & $\num{0.0034} \pm \num{0.000204}$ & $\num{0.927} \pm \num{0.0012}$ & $\num{0.117} \pm \num{0.106}$ \\
+AIA 131 + AIA 1600 & 2 & 41910 & $\num{0.186} \pm \num{0.00933}$ & $\num{0.372} \pm \num{0.0187}$ & $\num{0.559} \pm \num{0.0322}$ & $\num{0.924} \pm \num{0.00177}$ & $\num{0.805} \pm \num{0.0228}$ & $\num{0.00134} \pm \num{0.000189}$ & $\num{0.00629} \pm \num{0.00337}$ & $\num{0.924} \pm \num{0.00177}$ & $\num{-2.6} \pm \num{3.67}$ \\
+AIA 131 + AIA 193 & 2 & 41910 & $\num{0.182} \pm \num{0.0228}$ & $\num{0.365} \pm \num{0.0455}$ & $\num{0.541} \pm \num{0.0611}$ & $\num{0.945} \pm \num{0.00181}$ & $\num{0.816} \pm \num{0.0424}$ & $\num{0.0488} \pm \num{0.0817}$ & $\num{8.7} \pm \num{14.9}$ & $\num{0.945} \pm \num{0.00181}$ & $\num{-1.71e+07} \pm \num{2.97e+07}$ \\
+AIA 131 + AIA 211 & 2 & 41910 & $\num{0.172} \pm \num{0.00128}$ & $\num{0.343} \pm \num{0.00257}$ & $\num{0.486} \pm \num{0.00699}$ & $\num{0.936} \pm \num{0.00145}$ & $\num{0.853} \pm \num{0.00422}$ & $\num{0.00126} \pm \num{7.94e-05}$ & $\num{0.00689} \pm \num{0.00163}$ & $\num{0.936} \pm \num{0.00145}$ & $\num{-2.75} \pm \num{1.74}$ \\
+AIA 1600 + AIA 193 & 2 & 41910 & $\num{0.221} \pm \num{0.0412}$ & $\num{0.442} \pm \num{0.0824}$ & $\num{0.636} \pm \num{0.129}$ & $\num{0.906} \pm \num{0.00109}$ & $\num{0.741} \pm \num{0.108}$ & $\num{0.00136} \pm \num{0.000151}$ & $\num{0.00324} \pm \num{0.00021}$ & $\num{0.906} \pm \num{0.00109}$ & $\num{0.197} \pm \num{0.105}$ \\
+AIA 131 + 1600 + 193 & 3 & 41910 & $\num{0.229} \pm \num{0.0218}$ & $\num{0.458} \pm \num{0.0436}$ & $\num{0.669} \pm \num{0.0533}$ & $\num{0.942} \pm \num{0.00296}$ & $\num{0.72} \pm \num{0.0437}$ & $\num{0.972} \pm \num{1.64}$ & $\num{183} \pm \num{308}$ & $\num{0.942} \pm \num{0.00296}$ & $\num{-7.38e+09} \pm \num{1.28e+10}$ \\
+AIA 211 + AIA 193 & 2 & 41910 & $\num{0.565} \pm \num{0.054}$ & $\num{1.13} \pm \num{0.108}$ & $\num{1.46} \pm \num{0.124}$ & $\num{0.915} \pm \num{0.000535}$ & $\num{-0.341} \pm \num{0.221}$ & $\num{0.0154} \pm \num{0.00262}$ & $\num{0.0446} \pm \num{0.00389}$ & $\num{0.915} \pm \num{0.000535}$ & $\num{-152} \pm \num{26.5}$ \\
+AIA 211 + AIA 1600 & 2 & 41910 & $\num{0.208} \pm \num{0.0197}$ & $\num{0.416} \pm \num{0.0394}$ & $\num{0.598} \pm \num{0.0687}$ & $\num{0.901} \pm \num{0.00621}$ & $\num{0.775} \pm \num{0.0523}$ & $\num{0.00126} \pm \num{7.09e-05}$ & $\num{0.00306} \pm \num{0.000189}$ & $\num{0.901} \pm \num{0.00621}$ & $\num{0.282} \pm \num{0.0888}$ \\
+AIA 193 + 211 + 1600 & 3 & 41910 & $\num{0.281} \pm \num{0.0342}$ & $\num{0.562} \pm \num{0.0685}$ & $\num{0.75} \pm \num{0.0894}$ & $\num{0.909} \pm \num{0.00486}$ & $\num{0.646} \pm \num{0.0849}$ & $\num{0.00268} \pm \num{0.000763}$ & $\num{0.00579} \pm \num{0.00176}$ & $\num{0.909} \pm \num{0.00486}$ & $\num{-1.71} \pm \num{1.69}$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{1mm}
+\begin{minipage}{\textwidth}
+\footnotesize $N_{\mathrm{test}}$ is the number of eligible test samples. AIA channel numbers denote wavelengths in angstroms. All metrics use $q_{50}$. Original-space metrics use inverse-transformed, un-clipped predictions. Test outcomes had been inspected during prior channel exploration; comparisons are exploratory. The all-channel row reuses the same fluence checkpoints shown in the target table.
+\end{minipage}
+\end{table*}
