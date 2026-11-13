@@ -41,6 +41,9 @@ CHANNEL_CONDITIONS = (
     "single_aia211",
     "single_aia1600",
     "single_hmi_m",
+    "aia211_aia193",
+    "aia211_aia1600",
+    "aia193_aia211_aia1600",
 )
 METRIC_NAMES = (
     "n",
@@ -229,7 +232,7 @@ def target_specs(
 def channel_specs(
     root: Path, summary_path: Path, index: dict[tuple[str, str], Path]
 ) -> list[RunSpec]:
-    """Build paired predictions for the nine established channel conditions."""
+    """Build paired predictions for the configured channel conditions."""
     rows = read_csv(summary_path)
     selected = [row for row in rows if row["input_condition"] in CHANNEL_CONDITIONS]
     actual = {(row["input_condition"], int(row["seed"])) for row in selected}
@@ -237,9 +240,7 @@ def channel_specs(
         (condition, seed) for condition in CHANNEL_CONDITIONS for seed in (1, 2, 3)
     }
     if actual != expected or len(selected) != len(expected):
-        raise ValueError(
-            "channel test summary must contain nine conditions for seeds 1–3"
-        )
+        raise ValueError("channel test summary is missing configured conditions")
 
     specs: list[RunSpec] = []
     for row in selected:
@@ -264,9 +265,12 @@ def channel_specs(
 def find_channel_test_prediction(
     root: Path, summary_path: Path, row: dict[str, str]
 ) -> Path:
-    """Resolve channel test predictions across the two historical output roots."""
+    """Resolve channel test predictions across established output roots."""
     candidates = (
         summary_path.parent.parent / "predictions" / row["prediction_file"],
+        root
+        / "outputs/xrs_only/v1_channel_ablation_test/predictions"
+        / row["prediction_file"],
         root
         / "outputs/xrs_only/v1_test_evaluation/predictions"
         / row["prediction_file"],
