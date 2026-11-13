@@ -53,14 +53,14 @@ TARGET_LABELS = {
     "total_background_deviation_2h_q50": "Total background deviation · 2 h · q50",
 }
 HISTOGRAM_TARGET_LABELS = {
-    "max_background_deviation_24h_q10": "Background-subtracted X-ray flux\n(max, 24 h, q10)",
-    "max_background_deviation_24h_q50": "Background-subtracted X-ray flux\n(max, 24 h, q50)",
-    "max_background_deviation_2h_q10": "Background-subtracted X-ray flux\n(max, 2 h, q10)",
-    "max_background_deviation_2h_q50": "Background-subtracted X-ray flux\n(max, 2 h, q50)",
-    "total_background_deviation_24h_q10": "Background-subtracted X-ray flux\n(cumulative, 24 h, q10)",
-    "total_background_deviation_24h_q50": "Background-subtracted X-ray flux\n(cumulative, 24 h, q50)",
-    "total_background_deviation_2h_q10": "Background-subtracted X-ray flux\n(cumulative, 2 h, q10)",
-    "total_background_deviation_2h_q50": "Background-subtracted X-ray flux\n(cumulative, 2 h, q50)",
+    "max_background_deviation_24h_q10": "Max. BS X-ray flux (24 h, q10)",
+    "max_background_deviation_24h_q50": "Max. BS X-ray flux (24 h, q50)",
+    "max_background_deviation_2h_q10": "Max. BS X-ray flux (2 h, q10)",
+    "max_background_deviation_2h_q50": "Max. BS X-ray flux (2 h, q50)",
+    "total_background_deviation_24h_q10": "Cum. BS X-ray flux (24 h, q10)",
+    "total_background_deviation_24h_q50": "Cum. BS X-ray flux (24 h, q50)",
+    "total_background_deviation_2h_q10": "Cum. BS X-ray flux (2 h, q10)",
+    "total_background_deviation_2h_q50": "Cum. BS X-ray flux (2 h, q50)",
 }
 TARGET_UNITS = {
     "max_xflux": "W m^-2",
