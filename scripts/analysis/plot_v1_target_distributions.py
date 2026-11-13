@@ -278,11 +278,15 @@ def configure_plot_style() -> None:
     """Set readable fonts and embedded vector text for manuscript output."""
     matplotlib.rcParams.update(
         {
-            "font.size": 8,
-            "axes.titlesize": 9,
-            "axes.labelsize": 8,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 7,
+            "font.family": "serif",
+            "font.serif": ["STIXGeneral", "DejaVu Serif"],
+            "mathtext.fontset": "stix",
+            "font.size": 10,
+            "axes.titlesize": 10.5,
+            "axes.labelsize": 10,
+            "axes.titlepad": 5,
+            "xtick.labelsize": 10.5,
+            "ytick.labelsize": 10.5,
             "pdf.fonttype": 42,
             "svg.fonttype": "none",
         }
