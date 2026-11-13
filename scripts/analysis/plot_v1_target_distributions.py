@@ -52,6 +52,16 @@ TARGET_LABELS = {
     "total_background_deviation_2h_q10": "Total background deviation · 2 h · q10",
     "total_background_deviation_2h_q50": "Total background deviation · 2 h · q50",
 }
+HISTOGRAM_TARGET_LABELS = {
+    "max_background_deviation_24h_q10": "Background-subtracted X-ray flux\n(max, 24 h, q10)",
+    "max_background_deviation_24h_q50": "Background-subtracted X-ray flux\n(max, 24 h, q50)",
+    "max_background_deviation_2h_q10": "Background-subtracted X-ray flux\n(max, 2 h, q10)",
+    "max_background_deviation_2h_q50": "Background-subtracted X-ray flux\n(max, 2 h, q50)",
+    "total_background_deviation_24h_q10": "Background-subtracted X-ray flux\n(cumulative, 24 h, q10)",
+    "total_background_deviation_24h_q50": "Background-subtracted X-ray flux\n(cumulative, 24 h, q50)",
+    "total_background_deviation_2h_q10": "Background-subtracted X-ray flux\n(cumulative, 2 h, q10)",
+    "total_background_deviation_2h_q50": "Background-subtracted X-ray flux\n(cumulative, 2 h, q50)",
+}
 TARGET_UNITS = {
     "max_xflux": "W m^-2",
     "fluence": "unscaled one-minute sample sum",
@@ -363,7 +373,8 @@ def draw_histogram(
         edgecolor="white",
         linewidth=0.25,
     )
-    _ = axis.set_title(TARGET_LABELS[target], loc="left")
+    label = HISTOGRAM_TARGET_LABELS.get(target, TARGET_LABELS[target])
+    _ = axis.set_title(label, loc="left")
     axis.grid(axis="y", color="#D9D9D9", linewidth=0.6)
     axis.spines[["top", "right"]].set_visible(False)
 
