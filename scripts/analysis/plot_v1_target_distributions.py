@@ -84,6 +84,8 @@ DEFAULT_TRAIN_CSV = Path("data/derived_noaa_g17_v222/train.csv")
 DEFAULT_STATS_JSON = Path("outputs/xrs_only/v1_test_evaluation/summary/train_target_stats.json")
 DEFAULT_OUTPUT_DIR = Path("outputs/xrs_only/v1_target_distributions")
 DEFAULT_HISTOGRAM_BINS = 80
+FIGURE_XLABEL_Y = 0.02
+SUBPLOT_BOTTOM_MARGIN = 0.035
 SUMMARY_COLUMNS: tuple[str, ...] = (
     "target",
     "units",
@@ -337,9 +339,13 @@ def save_ecdf_figure(output_dir: Path, distributions: dict[str, FloatArray]) -> 
     axes = cast(list[Axes], raw_axes.flat)
     for axis, target in zip(axes, TARGET_ORDER, strict=True):
         draw_distribution(axis, target, distributions[target])
-    _ = figure.supxlabel(r"Scaled signed transform, $\mathrm{asinh}(y/s)$")
+    _ = figure.supxlabel(
+        r"Scaled signed transform, $\mathrm{asinh}(y/s)$", y=FIGURE_XLABEL_Y
+    )
     _ = figure.supylabel("Empirical cumulative fraction")
-    _ = figure.tight_layout(rect=(0.035, 0.025, 1, 1), h_pad=1.0, w_pad=0.9)
+    _ = figure.tight_layout(
+        rect=(0.035, SUBPLOT_BOTTOM_MARGIN, 1, 1), h_pad=1.0, w_pad=0.9
+    )
     _ = figure.savefig(output_dir / "v1_target_train_distributions_asinh_ecdf.pdf")
     _ = figure.savefig(
         output_dir / "v1_target_train_distributions_asinh_ecdf.png",
@@ -391,9 +397,13 @@ def save_histogram_figure(
     axes = cast(list[Axes], raw_axes.flat)
     for axis, target in zip(axes, TARGET_ORDER, strict=True):
         draw_histogram(axis, target, distributions[target], edges)
-    _ = figure.supxlabel(r"Scaled signed transform, $\mathrm{asinh}(y/s)$")
+    _ = figure.supxlabel(
+        r"Scaled signed transform, $\mathrm{asinh}(y/s)$", y=FIGURE_XLABEL_Y
+    )
     _ = figure.supylabel("Probability density")
-    _ = figure.tight_layout(rect=(0.035, 0.025, 1, 1), h_pad=1.0, w_pad=0.9)
+    _ = figure.tight_layout(
+        rect=(0.035, SUBPLOT_BOTTOM_MARGIN, 1, 1), h_pad=1.0, w_pad=0.9
+    )
     _ = figure.savefig(output_dir / "v1_target_train_distributions_asinh_histogram.pdf")
     _ = figure.savefig(
         output_dir / "v1_target_train_distributions_asinh_histogram.png",
