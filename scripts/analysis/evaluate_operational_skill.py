@@ -44,6 +44,11 @@ CHANNEL_CONDITIONS = (
     "aia211_aia193",
     "aia211_aia1600",
     "aia193_aia211_aia1600",
+    "aia131_aia1600",
+    "aia131_aia1600_aia193",
+    "aia131_aia193",
+    "aia131_aia211",
+    "aia1600_aia193",
 )
 METRIC_NAMES = (
     "n",
@@ -270,6 +275,9 @@ def find_channel_test_prediction(
         summary_path.parent.parent / "predictions" / row["prediction_file"],
         root
         / "outputs/xrs_only/v1_channel_ablation_test/predictions"
+        / row["prediction_file"],
+        root
+        / "outputs/xrs_only/v1_channel_exploration_test/predictions"
         / row["prediction_file"],
         root
         / "outputs/xrs_only/v1_test_evaluation/predictions"
@@ -580,7 +588,7 @@ def parse_args() -> EvaluationArgs:
         "--channel-test-summary",
         type=Path,
         default=ROOT
-        / "outputs/xrs_only/v1_channel_ablation_test/summary/test_metrics_summary.csv",
+        / "outputs/xrs_only/v1_channel_combinations_test/summary/operational_test_metrics_summary.csv",
     )
     _ = parser.add_argument(
         "--output-dir",
