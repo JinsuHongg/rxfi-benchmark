@@ -363,7 +363,7 @@ def draw_histogram(
         edgecolor="white",
         linewidth=0.25,
     )
-    _ = axis.set_title(f"{TARGET_LABELS[target]}  (n={values.size:,})", loc="left")
+    _ = axis.set_title(TARGET_LABELS[target], loc="left")
     axis.grid(axis="y", color="#D9D9D9", linewidth=0.6)
     axis.spines[["top", "right"]].set_visible(False)
 
