@@ -73,6 +73,7 @@ FAMILY_COLORS = {
 DEFAULT_TRAIN_CSV = Path("data/derived_noaa_g17_v222/train.csv")
 DEFAULT_STATS_JSON = Path("outputs/xrs_only/v1_test_evaluation/summary/train_target_stats.json")
 DEFAULT_OUTPUT_DIR = Path("outputs/xrs_only/v1_target_distributions")
+DEFAULT_HISTOGRAM_BINS = 80
 SUMMARY_COLUMNS: tuple[str, ...] = (
     "target",
     "units",
@@ -123,6 +124,7 @@ class PlotArgs:
     zarr_path: Path
     stats_json: Path
     output_dir: Path
+    histogram_bins: int
 
 
 def parse_args() -> PlotArgs:
@@ -132,12 +134,16 @@ def parse_args() -> PlotArgs:
     _ = parser.add_argument("--zarr-path", type=Path, default=DEFAULT_ZARR_PATH)
     _ = parser.add_argument("--stats-json", type=Path, default=DEFAULT_STATS_JSON)
     _ = parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    _ = parser.add_argument(
+        "--histogram-bins", type=int, default=DEFAULT_HISTOGRAM_BINS
+    )
     parsed = parser.parse_args()
     return PlotArgs(
         train_csv=cast(Path, parsed.train_csv),
         zarr_path=cast(Path, parsed.zarr_path),
         stats_json=cast(Path, parsed.stats_json),
         output_dir=cast(Path, parsed.output_dir),
+        histogram_bins=cast(int, parsed.histogram_bins),
     )
 
 
@@ -310,7 +316,7 @@ def draw_distribution(axis: Axes, target: str, values: FloatArray) -> None:
     axis.spines[["top", "right"]].set_visible(False)
 
 
-def save_figure(output_dir: Path, distributions: dict[str, FloatArray]) -> None:
+def save_ecdf_figure(output_dir: Path, distributions: dict[str, FloatArray]) -> None:
     """Save the 10-panel ECDF figure as publication PDF and preview PNG."""
     configure_plot_style()
     figure, raw_axes = plt.subplots(5, 2, figsize=(8.2, 10.5), sharey=True)
@@ -323,6 +329,59 @@ def save_figure(output_dir: Path, distributions: dict[str, FloatArray]) -> None:
     _ = figure.savefig(output_dir / "v1_target_train_distributions_asinh_ecdf.pdf")
     _ = figure.savefig(
         output_dir / "v1_target_train_distributions_asinh_ecdf.png",
+        dpi=300,
+        facecolor="white",
+    )
+    plt.close(figure)
+
+
+def histogram_edges(
+    distributions: dict[str, FloatArray], bin_count: int
+) -> FloatArray:
+    """Create common bin edges that cover every transformed observation."""
+    if bin_count < 10:
+        raise ValueError("At least ten histogram bins are required")
+    all_values = np.concatenate(
+        [distributions[target] for target in TARGET_ORDER]
+    )
+    return np.linspace(float(np.min(all_values)), float(np.max(all_values)), bin_count + 1)
+
+
+def draw_histogram(
+    axis: Axes, target: str, values: FloatArray, edges: FloatArray
+) -> None:
+    """Draw a density-normalized histogram for one transformed target."""
+    _ = axis.hist(
+        values,
+        bins=cast(list[float], edges.tolist()),
+        density=True,
+        color=FAMILY_COLORS[target_family(target)],
+        edgecolor="white",
+        linewidth=0.25,
+    )
+    _ = axis.set_title(f"{TARGET_LABELS[target]}  (n={values.size:,})", loc="left")
+    axis.grid(axis="y", color="#D9D9D9", linewidth=0.6)
+    axis.spines[["top", "right"]].set_visible(False)
+
+
+def save_histogram_figure(
+    output_dir: Path,
+    distributions: dict[str, FloatArray],
+    bin_count: int,
+) -> None:
+    """Save common-bin, density-normalized target histograms."""
+    configure_plot_style()
+    edges = histogram_edges(distributions, bin_count)
+    figure, raw_axes = plt.subplots(5, 2, figsize=(8.2, 10.5), sharex=True)
+    axes = cast(list[Axes], raw_axes.flat)
+    for axis, target in zip(axes, TARGET_ORDER, strict=True):
+        draw_histogram(axis, target, distributions[target], edges)
+    _ = figure.supxlabel(r"Scaled signed transform, $\mathrm{asinh}(y/s)$")
+    _ = figure.supylabel("Probability density")
+    _ = figure.tight_layout(rect=(0.035, 0.025, 1, 1), h_pad=1.0, w_pad=0.9)
+    _ = figure.savefig(output_dir / "v1_target_train_distributions_asinh_histogram.pdf")
+    _ = figure.savefig(
+        output_dir / "v1_target_train_distributions_asinh_histogram.png",
         dpi=300,
         facecolor="white",
     )
@@ -350,14 +409,18 @@ def tex_num(value: float) -> str:
     return rf"\num{{{value:.4e}}}"
 
 
-def write_summary_tex(output_dir: Path, rows: list[dict[str, str | int | float]]) -> None:
+def write_summary_tex(
+    output_dir: Path,
+    rows: list[dict[str, str | int | float]],
+    matched_row_count: int,
+) -> None:
     """Write a compact manuscript table of raw-space target quantiles."""
     lines = [
         r"% Requires \usepackage{booktabs,siunitx}",
         r"\begin{table*}[t]",
         r"\centering",
         r"\small",
-        r"\caption{Training-split distributions of the ten XRS targets in original target space. Statistics use finite target values among the 70,823 training rows whose timestamps match the input Zarr; missing percentages use these matched rows as the denominator. Background-deviation targets retain negative values. Sample sums are unscaled sums of one-minute observations.}",
+        rf"\caption{{Training-split distributions of the ten XRS targets in original target space. Statistics use finite target values among the {matched_row_count:,} training rows whose timestamps match the input Zarr; missing percentages use these matched rows as the denominator. Background-deviation targets retain negative values. Sample sums are unscaled sums of one-minute observations.}}",
         r"\label{tab:v1-target-distributions}",
         r"\begin{tabular}{l l r r r r r r r}",
         r"\toprule",
@@ -390,6 +453,7 @@ def write_metadata(
     stats_path: Path,
     stats: StatsDocument,
     zarr_hashes: dict[str, str],
+    histogram_bins: int,
 ) -> None:
     """Record exact input provenance and the plotting cohort."""
     train_csv_record = train_csv.resolve().relative_to(ROOT).as_posix()
@@ -412,7 +476,12 @@ def write_metadata(
                 for name, count in stats.target_valid_rows.items()
             },
         },
-        "plot": "10-panel empirical CDF of asinh(y / s), before per-target z-score normalization",
+        "plots": [
+            "10-panel empirical CDF of asinh(y / s), before per-target z-score normalization",
+            "10-panel density histogram of asinh(y / s), before per-target z-score normalization",
+        ],
+        "histogram_bins": histogram_bins,
+        "histogram_bin_edge_rule": "one shared set of equal-width bins spanning all transformed training values",
         "summary_table_space": "original target space; finite values only",
         "test_or_validation_data_used": False,
     }
@@ -425,13 +494,23 @@ def main() -> None:
     """Generate and save the V1 target-distribution artifacts."""
     args = parse_args()
     stats = load_stats(args.stats_json)
+    if args.histogram_bins < 10:
+        raise ValueError("At least ten histogram bins are required")
     rows, zarr_hashes = matched_rows(args.train_csv, args.zarr_path, stats)
     distributions, summaries = summarize_targets(rows, stats)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    save_figure(args.output_dir, distributions)
+    save_ecdf_figure(args.output_dir, distributions)
+    save_histogram_figure(args.output_dir, distributions, args.histogram_bins)
     write_summary_csv(args.output_dir, summaries)
-    write_summary_tex(args.output_dir, summaries)
-    write_metadata(args.output_dir, args.train_csv, args.stats_json, stats, zarr_hashes)
+    write_summary_tex(args.output_dir, summaries, stats.matched_rows)
+    write_metadata(
+        args.output_dir,
+        args.train_csv,
+        args.stats_json,
+        stats,
+        zarr_hashes,
+        args.histogram_bins,
+    )
     logger.info(
         "Saved V1 target distributions for {} targets from {} matched train rows to {}",
         len(TARGET_COLUMNS),

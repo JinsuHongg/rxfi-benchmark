@@ -46,7 +46,12 @@
       "total_background_deviation_2h_q50": 588
     }
   },
-  "plot": "10-panel empirical CDF of asinh(y / s), before per-target z-score normalization",
+  "plots": [
+    "10-panel empirical CDF of asinh(y / s), before per-target z-score normalization",
+    "10-panel density histogram of asinh(y / s), before per-target z-score normalization"
+  ],
+  "histogram_bins": 80,
+  "histogram_bin_edge_rule": "one shared set of equal-width bins spanning all transformed training values",
   "summary_table_space": "original target space; finite values only",
   "test_or_validation_data_used": false
 }
