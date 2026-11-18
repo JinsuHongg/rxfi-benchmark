@@ -4,6 +4,8 @@ Scripts for benchmark diagnostics, label audits, and model evaluation.
 
 - `analyze_four_qr_targets.py`: summarizes and compares the four Project 1 quantile-regression targets.
 - `analyze_rxfi_distribution.py`: analyzes RXFI distribution and target imbalance.
+- `plot_four_target_distributions.py`: plots train-only histograms for max X-ray flux, fluence, and the two 24-hour q50 background-subtracted flux targets. Run with `conda run -n rxfi-benchmark python scripts/analysis/plot_four_target_distributions.py`; input paths and bin count can be overridden with CLI flags.
+- `plot_v1_target_distributions.py`: plots train-only distributions for all ten V1 XRS regression targets.
 - `compare_old_rxfi_and_background_deviation.py`: compares the supplementary
   legacy `max_old_rxfi` label with XRS-only `max_background_deviation`, including
   paired-window coverage, reference-sign cross-tabs, block-bootstrap rank
